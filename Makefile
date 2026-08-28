@@ -59,6 +59,38 @@ golden: ## Regenerate simulation golden fixtures (review the diff carefully)
 wasm: ## Build the simulation as WebAssembly for client-side prediction
 	GOOS=js GOARCH=wasm $(GO) build -o client/public/sim.wasm ./cmd/simwasm
 	cp "$$($(GO) env GOROOT)/lib/wasm/wasm_exec.js" client/public/wasm_exec.js
+	@# Both land in client/public, which Vite copies into dist on build.
+
+# Port the game listens on. 8080 is occupied on many machines by Docker, Lima,
+# and similar, so it is easy to override: make run PORT=8088
+PORT ?= 8080
+
+.PHONY: run
+run: build client-build ## Build everything and serve the whole game from one port
+	@echo
+	@echo "  Open http://localhost:$(PORT)"
+	@echo
+	./bin/mmo --dev-auth --addr=:$(PORT) --client-dir=client/dist
+
+.PHONY: client-install
+client-install: ## Install client dependencies
+	cd client && npm ci
+
+.PHONY: client-build
+client-build: wasm ## Build the client bundle
+	cd client && npm run build
+
+.PHONY: dev
+dev: ## Print instructions for the two-process live-reload setup
+	@echo "Live reload needs two terminals:"
+	@echo
+	@echo "  1)  ./bin/mmo --dev-auth --addr=:$(PORT) --log-level=debug"
+	@echo "  2)  MMO_SERVER=http://localhost:$(PORT) npm --prefix client run dev"
+	@echo
+	@echo "Then open the URL Vite prints -- it is usually http://localhost:5173,"
+	@echo "but Vite moves to the next free port if that one is taken."
+	@echo
+	@echo "For a single-process setup with no proxy, use 'make run' instead."
 
 .PHONY: up
 up: ## Start the full stack (postgres, redis, server, client)

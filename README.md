@@ -43,49 +43,70 @@ Read the docs for detail, but the design rests on three things:
 
 **Content is data, not code.** Items, mobs, skills, passives, drops, and maps are schema-validated files in git. Adding a skill is twelve lines of TOML, not a Go function — which is the difference between shipping ten skills and shipping three hundred.
 
-## Development
-
-Toolchain versions are pinned in `.tool-versions` — install with `mise install` (or `asdf install`) and use those versions for everything.
+## Running it
 
 ```
 mise install
-npm --prefix client install
-
-make wasm                  # compile the simulation to WebAssembly
-make build                 # build the server
-
-./bin/mmo --dev-auth       # terminal 1: game server on :8080
-npm --prefix client run dev   # terminal 2: client on :5173
+make client-install
+make run
 ```
 
-Open http://localhost:5173, enter a name, and connect. Open a second tab to see
-two clients share a room.
+Then open the URL `make run` prints — **http://localhost:8080** by default.
+Enter a name and connect; open a second tab to see two players share a room.
 
-`--dev-auth` issues game tickets with no identity check, because OIDC arrives in
-M2. Never enable it on anything reachable by someone you do not trust.
+That is one process serving the game and the client from a single port, with no
+proxy and nothing else to line up.
 
-### If port 8080 is taken
-
-It often is — Docker, Lima, and similar hold it on many machines. Use another
-port on **both** sides, or the dev proxy forwards to whatever else is listening
-and you get a confusing error from a server that is not this one:
+**If port 8080 is taken** — it often is, since Docker, Lima, and similar hold it
+on many machines — pass a different one:
 
 ```
-./bin/mmo --dev-auth --addr=:8088
-MMO_SERVER=http://localhost:8088 npm --prefix client run dev
+make run PORT=8088
 ```
 
-Vite prints its proxy target at startup, and the client checks that whatever
-answers is actually the game server before trying to connect, so a mismatch
-says so plainly rather than failing further downstream.
+`--dev-auth`, which `make run` passes for you, issues game tickets with no
+identity check, because OIDC arrives in M2. Never enable it on anything
+reachable by someone you do not trust.
+
+### Live reload
+
+The setup above rebuilds the client only when you run it. For live reload while
+editing client code, run two processes **in two terminals**:
+
+```
+# terminal 1 — game server
+./bin/mmo --dev-auth --addr=:8080 --log-level=debug
+
+# terminal 2 — Vite dev server, proxying to it
+MMO_SERVER=http://localhost:8080 npm --prefix client run dev
+```
+
+Open **the URL Vite prints**, not the server's. It is usually
+http://localhost:5173, but Vite moves to the next free port if that one is
+taken and only says so in its output.
+
+Two things to keep aligned, since both are easy to get wrong:
+
+- The port must match on both sides. `MMO_SERVER` tells Vite where to proxy; if
+  it points somewhere else, that other process answers and the client reports
+  that the address is not the game server.
+- The server here has no `--client-dir`, so it serves the API and WebSocket but
+  no page. Opening the server's own port gives a 404 — that is expected, and it
+  is why you open Vite's URL instead.
+
+`make dev` prints these instructions if you forget them.
 
 ### Testing
 
 ```
-make test               # Go tests, race detector on
+make test               # Go tests
+make test-race          # ...with the race detector
 make test-conformance   # the WASM build must match the Go build exactly
 make lint               # vet, protobuf lint, client typecheck
 ```
+
+Toolchain versions are pinned in `.tool-versions`; `mise install` (or
+`asdf install`) sets them up, and CI reads the same file.
 
 `make test-conformance` is the one that makes prediction trustworthy: it replays
 the golden corpus through the compiled WebAssembly and fails on a single
