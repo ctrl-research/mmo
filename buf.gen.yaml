@@ -1,0 +1,9 @@
+version: v2
+managed:
+  enabled: true
+plugins:
+  # Go types. protoc-gen-go is resolved from tools/go.mod, so no system protoc
+  # install is required anywhere in the build.
+  - local: ["go", "tool", "-modfile=tools/go.mod", "protoc-gen-go"]
+    out: internal/wire
+    opt: paths=source_relative

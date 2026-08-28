@@ -1,0 +1,254 @@
+syntax = "proto3";
+
+package mmo.v1;
+
+option go_package = "github.com/ctrl-research/mmo/internal/wire/mmo/v1;mmov1";
+
+// The wire protocol between the browser client and the gateway.
+//
+// See docs/protocol.md for the model this encodes. Two rules govern edits:
+//
+//  1. Field numbers are permanent. Never reuse one; reserve it instead. A
+//     client and a server disagreeing about what field 7 means is a class of
+//     bug that is hard to see and easy to avoid.
+//  2. The client sends intent, never outcome. There is deliberately no message
+//     here by which a client can report its own position or the damage it
+//     dealt.
+
+// ---------------------------------------------------------------------------
+// Framing
+// ---------------------------------------------------------------------------
+
+// Envelope is exactly one WebSocket binary frame.
+//
+// The server batches a whole tick's messages into one envelope rather than
+// sending each separately: at 20 Hz with a snapshot plus several events, the
+// per-frame WebSocket overhead is otherwise a meaningful share of the traffic.
+message Envelope {
+  repeated ServerMessage server = 1;
+  repeated ClientMessage client = 2;
+}
+
+message ClientMessage {
+  oneof body {
+    Hello  hello  = 1;
+    Intent intent = 2;
+    Ping   ping   = 3;
+  }
+  // Reserved for messages arriving in later milestones -- cast, interact,
+  // chat, inventory, party, trade -- so adding them never renumbers what is
+  // already deployed.
+  reserved 4 to 9;
+}
+
+message ServerMessage {
+  oneof body {
+    Welcome  welcome  = 1;
+    Snapshot snapshot = 2;
+    Event    event    = 3;
+    Pong     pong     = 4;
+    Kick     kick     = 5;
+  }
+  reserved 6 to 9;
+}
+
+// ---------------------------------------------------------------------------
+// Handshake
+// ---------------------------------------------------------------------------
+
+// Hello is the first message on a new connection.
+message Hello {
+  // Single-use ticket obtained over authenticated HTTP, valid for 30 seconds.
+  // Credentials never appear in the WebSocket URL, where they would leak into
+  // proxy logs and browser history.
+  string ticket = 1;
+
+  // Both sides must agree on the protocol shape and on the content that
+  // describes the world, or the resulting bugs are nearly unreadable.
+  uint32 protocol_version = 2;
+  string content_hash = 3;
+}
+
+message Welcome {
+  uint32 entity_id = 1;  // the player's own entity, to distinguish self
+  uint64 instance_id = 2;
+  uint64 tick = 3;       // server tick at the moment of joining
+  uint32 tick_ms = 4;    // simulation period, so the client need not assume
+  string map_id = 5;
+  EntityState self = 6;
+}
+
+// Kick closes the connection with a reason the client can act on. The code
+// mirrors the WebSocket close code; see docs/protocol.md for the table.
+message Kick {
+  uint32 code = 1;
+  string reason = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Client input
+// ---------------------------------------------------------------------------
+
+// Intent is what buttons the player is holding. It carries no position: the
+// server derives where the player is, which is what makes teleport and speed
+// hacks unrepresentable rather than merely detectable.
+message Intent {
+  // Strictly increasing per connection. Echoed back as Snapshot.ack_seq to
+  // drive client reconciliation. A sequence number needs no clock sync, and a
+  // client that lies about it only corrupts its own prediction.
+  uint32 seq = 1;
+
+  // Highest snapshot tick this client has received, used as the delta
+  // baseline. Riding on Intent means acknowledgements cost no extra messages.
+  uint64 ack_snapshot = 2;
+
+  // Horizontal intent in thousandths, clamped server-side to [-1000, 1000].
+  sint32 move_x = 3;
+
+  bool jump = 4;
+  bool up = 5;
+  bool down = 6;
+}
+
+message Ping {
+  uint64 client_time_ms = 1;
+}
+
+message Pong {
+  uint64 client_time_ms = 1;  // echoed, so the client can compute RTT
+  uint64 server_tick = 2;
+}
+
+// ---------------------------------------------------------------------------
+// World state
+// ---------------------------------------------------------------------------
+
+enum EntityKind {
+  ENTITY_KIND_UNSPECIFIED = 0;
+  ENTITY_KIND_PLAYER = 1;
+  ENTITY_KIND_MOB = 2;
+  ENTITY_KIND_DROP = 3;
+  ENTITY_KIND_NPC = 4;
+}
+
+// Bit positions in EntityDelta.field_mask.
+enum EntityField {
+  ENTITY_FIELD_UNSPECIFIED = 0;
+  ENTITY_FIELD_POS = 1;
+  ENTITY_FIELD_VEL = 2;
+  ENTITY_FIELD_FLAGS = 3;
+  ENTITY_FIELD_ANIM = 4;
+  ENTITY_FIELD_HP = 5;
+}
+
+// Bit positions in EntityState.flags and EntityDelta.flags.
+enum EntityFlag {
+  ENTITY_FLAG_UNSPECIFIED = 0;
+  ENTITY_FLAG_GROUNDED = 1;
+  ENTITY_FLAG_CLIMBING = 2;
+  ENTITY_FLAG_FACING_LEFT = 3;
+  ENTITY_FLAG_JUMP_HELD = 4;
+}
+
+// EntityState is a complete entity, sent when it first becomes visible and
+// whenever a full snapshot is due.
+//
+// Positions and velocities are raw Q24.8 fixed-point, the same representation
+// the simulation uses internally, so serialisation neither rounds nor converts.
+// Floating point appears nowhere in the movement path.
+message EntityState {
+  uint32 id = 1;
+  EntityKind kind = 2;
+
+  // Visibility layer. 0 is the shared layer, seen by everyone in the room; any
+  // other value is a per-player or per-party layer. Players are always
+  // shared-layer. See docs/architecture.md.
+  uint32 layer = 3;
+
+  sint32 x = 4;
+  sint32 y = 5;
+  sint32 vx = 6;
+  sint32 vy = 7;
+  sint32 w = 8;
+  sint32 h = 9;
+
+  uint32 flags = 10;  // bitfield of EntityFlag
+  uint32 anim = 11;
+
+  uint32 hp = 12;
+  uint32 hp_max = 13;
+
+  string name = 14;
+
+  // State the player's own entity needs for prediction but other entities do
+  // not. Only ever populated for self. Omitting any of it would make the
+  // client's replay diverge from the server.
+  uint32 coyote = 15;
+  uint32 jump_buffer = 16;
+  uint32 drop_through = 17;
+}
+
+// EntityDelta carries only what changed since the baseline tick.
+message EntityDelta {
+  uint32 id = 1;
+
+  // Bitfield of EntityField marking which of the fields below are present.
+  uint32 field_mask = 2;
+
+  sint32 x = 3;
+  sint32 y = 4;
+  sint32 vx = 5;
+  sint32 vy = 6;
+
+  uint32 flags = 7;
+  uint32 anim = 8;
+
+  uint32 hp = 9;
+  uint32 hp_max = 10;
+}
+
+message Snapshot {
+  uint64 tick = 1;
+
+  // Tick this delta is relative to. Zero means a full snapshot: either the
+  // first one, or one sent because the client's baseline grew too stale to be
+  // worth chasing.
+  uint64 baseline_tick = 2;
+
+  // Highest Intent.seq applied by the server. The client discards
+  // acknowledged inputs and replays the rest on top of authoritative state.
+  uint32 ack_seq = 3;
+
+  repeated EntityDelta entities = 4;
+  repeated EntityState entered = 5;  // newly visible, sent in full
+  repeated uint32 removed = 6;       // died, or left the viewer's layer/range
+
+  // The player's own entity, always complete and never delta-compressed. It is
+  // one entity, it is what reconciliation is measured against, and a delta bug
+  // here is far more expensive than the handful of bytes it would save.
+  EntityState self = 7;
+}
+
+// ---------------------------------------------------------------------------
+// Events
+// ---------------------------------------------------------------------------
+
+// Event is a one-shot fact rather than state: never delta-compressed, and
+// never inferred by the client from state changes. A client that derives "took
+// damage" from a falling HP number cannot tell 200 damage from two hits of 100.
+message Event {
+  oneof body {
+    PlayerJoined player_joined = 1;
+    PlayerLeft player_left = 2;
+  }
+  reserved 3 to 15;  // damage, death, cast, chat, loot, level-up
+}
+
+message PlayerJoined {
+  uint32 entity_id = 1;
+  string name = 2;
+}
+
+message PlayerLeft {
+  uint32 entity_id = 1;
+}
