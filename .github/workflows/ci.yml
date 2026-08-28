@@ -10,20 +10,44 @@ jobs:
   server:
     name: Server
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
-      # .tool-versions is the single source of truth for language versions, so
-      # CI reads it rather than pinning them a second time here and letting the
-      # two drift.
+      # setup-go and setup-node cannot read .tool-versions: setup-go accepts
+      # only go.mod, go.work, or .go-version, and passing it anything else
+      # makes it treat the whole file -- comments included -- as a version
+      # string. Parsing it here keeps .tool-versions the single source of
+      # truth without duplicating the numbers into this file.
+      - name: Read pinned toolchain versions
+        id: versions
+        run: |
+          go_version=$(awk '$1 == "golang" { print $2 }' .tool-versions)
+          node_version=$(awk '$1 == "nodejs" { print $2 }' .tool-versions)
+
+          # An empty value would let setup-go silently install some other
+          # version, so a renamed or missing entry fails here instead.
+          if [ -z "$go_version" ]; then
+            echo "::error::No 'golang' entry in .tool-versions"
+            exit 1
+          fi
+          if [ -z "$node_version" ]; then
+            echo "::error::No 'nodejs' entry in .tool-versions"
+            exit 1
+          fi
+
+          echo "go=$go_version" >> "$GITHUB_OUTPUT"
+          echo "node=$node_version" >> "$GITHUB_OUTPUT"
+          echo "Go $go_version, Node $node_version"
+
       - uses: actions/setup-go@v5
         with:
-          go-version-file: .tool-versions
+          go-version: ${{ steps.versions.outputs.go }}
 
       - name: Verify generated code is up to date
         run: |
           go tool -modfile=tools/go.mod buf generate
-          if ! git diff --exit-code; then
+          if ! git diff --exit-code -- internal/wire client/src/gen; then
             echo "::error::Generated code is stale. Run 'make generate' and commit the result."
             exit 1
           fi
@@ -52,16 +76,43 @@ jobs:
   client:
     name: Client
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
+      # setup-go and setup-node cannot read .tool-versions: setup-go accepts
+      # only go.mod, go.work, or .go-version, and passing it anything else
+      # makes it treat the whole file -- comments included -- as a version
+      # string. Parsing it here keeps .tool-versions the single source of
+      # truth without duplicating the numbers into this file.
+      - name: Read pinned toolchain versions
+        id: versions
+        run: |
+          go_version=$(awk '$1 == "golang" { print $2 }' .tool-versions)
+          node_version=$(awk '$1 == "nodejs" { print $2 }' .tool-versions)
+
+          # An empty value would let setup-go silently install some other
+          # version, so a renamed or missing entry fails here instead.
+          if [ -z "$go_version" ]; then
+            echo "::error::No 'golang' entry in .tool-versions"
+            exit 1
+          fi
+          if [ -z "$node_version" ]; then
+            echo "::error::No 'nodejs' entry in .tool-versions"
+            exit 1
+          fi
+
+          echo "go=$go_version" >> "$GITHUB_OUTPUT"
+          echo "node=$node_version" >> "$GITHUB_OUTPUT"
+          echo "Go $go_version, Node $node_version"
+
       - uses: actions/setup-go@v5
         with:
-          go-version-file: .tool-versions
+          go-version: ${{ steps.versions.outputs.go }}
 
       - uses: actions/setup-node@v4
         with:
-          node-version-file: .tool-versions
+          node-version: ${{ steps.versions.outputs.node }}
           cache: npm
           cache-dependency-path: client/package-lock.json
 
@@ -90,6 +141,7 @@ jobs:
   hygiene:
     name: Hygiene
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
