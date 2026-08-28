@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/ctrl-research/mmo/internal/content"
+	"github.com/ctrl-research/mmo/internal/content/contenttest"
 	"github.com/ctrl-research/mmo/internal/directory"
 	"github.com/ctrl-research/mmo/internal/metrics"
 	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
@@ -20,25 +20,7 @@ import (
 	"github.com/ctrl-research/mmo/internal/world/room"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/protobuf/proto"
-	"testing/fstest"
 )
-
-const testMapTMJ = `{
-  "type": "map", "width": 20, "height": 10, "tilewidth": 32, "tileheight": 32,
-  "properties": [
-    {"name": "mapId", "type": "string", "value": "test"},
-    {"name": "placement", "type": "string", "value": "shared"},
-    {"name": "capacity", "type": "int", "value": 4}
-  ],
-  "layers": [{
-    "name": "collision", "type": "objectgroup",
-    "objects": [
-      {"id": 1, "class": "solid", "x": 0, "y": 288, "width": 640, "height": 32},
-      {"id": 2, "class": "spawn_point", "name": "start", "x": 64, "y": 288,
-       "properties": [{"name": "isDefault", "type": "bool", "value": true}]}
-    ]
-  }]
-}`
 
 // testServer wires the full stack -- node, directory, gateway -- behind a real
 // HTTP server, so these tests exercise the actual protocol over a real socket
@@ -52,10 +34,9 @@ type testServer struct {
 func newTestServer(t *testing.T) *testServer {
 	t.Helper()
 
-	fsys := fstest.MapFS{"maps/test.tmj": &fstest.MapFile{Data: []byte(testMapTMJ)}}
-	m, err := content.LoadMap(fsys, "maps/test.tmj")
+	game, err := contenttest.Load()
 	if err != nil {
-		t.Fatalf("load map: %v", err)
+		t.Fatalf("load content: %v", err)
 	}
 
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -64,10 +45,12 @@ func newTestServer(t *testing.T) *testServer {
 
 	node, err := world.NewNode(world.Config{
 		Directory:  dir,
-		Maps:       map[string]*content.Map{"test": m},
+		Content:    game,
 		DefaultMap: "test",
 		Logger:     log,
 		Observer:   mx,
+		// A fixed seed so these tests never depend on the roll of the day.
+		Seed: 0xC0FFEE,
 	})
 	if err != nil {
 		t.Fatalf("new node: %v", err)
@@ -78,6 +61,7 @@ func newTestServer(t *testing.T) *testServer {
 
 	gw, err := New(Config{
 		Rooms:   node,
+		Maps:    game.Maps,
 		Tickets: NewTicketStore(),
 		Metrics: mx,
 		Logger:  log,
@@ -368,10 +352,14 @@ func TestFirstMessageMustBeHello(t *testing.T) {
 // That is the MapleStory model and the reason shared rooms have a placement
 // policy at all: capacity limits tick cost, it does not limit who may play.
 func TestFullSharedRoomOpensANewChannel(t *testing.T) {
-	ts := newTestServer(t) // the test map declares capacity 4
+	ts := newTestServer(t)
+
+	// Read the capacity from content rather than hardcoding it, so tuning the
+	// test map cannot silently turn this into a test of nothing.
+	capacity := ts.node.Content().Maps["test"].Capacity
 
 	var firstInstance uint64
-	for i := 0; i < 4; i++ {
+	for i := 0; i < capacity; i++ {
 		c := ts.dial(t)
 		c.hello(ts.ticket(t, "player"), ProtocolVersion)
 		w := c.awaitWelcome()
@@ -384,21 +372,24 @@ func TestFullSharedRoomOpensANewChannel(t *testing.T) {
 		}
 	}
 
-	fifth := ts.dial(t)
-	fifth.hello(ts.ticket(t, "fifth"), ProtocolVersion)
-	w := fifth.awaitWelcome()
+	overflow := ts.dial(t)
+	overflow.hello(ts.ticket(t, "overflow"), ProtocolVersion)
+	w := overflow.awaitWelcome()
 
 	if w.GetInstanceId() == firstInstance {
-		t.Errorf("fifth player joined instance %d, which was already at capacity", firstInstance)
+		t.Errorf("the overflow player joined instance %d, which was already at capacity", firstInstance)
 	}
 	if ts.node.Rooms() != 2 {
 		t.Errorf("node hosts %d rooms, want 2", ts.node.Rooms())
 	}
 
-	// Being in another channel means not sharing a world with the first four.
-	for _, snap := range fifth.awaitSnapshots(5) {
-		if len(snap.GetEntered()) > 0 {
-			t.Error("a player in a fresh channel was shown entities from the full one")
+	// Being in another channel means not sharing a world with the others. Mobs
+	// are filtered out because the fresh channel spawns its own.
+	for _, snap := range overflow.awaitSnapshots(5) {
+		for _, e := range snap.GetEntered() {
+			if e.GetKind() == mmov1.EntityKind_ENTITY_KIND_PLAYER {
+				t.Errorf("a player in a fresh channel saw player %d from the full one", e.GetId())
+			}
 		}
 	}
 }

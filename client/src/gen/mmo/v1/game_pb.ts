@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mmo/v1/game.proto.
  */
 export const file_mmo_v1_game: GenFile = /*@__PURE__*/
-  fileDesc("ChFtbW8vdjEvZ2FtZS5wcm90bxIGbW1vLnYxIlgKCEVudmVsb3BlEiUKBnNlcnZlchgBIAMoCzIVLm1tby52MS5TZXJ2ZXJNZXNzYWdlEiUKBmNsaWVudBgCIAMoCzIVLm1tby52MS5DbGllbnRNZXNzYWdlIn0KDUNsaWVudE1lc3NhZ2USHgoFaGVsbG8YASABKAsyDS5tbW8udjEuSGVsbG9IABIgCgZpbnRlbnQYAiABKAsyDi5tbW8udjEuSW50ZW50SAASHAoEcGluZxgDIAEoCzIMLm1tby52MS5QaW5nSABCBgoEYm9keUoECAQQCiLDAQoNU2VydmVyTWVzc2FnZRIiCgd3ZWxjb21lGAEgASgLMg8ubW1vLnYxLldlbGNvbWVIABIkCghzbmFwc2hvdBgCIAEoCzIQLm1tby52MS5TbmFwc2hvdEgAEh4KBWV2ZW50GAMgASgLMg0ubW1vLnYxLkV2ZW50SAASHAoEcG9uZxgEIAEoCzIMLm1tby52MS5Qb25nSAASHAoEa2ljaxgFIAEoCzIMLm1tby52MS5LaWNrSABCBgoEYm9keUoECAYQCiJHCgVIZWxsbxIOCgZ0aWNrZXQYASABKAkSGAoQcHJvdG9jb2xfdmVyc2lvbhgCIAEoDRIUCgxjb250ZW50X2hhc2gYAyABKAkigwEKB1dlbGNvbWUSEQoJZW50aXR5X2lkGAEgASgNEhMKC2luc3RhbmNlX2lkGAIgASgEEgwKBHRpY2sYAyABKAQSDwoHdGlja19tcxgEIAEoDRIOCgZtYXBfaWQYBSABKAkSIQoEc2VsZhgGIAEoCzITLm1tby52MS5FbnRpdHlTdGF0ZSIkCgRLaWNrEgwKBGNvZGUYASABKA0SDgoGcmVhc29uGAIgASgJImMKBkludGVudBILCgNzZXEYASABKA0SFAoMYWNrX3NuYXBzaG90GAIgASgEEg4KBm1vdmVfeBgDIAEoERIMCgRqdW1wGAQgASgIEgoKAnVwGAUgASgIEgwKBGRvd24YBiABKAgiHgoEUGluZxIWCg5jbGllbnRfdGltZV9tcxgBIAEoBCIzCgRQb25nEhYKDmNsaWVudF90aW1lX21zGAEgASgEEhMKC3NlcnZlcl90aWNrGAIgASgEIpACCgtFbnRpdHlTdGF0ZRIKCgJpZBgBIAEoDRIgCgRraW5kGAIgASgOMhIubW1vLnYxLkVudGl0eUtpbmQSDQoFbGF5ZXIYAyABKA0SCQoBeBgEIAEoERIJCgF5GAUgASgREgoKAnZ4GAYgASgREgoKAnZ5GAcgASgREgkKAXcYCCABKBESCQoBaBgJIAEoERINCgVmbGFncxgKIAEoDRIMCgRhbmltGAsgASgNEgoKAmhwGAwgASgNEg4KBmhwX21heBgNIAEoDRIMCgRuYW1lGA4gASgJEg4KBmNveW90ZRgPIAEoDRITCgtqdW1wX2J1ZmZlchgQIAEoDRIUCgxkcm9wX3Rocm91Z2gYESABKA0ilAEKC0VudGl0eURlbHRhEgoKAmlkGAEgASgNEhIKCmZpZWxkX21hc2sYAiABKA0SCQoBeBgDIAEoERIJCgF5GAQgASgREgoKAnZ4GAUgASgREgoKAnZ5GAYgASgREg0KBWZsYWdzGAcgASgNEgwKBGFuaW0YCCABKA0SCgoCaHAYCSABKA0SDgoGaHBfbWF4GAogASgNIsEBCghTbmFwc2hvdBIMCgR0aWNrGAEgASgEEhUKDWJhc2VsaW5lX3RpY2sYAiABKAQSDwoHYWNrX3NlcRgDIAEoDRIlCghlbnRpdGllcxgEIAMoCzITLm1tby52MS5FbnRpdHlEZWx0YRIkCgdlbnRlcmVkGAUgAygLMhMubW1vLnYxLkVudGl0eVN0YXRlEg8KB3JlbW92ZWQYBiADKA0SIQoEc2VsZhgHIAEoCzITLm1tby52MS5FbnRpdHlTdGF0ZSJvCgVFdmVudBItCg1wbGF5ZXJfam9pbmVkGAEgASgLMhQubW1vLnYxLlBsYXllckpvaW5lZEgAEikKC3BsYXllcl9sZWZ0GAIgASgLMhIubW1vLnYxLlBsYXllckxlZnRIAEIGCgRib2R5SgQIAxAQIi8KDFBsYXllckpvaW5lZBIRCgllbnRpdHlfaWQYASABKA0SDAoEbmFtZRgCIAEoCSIfCgpQbGF5ZXJMZWZ0EhEKCWVudGl0eV9pZBgBIAEoDSqBAQoKRW50aXR5S2luZBIbChdFTlRJVFlfS0lORF9VTlNQRUNJRklFRBAAEhYKEkVOVElUWV9LSU5EX1BMQVlFUhABEhMKD0VOVElUWV9LSU5EX01PQhACEhQKEEVOVElUWV9LSU5EX0RST1AQAxITCg9FTlRJVFlfS0lORF9OUEMQBCqbAQoLRW50aXR5RmllbGQSHAoYRU5USVRZX0ZJRUxEX1VOU1BFQ0lGSUVEEAASFAoQRU5USVRZX0ZJRUxEX1BPUxABEhQKEEVOVElUWV9GSUVMRF9WRUwQAhIWChJFTlRJVFlfRklFTERfRkxBR1MQAxIVChFFTlRJVFlfRklFTERfQU5JTRAEEhMKD0VOVElUWV9GSUVMRF9IUBAFKpUBCgpFbnRpdHlGbGFnEhsKF0VOVElUWV9GTEFHX1VOU1BFQ0lGSUVEEAASGAoURU5USVRZX0ZMQUdfR1JPVU5ERUQQARIYChRFTlRJVFlfRkxBR19DTElNQklORxACEhsKF0VOVElUWV9GTEFHX0ZBQ0lOR19MRUZUEAMSGQoVRU5USVRZX0ZMQUdfSlVNUF9IRUxEEARCiQEKCmNvbS5tbW8udjFCCUdhbWVQcm90b1ABWjdnaXRodWIuY29tL2N0cmwtcmVzZWFyY2gvbW1vL2ludGVybmFsL3dpcmUvbW1vL3YxO21tb3YxogIDTVhYqgIGTW1vLlYxygIGTW1vXFYx4gISTW1vXFYxXEdQQk1ldGFkYXRh6gIHTW1vOjpWMWIGcHJvdG8z");
+  fileDesc("ChFtbW8vdjEvZ2FtZS5wcm90bxIGbW1vLnYxIlgKCEVudmVsb3BlEiUKBnNlcnZlchgBIAMoCzIVLm1tby52MS5TZXJ2ZXJNZXNzYWdlEiUKBmNsaWVudBgCIAMoCzIVLm1tby52MS5DbGllbnRNZXNzYWdlIsEBCg1DbGllbnRNZXNzYWdlEh4KBWhlbGxvGAEgASgLMg0ubW1vLnYxLkhlbGxvSAASIAoGaW50ZW50GAIgASgLMg4ubW1vLnYxLkludGVudEgAEhwKBHBpbmcYAyABKAsyDC5tbW8udjEuUGluZ0gAEhwKBGNhc3QYBCABKAsyDC5tbW8udjEuQ2FzdEgAEiQKCGludGVyYWN0GAUgASgLMhAubW1vLnYxLkludGVyYWN0SABCBgoEYm9keUoECAYQCiI6CgRDYXN0EgsKA3NlcRgBIAEoDRIQCghza2lsbF9pZBgCIAEoCRITCgtmYWNpbmdfbGVmdBgDIAEoCCJBCghJbnRlcmFjdBIRCgllbnRpdHlfaWQYASABKA0SIgoEa2luZBgCIAEoDjIULm1tby52MS5JbnRlcmFjdEtpbmQiwwEKDVNlcnZlck1lc3NhZ2USIgoHd2VsY29tZRgBIAEoCzIPLm1tby52MS5XZWxjb21lSAASJAoIc25hcHNob3QYAiABKAsyEC5tbW8udjEuU25hcHNob3RIABIeCgVldmVudBgDIAEoCzINLm1tby52MS5FdmVudEgAEhwKBHBvbmcYBCABKAsyDC5tbW8udjEuUG9uZ0gAEhwKBGtpY2sYBSABKAsyDC5tbW8udjEuS2lja0gAQgYKBGJvZHlKBAgGEAoiRwoFSGVsbG8SDgoGdGlja2V0GAEgASgJEhgKEHByb3RvY29sX3ZlcnNpb24YAiABKA0SFAoMY29udGVudF9oYXNoGAMgASgJIoMBCgdXZWxjb21lEhEKCWVudGl0eV9pZBgBIAEoDRITCgtpbnN0YW5jZV9pZBgCIAEoBBIMCgR0aWNrGAMgASgEEg8KB3RpY2tfbXMYBCABKA0SDgoGbWFwX2lkGAUgASgJEiEKBHNlbGYYBiABKAsyEy5tbW8udjEuRW50aXR5U3RhdGUiJAoES2ljaxIMCgRjb2RlGAEgASgNEg4KBnJlYXNvbhgCIAEoCSJjCgZJbnRlbnQSCwoDc2VxGAEgASgNEhQKDGFja19zbmFwc2hvdBgCIAEoBBIOCgZtb3ZlX3gYAyABKBESDAoEanVtcBgEIAEoCBIKCgJ1cBgFIAEoCBIMCgRkb3duGAYgASgIIh4KBFBpbmcSFgoOY2xpZW50X3RpbWVfbXMYASABKAQiMwoEUG9uZxIWCg5jbGllbnRfdGltZV9tcxgBIAEoBBITCgtzZXJ2ZXJfdGljaxgCIAEoBCKlAwoLRW50aXR5U3RhdGUSCgoCaWQYASABKA0SIAoEa2luZBgCIAEoDjISLm1tby52MS5FbnRpdHlLaW5kEg0KBWxheWVyGAMgASgNEgkKAXgYBCABKBESCQoBeRgFIAEoERIKCgJ2eBgGIAEoERIKCgJ2eRgHIAEoERIJCgF3GAggASgREgkKAWgYCSABKBESDQoFZmxhZ3MYCiABKA0SDAoEYW5pbRgLIAEoDRIKCgJocBgMIAEoDRIOCgZocF9tYXgYDSABKA0SDAoEbmFtZRgOIAEoCRIOCgZjb3lvdGUYDyABKA0SEwoLanVtcF9idWZmZXIYECABKA0SFAoMZHJvcF90aHJvdWdoGBEgASgNEg0KBWxldmVsGBIgASgNEgsKA2V4cBgTIAEoBBITCgtleHBfdG9fbmV4dBgUIAEoBBIKCgJtcBgVIAEoDRIOCgZtcF9tYXgYFiABKA0SEQoJZHJvcF9pdGVtGBcgASgJEhAKCGRyb3BfcXR5GBggASgNEhEKCWRyb3BfZ29sZBgZIAEoDRIOCgZtb2JfaWQYGiABKAkilAEKC0VudGl0eURlbHRhEgoKAmlkGAEgASgNEhIKCmZpZWxkX21hc2sYAiABKA0SCQoBeBgDIAEoERIJCgF5GAQgASgREgoKAnZ4GAUgASgREgoKAnZ5GAYgASgREg0KBWZsYWdzGAcgASgNEgwKBGFuaW0YCCABKA0SCgoCaHAYCSABKA0SDgoGaHBfbWF4GAogASgNIsEBCghTbmFwc2hvdBIMCgR0aWNrGAEgASgEEhUKDWJhc2VsaW5lX3RpY2sYAiABKAQSDwoHYWNrX3NlcRgDIAEoDRIlCghlbnRpdGllcxgEIAMoCzITLm1tby52MS5FbnRpdHlEZWx0YRIkCgdlbnRlcmVkGAUgAygLMhMubW1vLnYxLkVudGl0eVN0YXRlEg8KB3JlbW92ZWQYBiADKA0SIQoEc2VsZhgHIAEoCzITLm1tby52MS5FbnRpdHlTdGF0ZSLaAgoFRXZlbnQSLQoNcGxheWVyX2pvaW5lZBgBIAEoCzIULm1tby52MS5QbGF5ZXJKb2luZWRIABIpCgtwbGF5ZXJfbGVmdBgCIAEoCzISLm1tby52MS5QbGF5ZXJMZWZ0SAASJQoGZGFtYWdlGAMgASgLMhMubW1vLnYxLkRhbWFnZURlYWx0SAASIgoEZGllZBgEIAEoCzISLm1tby52MS5FbnRpdHlEaWVkSAASJwoKc2tpbGxfY2FzdBgFIAEoCzIRLm1tby52MS5Ta2lsbENhc3RIABInCgpleHBfZ2FpbmVkGAYgASgLMhEubW1vLnYxLkV4cEdhaW5lZEgAEiMKCGxldmVsX3VwGAcgASgLMg8ubW1vLnYxLkxldmVsVXBIABInCgpsb290X3Rha2VuGAggASgLMhEubW1vLnYxLkxvb3RUYWtlbkgAQgYKBGJvZHlKBAgJEBAiZgoLRGFtYWdlRGVhbHQSEQoJc291cmNlX2lkGAEgASgNEhEKCXRhcmdldF9pZBgCIAEoDRIOCgZhbW91bnQYAyABKA0SEAoIY3JpdGljYWwYBCABKAgSDwoHZWxlbWVudBgFIAEoCSIyCgpFbnRpdHlEaWVkEhEKCWVudGl0eV9pZBgBIAEoDRIRCglraWxsZXJfaWQYAiABKA0iRQoJU2tpbGxDYXN0EhEKCWNhc3Rlcl9pZBgBIAEoDRIQCghza2lsbF9pZBgCIAEoCRITCgtmYWNpbmdfbGVmdBgDIAEoCCIqCglFeHBHYWluZWQSDgoGYW1vdW50GAEgASgEEg0KBXRvdGFsGAIgASgEIi0KB0xldmVsVXASDQoFbGV2ZWwYASABKA0SEwoLZXhwX3RvX25leHQYAiABKAQiSgoJTG9vdFRha2VuEhEKCWVudGl0eV9pZBgBIAEoDRIPCgdpdGVtX2lkGAIgASgJEgsKA3F0eRgDIAEoDRIMCgRnb2xkGAQgASgNIi8KDFBsYXllckpvaW5lZBIRCgllbnRpdHlfaWQYASABKA0SDAoEbmFtZRgCIAEoCSIfCgpQbGF5ZXJMZWZ0EhEKCWVudGl0eV9pZBgBIAEoDSpFCgxJbnRlcmFjdEtpbmQSHQoZSU5URVJBQ1RfS0lORF9VTlNQRUNJRklFRBAAEhYKEklOVEVSQUNUX0tJTkRfTE9PVBABKoEBCgpFbnRpdHlLaW5kEhsKF0VOVElUWV9LSU5EX1VOU1BFQ0lGSUVEEAASFgoSRU5USVRZX0tJTkRfUExBWUVSEAESEwoPRU5USVRZX0tJTkRfTU9CEAISFAoQRU5USVRZX0tJTkRfRFJPUBADEhMKD0VOVElUWV9LSU5EX05QQxAEKpsBCgtFbnRpdHlGaWVsZBIcChhFTlRJVFlfRklFTERfVU5TUEVDSUZJRUQQABIUChBFTlRJVFlfRklFTERfUE9TEAESFAoQRU5USVRZX0ZJRUxEX1ZFTBACEhYKEkVOVElUWV9GSUVMRF9GTEFHUxADEhUKEUVOVElUWV9GSUVMRF9BTklNEAQSEwoPRU5USVRZX0ZJRUxEX0hQEAUqlQEKCkVudGl0eUZsYWcSGwoXRU5USVRZX0ZMQUdfVU5TUEVDSUZJRUQQABIYChRFTlRJVFlfRkxBR19HUk9VTkRFRBABEhgKFEVOVElUWV9GTEFHX0NMSU1CSU5HEAISGwoXRU5USVRZX0ZMQUdfRkFDSU5HX0xFRlQQAxIZChVFTlRJVFlfRkxBR19KVU1QX0hFTEQQBEKJAQoKY29tLm1tby52MUIJR2FtZVByb3RvUAFaN2dpdGh1Yi5jb20vY3RybC1yZXNlYXJjaC9tbW8vaW50ZXJuYWwvd2lyZS9tbW8vdjE7bW1vdjGiAgNNWFiqAgZNbW8uVjHKAgZNbW9cVjHiAhJNbW9cVjFcR1BCTWV0YWRhdGHqAgdNbW86OlYxYgZwcm90bzM");
 
 /**
  * Envelope is exactly one WebSocket binary frame.
@@ -65,6 +65,18 @@ export type ClientMessage = Message<"mmo.v1.ClientMessage"> & {
      */
     value: Ping;
     case: "ping";
+  } | {
+    /**
+     * @generated from field: mmo.v1.Cast cast = 4;
+     */
+    value: Cast;
+    case: "cast";
+  } | {
+    /**
+     * @generated from field: mmo.v1.Interact interact = 5;
+     */
+    value: Interact;
+    case: "interact";
   } | { case: undefined; value?: undefined };
 };
 
@@ -74,6 +86,69 @@ export type ClientMessage = Message<"mmo.v1.ClientMessage"> & {
  */
 export const ClientMessageSchema: GenMessage<ClientMessage> = /*@__PURE__*/
   messageDesc(file_mmo_v1_game, 1);
+
+/**
+ * Cast requests a skill. The client asks; the server decides.
+ *
+ * There is deliberately no field for a target or for damage. The server
+ * resolves what the cast hits from its own state and rolls the outcome itself,
+ * so a client can ask to swing but never assert what it connected with.
+ *
+ * @generated from message mmo.v1.Cast
+ */
+export type Cast = Message<"mmo.v1.Cast"> & {
+  /**
+   * client sequence, echoed for reconciliation
+   *
+   * @generated from field: uint32 seq = 1;
+   */
+  seq: number;
+
+  /**
+   * @generated from field: string skill_id = 2;
+   */
+  skillId: string;
+
+  /**
+   * Facing at the moment of the cast, since a swing resolves in the direction
+   * the character is looking rather than at a chosen entity.
+   *
+   * @generated from field: bool facing_left = 3;
+   */
+  facingLeft: boolean;
+};
+
+/**
+ * Describes the message mmo.v1.Cast.
+ * Use `create(CastSchema)` to create a new message.
+ */
+export const CastSchema: GenMessage<Cast> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 2);
+
+/**
+ * Interact is a request to act on a nearby entity: loot a drop, use a portal,
+ * talk to an NPC.
+ *
+ * @generated from message mmo.v1.Interact
+ */
+export type Interact = Message<"mmo.v1.Interact"> & {
+  /**
+   * @generated from field: uint32 entity_id = 1;
+   */
+  entityId: number;
+
+  /**
+   * @generated from field: mmo.v1.InteractKind kind = 2;
+   */
+  kind: InteractKind;
+};
+
+/**
+ * Describes the message mmo.v1.Interact.
+ * Use `create(InteractSchema)` to create a new message.
+ */
+export const InteractSchema: GenMessage<Interact> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 3);
 
 /**
  * @generated from message mmo.v1.ServerMessage
@@ -120,7 +195,7 @@ export type ServerMessage = Message<"mmo.v1.ServerMessage"> & {
  * Use `create(ServerMessageSchema)` to create a new message.
  */
 export const ServerMessageSchema: GenMessage<ServerMessage> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 2);
+  messageDesc(file_mmo_v1_game, 4);
 
 /**
  * Hello is the first message on a new connection.
@@ -156,7 +231,7 @@ export type Hello = Message<"mmo.v1.Hello"> & {
  * Use `create(HelloSchema)` to create a new message.
  */
 export const HelloSchema: GenMessage<Hello> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 3);
+  messageDesc(file_mmo_v1_game, 5);
 
 /**
  * @generated from message mmo.v1.Welcome
@@ -204,7 +279,7 @@ export type Welcome = Message<"mmo.v1.Welcome"> & {
  * Use `create(WelcomeSchema)` to create a new message.
  */
 export const WelcomeSchema: GenMessage<Welcome> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 4);
+  messageDesc(file_mmo_v1_game, 6);
 
 /**
  * Kick closes the connection with a reason the client can act on. The code
@@ -229,7 +304,7 @@ export type Kick = Message<"mmo.v1.Kick"> & {
  * Use `create(KickSchema)` to create a new message.
  */
 export const KickSchema: GenMessage<Kick> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 5);
+  messageDesc(file_mmo_v1_game, 7);
 
 /**
  * Intent is what buttons the player is holding. It carries no position: the
@@ -284,7 +359,7 @@ export type Intent = Message<"mmo.v1.Intent"> & {
  * Use `create(IntentSchema)` to create a new message.
  */
 export const IntentSchema: GenMessage<Intent> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 6);
+  messageDesc(file_mmo_v1_game, 8);
 
 /**
  * @generated from message mmo.v1.Ping
@@ -301,7 +376,7 @@ export type Ping = Message<"mmo.v1.Ping"> & {
  * Use `create(PingSchema)` to create a new message.
  */
 export const PingSchema: GenMessage<Ping> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 7);
+  messageDesc(file_mmo_v1_game, 9);
 
 /**
  * @generated from message mmo.v1.Pong
@@ -325,7 +400,7 @@ export type Pong = Message<"mmo.v1.Pong"> & {
  * Use `create(PongSchema)` to create a new message.
  */
 export const PongSchema: GenMessage<Pong> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 8);
+  messageDesc(file_mmo_v1_game, 10);
 
 /**
  * EntityState is a complete entity, sent when it first becomes visible and
@@ -432,6 +507,61 @@ export type EntityState = Message<"mmo.v1.EntityState"> & {
    * @generated from field: uint32 drop_through = 17;
    */
   dropThrough: number;
+
+  /**
+   * Progression, only populated for self.
+   *
+   * @generated from field: uint32 level = 18;
+   */
+  level: number;
+
+  /**
+   * @generated from field: uint64 exp = 19;
+   */
+  exp: bigint;
+
+  /**
+   * @generated from field: uint64 exp_to_next = 20;
+   */
+  expToNext: bigint;
+
+  /**
+   * @generated from field: uint32 mp = 21;
+   */
+  mp: number;
+
+  /**
+   * @generated from field: uint32 mp_max = 22;
+   */
+  mpMax: number;
+
+  /**
+   * Ground drops. A drop is an entity like any other so that visibility,
+   * layering, and removal all work without a special case -- which is also
+   * what makes cross-layer looting unrepresentable rather than merely
+   * forbidden.
+   *
+   * @generated from field: string drop_item = 23;
+   */
+  dropItem: string;
+
+  /**
+   * @generated from field: uint32 drop_qty = 24;
+   */
+  dropQty: number;
+
+  /**
+   * @generated from field: uint32 drop_gold = 25;
+   */
+  dropGold: number;
+
+  /**
+   * Content id of a mob, so the client can pick its sprite without the server
+   * sending a name string every time one spawns.
+   *
+   * @generated from field: string mob_id = 26;
+   */
+  mobId: string;
 };
 
 /**
@@ -439,7 +569,7 @@ export type EntityState = Message<"mmo.v1.EntityState"> & {
  * Use `create(EntityStateSchema)` to create a new message.
  */
 export const EntityStateSchema: GenMessage<EntityState> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 9);
+  messageDesc(file_mmo_v1_game, 11);
 
 /**
  * EntityDelta carries only what changed since the baseline tick.
@@ -505,7 +635,7 @@ export type EntityDelta = Message<"mmo.v1.EntityDelta"> & {
  * Use `create(EntityDeltaSchema)` to create a new message.
  */
 export const EntityDeltaSchema: GenMessage<EntityDelta> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 10);
+  messageDesc(file_mmo_v1_game, 12);
 
 /**
  * @generated from message mmo.v1.Snapshot
@@ -567,7 +697,7 @@ export type Snapshot = Message<"mmo.v1.Snapshot"> & {
  * Use `create(SnapshotSchema)` to create a new message.
  */
 export const SnapshotSchema: GenMessage<Snapshot> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 11);
+  messageDesc(file_mmo_v1_game, 13);
 
 /**
  * Event is a one-shot fact rather than state: never delta-compressed, and
@@ -592,6 +722,42 @@ export type Event = Message<"mmo.v1.Event"> & {
      */
     value: PlayerLeft;
     case: "playerLeft";
+  } | {
+    /**
+     * @generated from field: mmo.v1.DamageDealt damage = 3;
+     */
+    value: DamageDealt;
+    case: "damage";
+  } | {
+    /**
+     * @generated from field: mmo.v1.EntityDied died = 4;
+     */
+    value: EntityDied;
+    case: "died";
+  } | {
+    /**
+     * @generated from field: mmo.v1.SkillCast skill_cast = 5;
+     */
+    value: SkillCast;
+    case: "skillCast";
+  } | {
+    /**
+     * @generated from field: mmo.v1.ExpGained exp_gained = 6;
+     */
+    value: ExpGained;
+    case: "expGained";
+  } | {
+    /**
+     * @generated from field: mmo.v1.LevelUp level_up = 7;
+     */
+    value: LevelUp;
+    case: "levelUp";
+  } | {
+    /**
+     * @generated from field: mmo.v1.LootTaken loot_taken = 8;
+     */
+    value: LootTaken;
+    case: "lootTaken";
   } | { case: undefined; value?: undefined };
 };
 
@@ -600,7 +766,173 @@ export type Event = Message<"mmo.v1.Event"> & {
  * Use `create(EventSchema)` to create a new message.
  */
 export const EventSchema: GenMessage<Event> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 12);
+  messageDesc(file_mmo_v1_game, 14);
+
+/**
+ * DamageDealt is sent rather than inferred from a falling HP number, because a
+ * client deriving "took damage" from state cannot tell 200 damage from two
+ * hits of 100 -- and the difference is the whole feel of a fight.
+ *
+ * @generated from message mmo.v1.DamageDealt
+ */
+export type DamageDealt = Message<"mmo.v1.DamageDealt"> & {
+  /**
+   * @generated from field: uint32 source_id = 1;
+   */
+  sourceId: number;
+
+  /**
+   * @generated from field: uint32 target_id = 2;
+   */
+  targetId: number;
+
+  /**
+   * @generated from field: uint32 amount = 3;
+   */
+  amount: number;
+
+  /**
+   * @generated from field: bool critical = 4;
+   */
+  critical: boolean;
+
+  /**
+   * @generated from field: string element = 5;
+   */
+  element: string;
+};
+
+/**
+ * Describes the message mmo.v1.DamageDealt.
+ * Use `create(DamageDealtSchema)` to create a new message.
+ */
+export const DamageDealtSchema: GenMessage<DamageDealt> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 15);
+
+/**
+ * @generated from message mmo.v1.EntityDied
+ */
+export type EntityDied = Message<"mmo.v1.EntityDied"> & {
+  /**
+   * @generated from field: uint32 entity_id = 1;
+   */
+  entityId: number;
+
+  /**
+   * @generated from field: uint32 killer_id = 2;
+   */
+  killerId: number;
+};
+
+/**
+ * Describes the message mmo.v1.EntityDied.
+ * Use `create(EntityDiedSchema)` to create a new message.
+ */
+export const EntityDiedSchema: GenMessage<EntityDied> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 16);
+
+/**
+ * @generated from message mmo.v1.SkillCast
+ */
+export type SkillCast = Message<"mmo.v1.SkillCast"> & {
+  /**
+   * @generated from field: uint32 caster_id = 1;
+   */
+  casterId: number;
+
+  /**
+   * @generated from field: string skill_id = 2;
+   */
+  skillId: string;
+
+  /**
+   * @generated from field: bool facing_left = 3;
+   */
+  facingLeft: boolean;
+};
+
+/**
+ * Describes the message mmo.v1.SkillCast.
+ * Use `create(SkillCastSchema)` to create a new message.
+ */
+export const SkillCastSchema: GenMessage<SkillCast> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 17);
+
+/**
+ * @generated from message mmo.v1.ExpGained
+ */
+export type ExpGained = Message<"mmo.v1.ExpGained"> & {
+  /**
+   * @generated from field: uint64 amount = 1;
+   */
+  amount: bigint;
+
+  /**
+   * @generated from field: uint64 total = 2;
+   */
+  total: bigint;
+};
+
+/**
+ * Describes the message mmo.v1.ExpGained.
+ * Use `create(ExpGainedSchema)` to create a new message.
+ */
+export const ExpGainedSchema: GenMessage<ExpGained> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 18);
+
+/**
+ * @generated from message mmo.v1.LevelUp
+ */
+export type LevelUp = Message<"mmo.v1.LevelUp"> & {
+  /**
+   * @generated from field: uint32 level = 1;
+   */
+  level: number;
+
+  /**
+   * @generated from field: uint64 exp_to_next = 2;
+   */
+  expToNext: bigint;
+};
+
+/**
+ * Describes the message mmo.v1.LevelUp.
+ * Use `create(LevelUpSchema)` to create a new message.
+ */
+export const LevelUpSchema: GenMessage<LevelUp> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 19);
+
+/**
+ * @generated from message mmo.v1.LootTaken
+ */
+export type LootTaken = Message<"mmo.v1.LootTaken"> & {
+  /**
+   * @generated from field: uint32 entity_id = 1;
+   */
+  entityId: number;
+
+  /**
+   * @generated from field: string item_id = 2;
+   */
+  itemId: string;
+
+  /**
+   * @generated from field: uint32 qty = 3;
+   */
+  qty: number;
+
+  /**
+   * @generated from field: uint32 gold = 4;
+   */
+  gold: number;
+};
+
+/**
+ * Describes the message mmo.v1.LootTaken.
+ * Use `create(LootTakenSchema)` to create a new message.
+ */
+export const LootTakenSchema: GenMessage<LootTaken> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 20);
 
 /**
  * @generated from message mmo.v1.PlayerJoined
@@ -622,7 +954,7 @@ export type PlayerJoined = Message<"mmo.v1.PlayerJoined"> & {
  * Use `create(PlayerJoinedSchema)` to create a new message.
  */
 export const PlayerJoinedSchema: GenMessage<PlayerJoined> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 13);
+  messageDesc(file_mmo_v1_game, 21);
 
 /**
  * @generated from message mmo.v1.PlayerLeft
@@ -639,7 +971,28 @@ export type PlayerLeft = Message<"mmo.v1.PlayerLeft"> & {
  * Use `create(PlayerLeftSchema)` to create a new message.
  */
 export const PlayerLeftSchema: GenMessage<PlayerLeft> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 14);
+  messageDesc(file_mmo_v1_game, 22);
+
+/**
+ * @generated from enum mmo.v1.InteractKind
+ */
+export enum InteractKind {
+  /**
+   * @generated from enum value: INTERACT_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: INTERACT_KIND_LOOT = 1;
+   */
+  LOOT = 1,
+}
+
+/**
+ * Describes the enum mmo.v1.InteractKind.
+ */
+export const InteractKindSchema: GenEnum<InteractKind> = /*@__PURE__*/
+  enumDesc(file_mmo_v1_game, 0);
 
 /**
  * @generated from enum mmo.v1.EntityKind
@@ -675,7 +1028,7 @@ export enum EntityKind {
  * Describes the enum mmo.v1.EntityKind.
  */
 export const EntityKindSchema: GenEnum<EntityKind> = /*@__PURE__*/
-  enumDesc(file_mmo_v1_game, 0);
+  enumDesc(file_mmo_v1_game, 1);
 
 /**
  * Bit positions in EntityDelta.field_mask.
@@ -718,7 +1071,7 @@ export enum EntityField {
  * Describes the enum mmo.v1.EntityField.
  */
 export const EntityFieldSchema: GenEnum<EntityField> = /*@__PURE__*/
-  enumDesc(file_mmo_v1_game, 1);
+  enumDesc(file_mmo_v1_game, 2);
 
 /**
  * Bit positions in EntityState.flags and EntityDelta.flags.
@@ -756,5 +1109,5 @@ export enum EntityFlag {
  * Describes the enum mmo.v1.EntityFlag.
  */
 export const EntityFlagSchema: GenEnum<EntityFlag> = /*@__PURE__*/
-  enumDesc(file_mmo_v1_game, 2);
+  enumDesc(file_mmo_v1_game, 3);
 

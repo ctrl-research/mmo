@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/ctrl-research/mmo/internal/content"
 	"github.com/ctrl-research/mmo/internal/directory"
@@ -21,7 +22,7 @@ import (
 // Node hosts room instances.
 type Node struct {
 	dir      directory.Directory
-	maps     map[string]*content.Map
+	content  *content.Content
 	log      *slog.Logger
 	observer room.Observer
 
@@ -32,6 +33,8 @@ type Node struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
+
+	seed uint64
 
 	mu    sync.Mutex
 	rooms map[directory.InstanceID]*hosted
@@ -45,10 +48,15 @@ type hosted struct {
 // Config configures a Node.
 type Config struct {
 	Directory  directory.Directory
-	Maps       map[string]*content.Map
+	Content    *content.Content
 	DefaultMap string
 	Logger     *slog.Logger
 	Observer   room.Observer
+
+	// Seed determines every roll every room on this node will make. Zero
+	// draws a fresh one, which is right for a real server; a fixed value makes
+	// a session reproducible, which is what tests and replay want.
+	Seed uint64
 }
 
 // NewNode builds a node. Call Start before use.
@@ -56,21 +64,31 @@ func NewNode(cfg Config) (*Node, error) {
 	if cfg.Directory == nil {
 		return nil, fmt.Errorf("world: Directory is required")
 	}
-	if len(cfg.Maps) == 0 {
-		return nil, fmt.Errorf("world: at least one map is required")
+	if cfg.Content == nil || len(cfg.Content.Maps) == 0 {
+		return nil, fmt.Errorf("world: loaded content with at least one map is required")
 	}
-	if _, ok := cfg.Maps[cfg.DefaultMap]; !ok {
+	if _, ok := cfg.Content.Maps[cfg.DefaultMap]; !ok {
 		return nil, fmt.Errorf("world: default map %q was not loaded", cfg.DefaultMap)
 	}
 	if cfg.Logger == nil {
 		cfg.Logger = slog.Default()
 	}
+
+	seed := cfg.Seed
+	if seed == 0 {
+		// A fresh seed per process, so two servers started from the same image
+		// do not produce identical drops. Read once at startup rather than
+		// inside a tick, where a non-deterministic source would break replay.
+		seed = uint64(time.Now().UnixNano())
+	}
+
 	return &Node{
 		dir:        cfg.Directory,
-		maps:       cfg.Maps,
+		content:    cfg.Content,
 		defaultMap: cfg.DefaultMap,
 		log:        cfg.Logger,
 		observer:   cfg.Observer,
+		seed:       seed,
 		rooms:      make(map[directory.InstanceID]*hosted),
 	}, nil
 }
@@ -96,7 +114,7 @@ func (n *Node) Stop() {
 // instance, then ensure a room exists for it. Today the answer is always local;
 // when it is not, this returns a remote handle and nothing above it changes.
 func (n *Node) Handle(ctx context.Context) (room.Handle, error) {
-	m := n.maps[n.defaultMap]
+	m := n.content.Maps[n.defaultMap]
 
 	key := directory.RoomKey{
 		MapID:     m.ID,
@@ -145,6 +163,12 @@ func (n *Node) ensureRoom(inst directory.Instance, m *content.Map) (room.Handle,
 		Spawn:      spawn.At,
 		Logger:     n.log,
 		Observer:   n.observer,
+		Content:    n.content,
+		Map:        m,
+		// Each instance gets its own seed derived from the node's, so two
+		// channels of the same map are independent while the whole node stays
+		// reproducible from one recorded value.
+		Seed: n.seed ^ (uint64(inst.ID) * 0x9E3779B97F4A7C15),
 	})
 
 	h := &hosted{room: r, handle: room.NewHandle(r)}
@@ -187,3 +211,6 @@ func (h *trackedHandle) Leave(ctx context.Context, id room.EntityID) {
 	h.Handle.Leave(ctx, id)
 	_ = h.dir.Leave(ctx, h.instance)
 }
+
+// Content returns the loaded game data this node simulates.
+func (n *Node) Content() *content.Content { return n.content }

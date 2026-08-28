@@ -62,12 +62,30 @@ type Entity struct {
 	Kind  Kind
 	Layer LayerID
 
+	// HuntLayer is the layer this entity *interacts* within, as distinct from
+	// Layer, which is where it is *visible*.
+	//
+	// The two differ for players and only for players. A player is
+	// shared-layer so everyone in the room can see them, chat with them, and
+	// party with them -- but they hunt inside their own layer. Conflating the
+	// two lets a player hit and loot everything in the room, because every
+	// player would match every layer.
+	HuntLayer LayerID
+
 	Body sim.Body
 
 	Anim  uint32
 	HP    uint32
 	MaxHP uint32
 	Name  string
+
+	// Kind-specific state. Exactly one of these is non-nil, matching Kind.
+	// A discriminated union by nilable pointer rather than an interface: the
+	// tick loop touches these fields constantly, and an interface dispatch per
+	// entity per tick is real cost for no benefit at this size.
+	Mob    *MobState
+	Drop   *DropState
+	Player *PlayerState
 }
 
 // Entity flag bits, mirroring mmov1.EntityFlag. They are packed into a single
@@ -121,10 +139,26 @@ func (e *Entity) state(includeSelf bool) *mmov1.EntityState {
 		HpMax: e.MaxHP,
 		Name:  e.Name,
 	}
+	if e.Mob != nil {
+		s.MobId = e.Mob.Def.ID
+	}
+	if e.Drop != nil {
+		s.DropItem = e.Drop.ItemID
+		s.DropQty = e.Drop.Qty
+		s.DropGold = e.Drop.Gold
+	}
+
 	if includeSelf {
 		s.Coyote = uint32(e.Body.Coyote)
 		s.JumpBuffer = uint32(e.Body.JumpBuffer)
 		s.DropThrough = uint32(e.Body.DropThrough)
+
+		if e.Player != nil {
+			s.Level = uint32(e.Player.Level)
+			s.Exp = uint64(e.Player.Exp)
+			s.Mp = e.Player.MP
+			s.MpMax = e.Player.MaxMP
+		}
 	}
 	return s
 }
