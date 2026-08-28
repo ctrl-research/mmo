@@ -44,14 +44,6 @@ jobs:
         with:
           go-version: ${{ steps.versions.outputs.go }}
 
-      - name: Verify generated code is up to date
-        run: |
-          go tool -modfile=tools/go.mod buf generate
-          if ! git diff --exit-code -- internal/wire client/src/gen; then
-            echo "::error::Generated code is stale. Run 'make generate' and commit the result."
-            exit 1
-          fi
-
       - name: Lint protobuf
         run: go tool -modfile=tools/go.mod buf lint
 
@@ -118,6 +110,18 @@ jobs:
 
       - run: npm ci
         working-directory: client
+
+      # One schema generates both the Go and the TypeScript types, so this
+      # check lives here rather than in the server job: buf comes from
+      # tools/go.mod, but protoc-gen-es comes from client/node_modules, and
+      # this is the only job with both toolchains installed.
+      - name: Verify generated code is up to date
+        run: |
+          go tool -modfile=tools/go.mod buf generate
+          if ! git diff --exit-code -- internal/wire client/src/gen; then
+            echo "::error::Generated code is stale. Run 'make generate' and commit the result."
+            exit 1
+          fi
 
       - name: Build the simulation as WebAssembly
         run: make wasm
