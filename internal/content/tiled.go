@@ -114,6 +114,10 @@ type Map struct {
 	World *sim.World
 
 	Spawns []SpawnPoint
+
+	// Source is the original Tiled file, retained so the client renders the
+	// very same document the collision geometry was derived from.
+	Source []byte
 }
 
 // DefaultSpawn returns the spawn point marked default, or the first one.
@@ -146,6 +150,7 @@ func LoadMap(fsys fs.FS, name string) (*Map, error) {
 		Placement: "shared",
 		Capacity:  30,
 		World:     &sim.World{},
+		Source:    raw,
 	}
 
 	mp := props(doc.Properties)

@@ -10,28 +10,37 @@ Every milestone ends in something playable. If a milestone cannot be demonstrate
 
 ---
 
-## M0 — Foundation and movement
+## M0 — Foundation and movement — **done**
 
 *The slice that proves the architecture.*
 
-- Go module, single `cmd/mmo` binary with `--roles`
-- `docker compose up`: Postgres, Redis, server, client dev server
-- Protobuf schema + Go/TS codegen wired into the build
-- `Bus` interface + `inproc` implementation
-- `Directory` interface + `memory` implementation
-- WebSocket gateway, envelope batching
-- Room instance with the 20 Hz tick loop and its phase order
-- `LayerID` on every entity and a layer-aware AOI filter (everything is shared-layer in M0, but the seam exists so mob layering in M1 is not a retrofit)
-- `internal/world/sim`: fixed-point platformer physics — gravity, AABB, one-way platforms, ropes, ladders
-- TinyGo → WASM build of `sim`, loaded by the client
-- PixiJS client: Tiled map rendering, sprite, camera
-- Client prediction + server reconciliation + entity interpolation
-- Prometheus metrics: tick duration histogram, players per instance
-- Golden-vector test corpus for `sim`, replayed in CI
+- [x] Go module, single `cmd/mmo` binary with `--roles`
+- [x] `docker compose up`: Postgres, Redis, server (Postgres and Redis are staged for M2, not yet used)
+- [x] Protobuf schema + Go/TS codegen wired into the build, via `buf` from `tools/go.mod` — no system `protoc`
+- [x] `Bus` interface + `inproc` implementation
+- [x] `Directory` interface + `memory` implementation
+- [x] WebSocket gateway, envelope batching, single-use tickets
+- [x] Room instance with the 20 Hz tick loop and its phase order
+- [x] `LayerID` on every entity and a layer-aware visibility test
+- [x] `internal/world/sim`: fixed-point platformer physics — gravity, AABB with substepping, one-way platforms, drop-through, ropes, coyote time, jump buffering, variable jump height
+- [x] WASM build of `sim`, loaded by the client
+- [x] PixiJS client: map rendering, camera, entity sprites, diagnostic HUD
+- [x] Client prediction + server reconciliation + entity interpolation
+- [x] Prometheus metrics: tick duration histogram, players and entities per instance
+- [x] Golden-vector corpus, replayed in CI against **both** the Go and WASM builds
 
-**Exit:** two browser clients, one hardcoded map, running and jumping, each seeing the other move smoothly. Movement feels instant locally. Tick p99 is on a dashboard.
+**Exit criteria, and how each was verified:**
 
-**Do not leave M0 until movement feels good.** Everything after this is built on top of it, and a mushy movement feel is not something you fix later — it is something you rebuild everything for.
+| Criterion | Status |
+|---|---|
+| Two clients in one map, each seeing the other | Verified — Go integration tests over real sockets, and two browser tabs (`others 1`, name label rendered) |
+| Prediction matches the server | Verified — 12 vectors, 640 frames, bit-identical between the Go and WASM builds |
+| Tick cost observable | Verified — `mmo_room_tick_duration_seconds` histogram, bucketed around the 50 ms budget |
+| Movement feels good | **Not yet judged.** Needs a human at a foreground browser; see below. |
+
+**Still open before M1.** Movement *feel* is the one exit criterion that cannot be automated, and it is the one that matters most — everything after this is built on top of it, and mushy movement is not something you patch later. `DefaultTuning` in `internal/world/sim/world.go` is a considered first guess (96-unit jump, 8 units/tick run speed), not a tuned one. Play it, then adjust; the golden corpus will show exactly what changed.
+
+TinyGo is also still unpinned: the WASM module is 1.9 MB from the stock Go toolchain where TinyGo would produce roughly 50 KB. The `sim` package was written to TinyGo's constraints — no goroutines, no reflection, no allocation — so this is a build change, not a rewrite.
 
 ---
 

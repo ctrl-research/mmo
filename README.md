@@ -2,7 +2,7 @@
 
 A self-hosted, horizontally scalable 2D MMO — drawing on MapleStory's side-scrolling combat and channels, Path of Exile's passive tree and stat math, and Old School RuneScape's secondary skills.
 
-**Status: design phase.** No implementation yet. See `docs/roadmap.md`.
+**Status: M0 complete** — the movement vertical slice runs. Two clients can connect to a shared map and see each other move, with client-side prediction verified bit-identical to the server. See `docs/roadmap.md`.
 
 ## Design goals
 
@@ -49,10 +49,35 @@ Toolchain versions are pinned in `.tool-versions` — install with `mise install
 
 ```
 mise install
-docker compose up          # postgres, redis, server, client dev server
+npm --prefix client install
+
+make wasm                  # compile the simulation to WebAssembly
+make build                 # build the server
+
+./bin/mmo --dev-auth       # terminal 1: game server on :8080
+npm --prefix client run dev   # terminal 2: client on :5173
 ```
 
-(Both become real once M0 lands.)
+Open http://localhost:5173, enter a name, and connect. Open a second tab to see
+two clients share a room.
+
+`--dev-auth` issues game tickets with no identity check, because OIDC arrives in
+M2. Never enable it on anything reachable by someone you do not trust.
+
+If port 8080 is taken, pass `--addr=:8088` and start the client with
+`MMO_SERVER=http://localhost:8088 npm --prefix client run dev`.
+
+### Testing
+
+```
+make test               # Go tests, race detector on
+make test-conformance   # the WASM build must match the Go build exactly
+make lint               # vet, protobuf lint, client typecheck
+```
+
+`make test-conformance` is the one that makes prediction trustworthy: it replays
+the golden corpus through the compiled WebAssembly and fails on a single
+differing bit.
 
 ## Contributing
 

@@ -74,6 +74,91 @@ type vector struct {
 	script []Input
 }
 
+// fixture is the on-disk form of a vector: the scenario AND its expected
+// output, so the corpus is self-describing.
+//
+// Carrying the world and the input script rather than just the frames is what
+// makes this corpus portable. Any implementation of the simulation can replay
+// it without reading Go test code -- which is exactly what the WebAssembly
+// conformance test in the client does, and it is the mechanism that catches
+// the two builds drifting apart.
+type fixture struct {
+	Name   string    `json:"name"`
+	Ticks  int       `json:"ticks"`
+	World  worldJSON `json:"world"`
+	Start  startJSON `json:"start"`
+	Script [][4]int  `json:"script"`
+	Frames []frame   `json:"frames"`
+}
+
+type worldJSON struct {
+	Solids     [][4]int32 `json:"solids"`
+	Platforms  [][4]int32 `json:"platforms"`
+	Climbables [][4]int32 `json:"climbables"`
+	Bounds     [4]int32   `json:"bounds"`
+}
+
+type startJSON struct {
+	X int32 `json:"x"`
+	Y int32 `json:"y"`
+	W int32 `json:"w"`
+	H int32 `json:"h"`
+}
+
+func encodeRects(rs []Rect) [][4]int32 {
+	out := make([][4]int32, 0, len(rs))
+	for _, r := range rs {
+		out = append(out, [4]int32{int32(r.X), int32(r.Y), int32(r.W), int32(r.H)})
+	}
+	return out
+}
+
+func encodeWorld(w *World) worldJSON {
+	return worldJSON{
+		Solids:     encodeRects(w.Solids),
+		Platforms:  encodeRects(w.Platforms),
+		Climbables: encodeRects(w.Climbables),
+		Bounds: [4]int32{
+			int32(w.Bounds.X), int32(w.Bounds.Y),
+			int32(w.Bounds.W), int32(w.Bounds.H),
+		},
+	}
+}
+
+func encodeScript(script []Input) [][4]int {
+	out := make([][4]int, 0, len(script))
+	for _, in := range script {
+		out = append(out, [4]int{
+			int(in.MoveX), boolToInt(in.Jump), boolToInt(in.Up), boolToInt(in.Down),
+		})
+	}
+	return out
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+// build assembles the complete fixture for a vector.
+func (v vector) build() fixture {
+	w := testWorld()
+	b := NewBody(Vec{fixed.FromInt(v.feetX), fixed.FromInt(v.feetY)}, PlayerSize.W, PlayerSize.H)
+	t := DefaultTuning()
+	Settle(&b, w, &t)
+
+	return fixture{
+		Name:   v.name,
+		Ticks:  v.ticks,
+		World:  encodeWorld(w),
+		Start:  startJSON{X: int32(b.Pos.X), Y: int32(b.Pos.Y), W: int32(b.W), H: int32(b.H)},
+		Script: encodeScript(v.script),
+		Frames: v.record(),
+	}
+}
+
 func goldenVectors() []vector {
 	return []vector{
 		{
@@ -172,7 +257,7 @@ func TestGoldenVectors(t *testing.T) {
 			got := v.record()
 
 			if *update {
-				blob, err := json.MarshalIndent(got, "", "  ")
+				blob, err := json.MarshalIndent(v.build(), "", "  ")
 				if err != nil {
 					t.Fatalf("marshal: %v", err)
 				}
@@ -187,10 +272,11 @@ func TestGoldenVectors(t *testing.T) {
 			if err != nil {
 				t.Fatalf("read fixture (run with -update to create it): %v", err)
 			}
-			var want []frame
-			if err := json.Unmarshal(blob, &want); err != nil {
+			var fx fixture
+			if err := json.Unmarshal(blob, &fx); err != nil {
 				t.Fatalf("unmarshal fixture: %v", err)
 			}
+			want := fx.Frames
 
 			if len(got) != len(want) {
 				t.Fatalf("recorded %d frames, fixture has %d", len(got), len(want))

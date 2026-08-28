@@ -118,7 +118,7 @@ The client runs **the same simulation code as the server** — `internal/world/s
 seq     = 0
 pending = ring buffer of {seq, input}     // unacknowledged inputs
 
-every frame (60 Hz):
+every simulation tick (20 Hz, fixed accumulator):
     input = sampleInput()
     seq  += 1
     pending.push({seq, input})
@@ -140,7 +140,9 @@ on Snapshot(s):
 
 The smoothing threshold matters. Correcting every sub-pixel disagreement instantly produces visible jitter; correcting nothing lets real desync accumulate. Small errors are eased out over ~100 ms, large ones snap — a rare hard snap reads as lag, constant micro-jitter reads as a broken game.
 
-Inputs are sent at 30 Hz while prediction runs at 60 Hz: two sampled frames are coalesced per `Intent`. The server applies inputs on its own 20 Hz tick, consuming whatever has arrived.
+**The client simulates at the server's tick rate, not at the display rate.** One sampled input produces one predicted step and one `Intent`, so the server consumes exactly the sequence the client predicted. Rendering runs at the display refresh and interpolates between simulated ticks.
+
+Driving the simulation from frame time instead would produce a different number of steps on a 60 Hz and a 144 Hz display, and the server would then apply a different number of inputs than the client predicted — turning the refresh rate into a gameplay variable.
 
 ### Why sequence numbers, not timestamps
 

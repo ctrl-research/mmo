@@ -291,7 +291,7 @@ Prediction requires the movement math to run identically in both places. Rather 
 
 That constraint is why `sim` must stay pure: no goroutines, no reflection, no stdlib beyond the basics, no I/O, no clock. It is worth the discipline — physics drift between client and server manifests as rubber-banding that is miserable to diagnose.
 
-A **golden-vector test corpus** (`(initial state, input sequence) → expected positions`, generated from the Go implementation, replayed in CI) backstops this and would also catch drift if the WASM path is ever abandoned for a hand-port.
+A **golden-vector corpus** backstops this. Each fixture in `internal/world/sim/testdata` is self-describing — it carries the world, the starting body, the input script, and the expected frame-by-frame output — so any implementation can replay it. CI runs it twice: once against the Go build (`go test ./internal/world/sim`) and once against the compiled WebAssembly under Node (`client/test/wasm-conformance.mjs`). A single differing bit fails the build, which is what makes prediction trustworthy rather than merely intended.
 
 Protocol details, snapshot format, and reconciliation are specified in `protocol.md`.
 

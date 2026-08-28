@@ -1,0 +1,22 @@
+{
+  "name": "@mmo/client",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "node test/wasm-conformance.mjs"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "^2.10.1",
+    "pixi.js": "^8.6.6"
+  },
+  "devDependencies": {
+    "@bufbuild/protoc-gen-es": "^2.10.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9"
+  }
+}

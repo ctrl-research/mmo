@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <title>MMO</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { height: 100%; overflow: hidden; background: #0b0d12; }
+      body {
+        font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        color: #e6e8ee;
+      }
+      #stage { position: fixed; inset: 0; }
+      #hud {
+        position: fixed; top: 10px; left: 10px; z-index: 10;
+        background: rgba(11, 13, 18, 0.82); border: 1px solid #262b36;
+        border-radius: 6px; padding: 8px 10px; pointer-events: none;
+        white-space: pre; font-size: 12px; line-height: 1.6; color: #9aa3b2;
+      }
+      #hud b { color: #e6e8ee; font-weight: 600; }
+      #overlay {
+        position: fixed; inset: 0; z-index: 20; display: grid; place-items: center;
+        background: rgba(11, 13, 18, 0.94);
+      }
+      #overlay[hidden] { display: none; }
+      .panel {
+        border: 1px solid #262b36; border-radius: 8px; padding: 24px;
+        background: #12151c; min-width: 300px; text-align: center;
+      }
+      .panel h1 { font-size: 15px; margin-bottom: 4px; letter-spacing: 0.04em; }
+      .panel p { color: #9aa3b2; margin-bottom: 16px; font-size: 12px; }
+      .panel input {
+        width: 100%; padding: 8px 10px; margin-bottom: 10px; font: inherit;
+        background: #0b0d12; color: #e6e8ee;
+        border: 1px solid #2f3543; border-radius: 5px;
+      }
+      .panel input:focus { outline: none; border-color: #4a83ff; }
+      .panel button {
+        width: 100%; padding: 8px; font: inherit; font-weight: 600;
+        background: #4a83ff; color: #0b0d12; border: 0; border-radius: 5px;
+        cursor: pointer;
+      }
+      .panel button:disabled { opacity: 0.5; cursor: default; }
+      .error { color: #ff6b6b; margin-top: 10px; font-size: 12px; min-height: 1.5em; }
+      .keys { color: #6b7280; font-size: 11px; margin-top: 14px; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <div id="hud"></div>
+    <div id="overlay">
+      <div class="panel">
+        <h1>MMO</h1>
+        <p>M0 &mdash; movement vertical slice</p>
+        <input id="name" placeholder="character name" maxlength="24" autocomplete="off" />
+        <button id="connect">Connect</button>
+        <div class="error" id="error"></div>
+        <div class="keys">
+          arrows or WASD to move &middot; space to jump<br />
+          up on a rope to climb &middot; down + space to drop through
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

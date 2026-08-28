@@ -565,3 +565,152 @@ func TestReplayFromIntermediateStateMatches(t *testing.T) {
 		t.Errorf("replay diverged from continuous run:\n replay %+v\n direct %+v", replay, straight)
 	}
 }
+
+// --- codec ------------------------------------------------------------------
+
+func TestBodyCodecRoundTrips(t *testing.T) {
+	w, tn := testWorld(), DefaultTuning()
+	b := newTestBody(308, floorTop)
+
+	// Exercise a body in a non-trivial state rather than a fresh one: the
+	// fields most likely to be dropped by a codec bug are the small counters.
+	script := []Input{{Up: true}, {Up: true}, {MoveX: -1000, Jump: true}, {}, {Down: true}}
+	for i := 0; i < 12; i++ {
+		Step(&b, script[i%len(script)], w, &tn)
+	}
+
+	buf := make([]byte, BodySize)
+	MarshalBody(buf, &b)
+
+	var got Body
+	UnmarshalBody(buf, &got)
+
+	if got != b {
+		t.Errorf("body did not survive the round trip:\n got  %+v\n want %+v", got, b)
+	}
+}
+
+func TestBodyCodecCoversEveryField(t *testing.T) {
+	b := Body{
+		Pos: Vec{fixed.FromInt(-1234), fixed.FromInt(5678)},
+		Vel: Vec{fixed.FromRatio(-7, 3), fixed.FromRatio(11, 5)},
+		W:   fixed.FromInt(24), H: fixed.FromInt(48),
+		Grounded: true, Climbing: true, FacingLeft: true, JumpHeld: true,
+		Coyote: 3, JumpBuffer: 4, DropThrough: 5,
+	}
+
+	buf := make([]byte, BodySize)
+	MarshalBody(buf, &b)
+	var got Body
+	UnmarshalBody(buf, &got)
+
+	if got != b {
+		t.Errorf("round trip lost data:\n got  %+v\n want %+v", got, b)
+	}
+}
+
+func TestWorldCodecRoundTrips(t *testing.T) {
+	want := testWorld()
+
+	got, ok := UnmarshalWorld(MarshalWorld(want))
+	if !ok {
+		t.Fatal("UnmarshalWorld rejected its own output")
+	}
+
+	if len(got.Solids) != len(want.Solids) ||
+		len(got.Platforms) != len(want.Platforms) ||
+		len(got.Climbables) != len(want.Climbables) {
+		t.Fatalf("section counts differ: %d/%d/%d, want %d/%d/%d",
+			len(got.Solids), len(got.Platforms), len(got.Climbables),
+			len(want.Solids), len(want.Platforms), len(want.Climbables))
+	}
+	if got.Bounds != want.Bounds {
+		t.Errorf("bounds = %+v, want %+v", got.Bounds, want.Bounds)
+	}
+	for i := range want.Solids {
+		if got.Solids[i] != want.Solids[i] {
+			t.Errorf("solid %d = %+v, want %+v", i, got.Solids[i], want.Solids[i])
+		}
+	}
+	for i := range want.Climbables {
+		if got.Climbables[i] != want.Climbables[i] {
+			t.Errorf("climbable %d = %+v, want %+v", i, got.Climbables[i], want.Climbables[i])
+		}
+	}
+}
+
+// A decoded world must produce identical simulation results to the original,
+// which is the property the client actually depends on.
+func TestDecodedWorldSimulatesIdentically(t *testing.T) {
+	orig := testWorld()
+	decoded, ok := UnmarshalWorld(MarshalWorld(orig))
+	if !ok {
+		t.Fatal("UnmarshalWorld failed")
+	}
+	tn := DefaultTuning()
+
+	script := []Input{
+		{MoveX: 1000}, {MoveX: 1000, Jump: true}, {}, {MoveX: -1000},
+		{Up: true}, {Up: true}, {Down: true, Jump: true},
+	}
+
+	a := NewBody(Vec{fixed.FromInt(308), fixed.FromInt(floorTop)}, PlayerSize.W, PlayerSize.H)
+	b := a
+	Settle(&a, orig, &tn)
+	Settle(&b, decoded, &tn)
+
+	for i := 0; i < 120; i++ {
+		in := script[i%len(script)]
+		Step(&a, in, orig, &tn)
+		Step(&b, in, decoded, &tn)
+		if a != b {
+			t.Fatalf("tick %d diverged between original and decoded world:\n orig %+v\n dec  %+v", i, a, b)
+		}
+	}
+}
+
+// A malformed buffer means the two sides disagree about the layout. That must
+// fail rather than be guessed at, or the client silently simulates a different
+// world from the server.
+func TestUnmarshalWorldRejectsMalformedInput(t *testing.T) {
+	good := MarshalWorld(testWorld())
+
+	cases := map[string][]byte{
+		"empty":          {},
+		"short header":   good[:4],
+		"truncated body": good[:len(good)-1],
+		"trailing bytes": append(append([]byte{}, good...), 0),
+	}
+	for name, buf := range cases {
+		if _, ok := UnmarshalWorld(buf); ok {
+			t.Errorf("%s: accepted a malformed world buffer", name)
+		}
+	}
+}
+
+func TestInputCodecRoundTrips(t *testing.T) {
+	inputs := []Input{
+		{},
+		{MoveX: 1000, Jump: true, Up: true, Down: true},
+		{MoveX: -1000},
+		{MoveX: 0, Jump: true},
+		{MoveX: 437, Up: true},
+		{MoveX: -1, Down: true},
+	}
+	for _, want := range inputs {
+		if got := DecodeInput(EncodeInput(want)); got != want {
+			t.Errorf("round trip of %+v gave %+v", want, got)
+		}
+	}
+}
+
+func TestInputCodecClampsHostileValues(t *testing.T) {
+	got := DecodeInput(EncodeInput(Input{MoveX: 30000}))
+	if got.MoveX != 1000 {
+		t.Errorf("MoveX = %d after encoding an out-of-range value, want 1000", got.MoveX)
+	}
+	got = DecodeInput(EncodeInput(Input{MoveX: -30000}))
+	if got.MoveX != -1000 {
+		t.Errorf("MoveX = %d, want -1000", got.MoveX)
+	}
+}

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	"github.com/ctrl-research/mmo/internal/content"
 	"github.com/ctrl-research/mmo/internal/metrics"
 	"github.com/ctrl-research/mmo/internal/world/room"
 )
@@ -33,10 +34,16 @@ type RoomProvider interface {
 // Config configures a Gateway.
 type Config struct {
 	Rooms       RoomProvider
+	Maps        map[string]*content.Map
 	Tickets     *TicketStore
 	Metrics     *metrics.Metrics
 	Logger      *slog.Logger
 	ContentHash string
+
+	// ClientDir serves the built client from this directory. Empty disables
+	// static serving, which is what the Vite dev server wants during
+	// development.
+	ClientDir string
 
 	// AllowedOrigins is passed to the WebSocket accept check. Empty means
 	// same-origin only, which is the right default: a browser will happily
@@ -55,12 +62,14 @@ type Config struct {
 // Gateway serves the game's HTTP and WebSocket endpoints.
 type Gateway struct {
 	rooms       RoomProvider
+	maps        map[string]*content.Map
 	tickets     *TicketStore
 	metrics     *metrics.Metrics
 	log         *slog.Logger
 	contentHash string
 	origins     []string
 	devAuth     bool
+	clientDir   string
 
 	mu       sync.Mutex
 	sessions map[*session]struct{}
@@ -80,14 +89,19 @@ func New(cfg Config) (*Gateway, error) {
 	if cfg.Metrics == nil {
 		return nil, errors.New("gateway: Metrics is required")
 	}
+	if cfg.Maps == nil {
+		cfg.Maps = map[string]*content.Map{}
+	}
 	return &Gateway{
 		rooms:       cfg.Rooms,
+		maps:        cfg.Maps,
 		tickets:     cfg.Tickets,
 		metrics:     cfg.Metrics,
 		log:         cfg.Logger,
 		contentHash: cfg.ContentHash,
 		origins:     cfg.AllowedOrigins,
 		devAuth:     cfg.DevAuth,
+		clientDir:   cfg.ClientDir,
 		sessions:    make(map[*session]struct{}),
 	}, nil
 }
@@ -97,8 +111,14 @@ func (g *Gateway) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", g.handleHealth)
 	mux.HandleFunc("GET /ws", g.handleWebSocket)
+	mux.HandleFunc("GET /api/map/{id}/collision", g.handleMapCollision)
+	mux.HandleFunc("GET /api/map/{id}/source", g.handleMapSource)
 	if g.devAuth {
 		mux.HandleFunc("POST /api/dev/ticket", g.handleDevTicket)
+	}
+	// Registered last and at the root, so it never shadows an API route.
+	if g.clientDir != "" {
+		mux.Handle("GET /", staticHandler(g.clientDir))
 	}
 	return mux
 }

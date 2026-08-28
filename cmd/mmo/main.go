@@ -51,6 +51,7 @@ type config struct {
 	contentDir string
 	defaultMap string
 	origins    string
+	clientDir  string
 	devAuth    bool
 	logLevel   string
 	logJSON    bool
@@ -130,10 +131,12 @@ func run() error {
 
 		gw, err := gateway.New(gateway.Config{
 			Rooms:          node,
+			Maps:           maps,
 			Tickets:        gateway.NewTicketStore(),
 			Metrics:        m,
 			Logger:         log,
 			AllowedOrigins: splitAndTrim(cfg.origins),
+			ClientDir:      cfg.clientDir,
 			DevAuth:        cfg.devAuth,
 		})
 		if err != nil {
@@ -208,6 +211,8 @@ func parseFlags() config {
 	flag.StringVar(&cfg.contentDir, "content-dir", "",
 		"load content from this directory instead of the embedded copy (for live editing)")
 	flag.StringVar(&cfg.defaultMap, "default-map", "tutorial", "map new players start in")
+	flag.StringVar(&cfg.clientDir, "client-dir", "",
+		"serve the built client from this directory; empty disables static serving")
 	flag.StringVar(&cfg.origins, "origins", "",
 		"comma-separated allowed WebSocket origins; empty means same-origin only")
 	flag.BoolVar(&cfg.devAuth, "dev-auth", false,

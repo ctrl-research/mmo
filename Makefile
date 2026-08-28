@@ -19,14 +19,22 @@ build: ## Build the server binary
 test: ## Run all Go tests
 	$(GO) test ./...
 
+.PHONY: test-conformance
+test-conformance: wasm ## Verify the WASM build matches the Go build exactly
+	cd client && node test/wasm-conformance.mjs
+
+.PHONY: test-all
+test-all: test test-conformance ## Run every test, Go and cross-build
+
 .PHONY: test-race
 test-race: ## Run all Go tests under the race detector
 	$(GO) test -race ./...
 
 .PHONY: lint
-lint: ## Vet Go code and lint protobuf definitions
+lint: ## Vet Go code, lint protobuf, typecheck the client
 	$(GO) vet ./...
 	$(BUFTOOL) lint
+	cd client && npm run typecheck
 
 .PHONY: fmt
 fmt: ## Format Go code
