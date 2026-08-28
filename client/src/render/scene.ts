@@ -1,7 +1,8 @@
 import { Application, Container, Graphics, Text, TextStyle } from "pixi.js";
 import { toPixels } from "@/sim/fixed";
 import { type Body, isClimbing, isFacingLeft, isGrounded } from "@/sim/body";
-import type { RenderedEntity } from "@/game/interpolator";
+import { KIND_DROP, KIND_MOB, type RenderedEntity } from "@/game/interpolator";
+import { Effects, drawHealthBar } from "./effects";
 import { theme, TILE } from "./theme";
 
 /**
@@ -36,8 +37,10 @@ export class Scene {
   #selfLayer = new Container();
 
   #selfGfx = new Graphics();
+  #selfBars = new Graphics();
   #ghostGfx = new Graphics();
   #others = new Map<number, EntitySprite>();
+  #effects = new Effects();
 
   #mapSize = { w: 0, h: 0 };
   #showGhost = false;
@@ -61,8 +64,15 @@ export class Scene {
 
     const scene = new Scene(app);
     app.stage.addChild(scene.#world);
-    scene.#world.addChild(scene.#terrain, scene.#entityLayer, scene.#selfLayer);
-    scene.#selfLayer.addChild(scene.#ghostGfx, scene.#selfGfx);
+    scene.#world.addChild(
+      scene.#terrain,
+      scene.#entityLayer,
+      scene.#selfLayer,
+      // Effects sit above everything, since a damage number that renders
+      // behind a mob is a damage number nobody reads.
+      scene.#effects.container,
+    );
+    scene.#selfLayer.addChild(scene.#ghostGfx, scene.#selfGfx, scene.#selfBars);
     scene.#ghostGfx.visible = false;
     return scene;
   }
@@ -102,10 +112,30 @@ export class Scene {
     }
   }
 
+  /** Exposes the effects layer so the game loop can spawn damage numbers. */
+  get effects(): Effects {
+    return this.#effects;
+  }
+
+  /** Converts a fixed-point world position to pixels, for effect placement. */
+  static toPixels(v: number): number {
+    return toPixels(v);
+  }
+
   /** Draws the local player and points the camera at them. */
-  drawSelf(body: Body, name: string, authoritative?: Body): void {
+  drawSelf(body: Body, name: string, hp: number, hpMax: number, authoritative?: Body): void {
     drawCharacter(this.#selfGfx, body, theme.self, theme.selfEdge);
     this.#selfGfx.label = name;
+
+    this.#selfBars.clear();
+    drawHealthBar(
+      this.#selfBars,
+      toPixels(body.x),
+      toPixels(body.y) - 8,
+      toPixels(body.w),
+      hp,
+      hpMax,
+    );
 
     // The ghost shows unsmoothed authoritative state. Invaluable while tuning
     // prediction: if the ghost and the body separate, reconciliation is wrong.
@@ -138,7 +168,7 @@ export class Scene {
     for (const e of entities) {
       let sprite = this.#others.get(e.id);
       if (!sprite) {
-        sprite = new EntitySprite(e.name);
+        sprite = new EntitySprite(e);
         this.#others.set(e.id, sprite);
         this.#entityLayer.addChild(sprite.container);
       }
@@ -157,6 +187,7 @@ export class Scene {
       sprite.container.destroy({ children: true });
     }
     this.#others.clear();
+    this.#effects.clear();
   }
 
   /**
@@ -188,32 +219,105 @@ export class Scene {
   }
 }
 
-/** One remote entity: its body and its name label. */
+/** One remote entity: its body, its label, and its health bar. */
 class EntitySprite {
   readonly container = new Container();
   #gfx = new Graphics();
-  #label: Text;
+  #bars = new Graphics();
+  #label: Text | null = null;
 
-  constructor(name: string) {
-    this.#label = new Text({
-      text: name,
-      style: new TextStyle({
-        fontFamily: "ui-monospace, Menlo, monospace",
-        fontSize: 11,
-        fill: theme.nameText,
-      }),
-    });
-    this.#label.anchor.set(0.5, 1);
-    this.container.addChild(this.#gfx, this.#label);
+  constructor(e: RenderedEntity) {
+    this.container.addChild(this.#gfx, this.#bars);
+
+    // Only players and mobs are named. A label over every coin on the floor
+    // would bury the map under text.
+    const caption = labelFor(e);
+    if (caption) {
+      this.#label = new Text({
+        text: caption,
+        style: new TextStyle({
+          fontFamily: "ui-monospace, Menlo, monospace",
+          fontSize: e.kind === KIND_MOB ? 10 : 11,
+          fill: e.kind === KIND_MOB ? theme.mobEdge : theme.nameText,
+        }),
+      });
+      this.#label.anchor.set(0.5, 1);
+      this.container.addChild(this.#label);
+    }
   }
 
   update(e: RenderedEntity): void {
-    drawCharacter(this.#gfx, e, theme.other, theme.otherEdge);
-
     const px = toPixels(e.x);
     const py = toPixels(e.y);
-    this.#label.position.set(px + toPixels(e.w) / 2, py - 4);
+    const pw = toPixels(e.w);
+    const ph = toPixels(e.h);
+
+    this.#gfx.clear();
+    this.#bars.clear();
+
+    switch (e.kind) {
+      case KIND_DROP:
+        drawDrop(this.#gfx, px, py, pw, ph, e);
+        break;
+
+      case KIND_MOB: {
+        const dead = e.hp === 0;
+        this.#gfx
+          .rect(px, py, pw, ph)
+          .fill({ color: dead ? theme.mobDead : theme.mob, alpha: dead ? 0.45 : 1 })
+          .stroke({ width: 1.5, color: dead ? theme.mobDead : theme.mobEdge });
+
+        // Facing marker, so it is obvious which way a mob is about to swing.
+        const eyeX = isFacingLeft(e as unknown as Body) ? px + pw * 0.3 : px + pw * 0.7;
+        this.#gfx.circle(eyeX, py + ph * 0.3, 2).fill(0x0b0d12);
+
+        if (!dead) drawHealthBar(this.#bars, px, py - 8, pw, e.hp, e.hpMax);
+        break;
+      }
+
+      default:
+        drawCharacter(this.#gfx, e, theme.other, theme.otherEdge);
+        drawHealthBar(this.#bars, px, py - 8, pw, e.hp, e.hpMax);
+    }
+
+    if (this.#label) {
+      this.#label.position.set(px + pw / 2, py - (e.kind === KIND_MOB ? 12 : 14));
+      this.#label.alpha = e.kind === KIND_MOB && e.hp === 0 ? 0.3 : 1;
+    }
   }
+}
+
+function labelFor(e: RenderedEntity): string {
+  if (e.kind === KIND_DROP) return "";
+  return e.name;
+}
+
+/**
+ * Draws ground loot as a small diamond.
+ *
+ * Gold and items are coloured differently because deciding whether something
+ * is worth walking back for should not require reading a tooltip.
+ */
+function drawDrop(
+  g: Graphics,
+  px: number,
+  py: number,
+  pw: number,
+  ph: number,
+  e: RenderedEntity,
+): void {
+  const cx = px + pw / 2;
+  const cy = py + ph / 2;
+  const r = Math.max(pw, ph) / 2;
+  const colour = e.dropGold > 0 ? theme.dropGold : theme.dropItem;
+
+  g.moveTo(cx, cy - r)
+    .lineTo(cx + r, cy)
+    .lineTo(cx, cy + r)
+    .lineTo(cx - r, cy)
+    .closePath()
+    .fill(colour)
+    .stroke({ width: 1, color: 0x0b0d12 });
 }
 
 /**

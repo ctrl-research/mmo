@@ -94,12 +94,16 @@ function startHud() {
       const b = s.body;
       const state = isClimbing(b) ? "climbing" : isGrounded(b) ? "grounded" : "airborne";
 
+      const expPct =
+        s.expToNext > 0n ? Number((s.exp * 100n) / s.expToNext).toFixed(0) : "--";
+
       hud.innerHTML =
         `<b>${status}</b>\n` +
+        `level    ${s.level}   exp ${s.exp}/${s.expToNext} (${expPct}%)\n` +
+        `hp       ${s.hp}/${s.hpMax}   kills ${s.kills}\n` +
         `pos      ${toPixels(b.x).toFixed(1)}, ${toPixels(b.y).toFixed(1)}  (${state})\n` +
         `vel      ${toPixels(b.vx).toFixed(2)}, ${toPixels(b.vy).toFixed(2)}\n` +
-        `rtt      ${s.rttMs} ms\n` +
-        `fps      ${s.fps.toFixed(0)}\n` +
+        `rtt      ${s.rttMs} ms   fps ${s.fps.toFixed(0)}\n` +
         `tick     server ${s.serverTick}  local ${s.ticksSimulated}\n` +
         `predict  ${s.pending} pending, replayed ${s.replayDepth}\n` +
         `correct  ${s.lastCorrectionPx.toFixed(2)} px  (${s.hardCorrections} hard)\n` +

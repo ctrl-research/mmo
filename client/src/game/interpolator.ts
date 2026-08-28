@@ -50,7 +50,20 @@ export interface RenderedEntity {
   anim: number;
   hp: number;
   hpMax: number;
+
+  /** Content id of a mob, so the renderer can choose a sprite. */
+  mobId: string;
+
+  /** Ground loot. Exactly one of item or gold is set. */
+  dropItem: string;
+  dropQty: number;
+  dropGold: number;
 }
+
+/** Entity kinds, mirroring mmov1.EntityKind. */
+export const KIND_PLAYER = 1;
+export const KIND_MOB = 2;
+export const KIND_DROP = 3;
 
 // Field-mask bits, mirroring mmov1.EntityField.
 const FIELD_POS = 1 << 0;
@@ -67,6 +80,10 @@ interface Tracked {
   h: number;
   hp: number;
   hpMax: number;
+  mobId: string;
+  dropItem: string;
+  dropQty: number;
+  dropGold: number;
   latest: Sample;
   history: Sample[];
 }
@@ -114,6 +131,10 @@ export class Interpolator {
       h: state.h,
       hp: state.hp,
       hpMax: state.hpMax,
+      mobId: state.mobId,
+      dropItem: state.dropItem,
+      dropQty: state.dropQty,
+      dropGold: state.dropGold,
       latest: sample,
       history: [sample],
     });
@@ -166,6 +187,10 @@ export class Interpolator {
         h: e.h,
         hp: e.hp,
         hpMax: e.hpMax,
+        mobId: e.mobId,
+        dropItem: e.dropItem,
+        dropQty: e.dropQty,
+        dropGold: e.dropGold,
         x,
         y,
         flags,
@@ -185,6 +210,36 @@ export class Interpolator {
   clear(): void {
     for (const id of this.#entities.keys()) this.#removed.push(id);
     this.#entities.clear();
+  }
+
+  /** Returns one tracked entity's latest known position, or null. */
+  positionOf(id: number): { x: number; y: number } | null {
+    const e = this.#entities.get(id);
+    return e ? { x: e.latest.x, y: e.latest.y } : null;
+  }
+
+  /**
+   * Returns the nearest lootable drop to a point, within a radius.
+   *
+   * The client picks the target so a single key press loots the obvious thing;
+   * the server still validates range and ownership, so a client that picks
+   * badly -- or lies -- simply gets nothing.
+   */
+  nearestDrop(x: number, y: number, radius: number): number {
+    let best = 0;
+    let bestDistSq = radius * radius;
+
+    for (const e of this.#entities.values()) {
+      if (e.kind !== KIND_DROP) continue;
+      const dx = e.latest.x - x;
+      const dy = e.latest.y - y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestDistSq) {
+        bestDistSq = d;
+        best = e.id;
+      }
+    }
+    return best;
   }
 }
 
