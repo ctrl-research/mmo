@@ -133,28 +133,97 @@ type Directory interface {
 
 The character lease is not a scaling nicety; it is the primary defence against item duplication. See `data-model.md`.
 
-## Room instances: shared vs. private
+## Rooms have two independent axes
 
-Public hunting zones and instanced dungeons are the **same primitive** with different placement policies. This answers the "instanced vs public?" question directly: build one thing, configure it two ways.
+Two questions that look like one question, and conflating them is a design error:
+
+1. **Who may enter this room?** — placement policy
+2. **Which entities inside it can a given player see and hit?** — layering
+
+A hunting zone wants a crowd of visible players but no competition for mobs. A dungeon wants a private group all fighting the same boss. Those are different answers on different axes.
+
+### Axis 1: placement policy — who enters
 
 ```go
-type InstancePolicy string
+type Placement string
 
 const (
-    // Public hunting zone. Auto-scaled "channels", MapleStory-style.
-    // Join the least-full instance under capacity; spawn a new one when all are full.
-    // Independent respawn timer per spawn point, shared by everyone inside.
-    PolicyShared InstancePolicy = "shared"
+    // Public zone. Auto-scaled "channels", MapleStory-style: join the
+    // least-full instance under capacity, spawn a new one when all are full.
+    PlacementShared Placement = "shared"
 
-    // Dungeon or boss room. Keyed to a party (or a character, for solo).
-    // Fresh spawn state on creation, torn down after a TTL once empty.
-    PolicyPrivate InstancePolicy = "private"
+    // Dungeon or boss room. Keyed to a party (or a character, solo).
+    // Fresh state on creation, torn down after a TTL once empty.
+    PlacementPrivate Placement = "private"
 )
 ```
 
-`RoomKey` is `(mapID, policy, ownerKey)` where `ownerKey` is empty for shared rooms and the party/character ID for private ones. The directory maps a `RoomKey` to a live instance, spawning one if needed. Capacity, instance TTL, and respawn behaviour are per-map content data, not code.
+`RoomKey` is `(mapID, placement, ownerKey)` — `ownerKey` empty for shared rooms, the party or character ID for private ones. The directory resolves a `RoomKey` to a live instance, spawning one if needed. Capacity and instance TTL are per-map content, not code.
 
-Per-spawn-point independent timers (rather than wave-based respawns) come free from this model and match both MapleStory and OSRS behaviour: each spawn point holds its own `nextSpawnAt`, ticked in the room's spawn phase.
+### Axis 2: layering — who sees which entities
+
+Every entity in a room carries a `LayerID`. A player sees an entity if it is in the **shared layer** or in **their own layer**.
+
+```go
+type LayerID uint32   // 0 == shared, visible to everyone in the room
+
+func (r *Room) Visible(viewer, e EntityID) bool {
+    l := r.layerOf(e)
+    return l == SharedLayer || l == r.layerOf(viewer)
+}
+```
+
+A player's layer key is **their party ID if partied, otherwise their character ID.** Partying up merges views: your mobs are replaced by your party's. That transition is visible — mobs despawn and a fresh set appears — which is expected behaviour, not a bug, and worth a short fade in the client.
+
+**Players are always in the shared layer.** You always see everyone in the room, chat with them, trade with them, and party with them. Only *hostile and lootable* entities are layered.
+
+### Layering is declared per spawn point, not per room
+
+This is the flexibility that makes the model worth having. Each spawn point in the map data declares its layer:
+
+```toml
+# in a map's object layer, per spawn_point
+layer = "owner"    # per-player/per-party — no contention
+layer = "shared"   # everyone in the room fights this one
+```
+
+Which composes into the cases that actually matter:
+
+| Scenario | Placement | Spawn layer | Result |
+|---|---|---|---|
+| Hunting zone | `shared` | `owner` | See everyone, hunt your own mobs, zero contention |
+| Dungeon / boss | `private` | `shared` | Your party only, all fighting the same boss |
+| World boss in a field | `shared` | `shared` for the boss, `owner` for trash | Private grinding, public raid target in the same map |
+| Town | `shared` | — | No mobs at all |
+| Solo story instance | `private` | `owner` | Fully isolated |
+
+That third row is the one that pays for the design: a hunting zone where trash is private but a field boss is a public rally point, with no special-casing anywhere.
+
+### What layering gives you for free
+
+- **No spawn contention.** Each layer holds its own copy of every `owner` spawn point's state, with its own independent `nextSpawnAt`. Nobody steals your spawns.
+- **No loot stealing.** Ground drops inherit the layer of the mob that dropped them. Cross-layer looting is not prevented by a rule; it is unrepresentable.
+- **No kill stealing**, and no need for tap/damage-attribution rules on `owner` mobs.
+
+### What layering costs — and it is the real constraint
+
+Simulation cost scales with **layers × mobs**, not mobs. Forty players in forty layers with sixty spawn points each is 2,400 mob entities in a room that would otherwise hold sixty. That is a direct threat to the 50 ms tick budget, and it is the main thing to watch in this design.
+
+Three mitigations, all of which should exist by M4:
+
+1. **Proximity spawning.** An `owner` spawn point only activates within ~1.5 screens of its owner. In a typical map a player is near ~15 of 60 spawn points, cutting entity count by ~4×.
+2. **Tiered AI ticking.** A mob with no aggro and no player nearby runs a cheap idle step every 8th tick; only aggroed mobs run the full behaviour tree each tick. Most mobs in most layers are idle, so this is the largest win available.
+3. **Lower room capacity.** Since players no longer compete for spawns, room capacity is purely a social and rendering concern. Cap `shared` hunting rooms around 20–30 and let channels absorb the rest — which is what MapleStory does anyway.
+
+`room_entities_total{layer_kind}` and the tick histogram are the metrics that tell you when a map's spawn density is too high for its capacity. Expect to tune per-map capacity down from the naive value.
+
+### The trade-off worth naming
+
+Per-player mobs remove the worst parts of a shared open world — spawn camping, kill stealing, loot sniping, and the new-player experience of arriving at a zone where everything is already dead. That is why modern MMOs do it.
+
+It also removes a real incentive to party in open zones: players group for the exp bonus and for company, not to share a scarce resource. The world feels somewhat more like "single-player with chat" while grinding.
+
+`shared`-layer content is the counterweight, and it should be used deliberately: field bosses, zone events, and rare spawns that pull everyone in a room onto the same target. The design supports mixing them into an otherwise-`owner` map at no cost, so use it.
 
 ## The tick loop
 

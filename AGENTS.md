@@ -38,17 +38,19 @@ These are not style preferences. Violating one produces a bug that only appears 
 
 4. **The client is never trusted.** It sends intents (buttons held), never outcomes and never positions. Every action is validated server-side against cooldowns, costs, ranges, and inventory contents.
 
-5. **All RNG is server-side, from the room's seeded PRNG,** rolled inside the tick loop. This is what makes rooms replayable.
+5. **Entity visibility is layer-filtered.** Players are always shared-layer and always see each other; hostile and lootable entities belong to a layer keyed by party ID (or character ID when unpartied). The snapshot builder iterates the viewer's layer plus shared — never the full entity list filtered afterwards, which is O(players x layers x mobs) and will dominate the tick.
 
-6. **An item always has exactly one location.** `container_id` is `NOT NULL`; `UNIQUE (container_id, slot)`. Moving an item is an `UPDATE`, never `DELETE` + `INSERT`.
+6. **All RNG is server-side, from the room's seeded PRNG,** rolled inside the tick loop. This is what makes rooms replayable.
 
-7. **Character mutation requires the lease,** and every persistence write carries the fencing token (`WHERE lease_token <= $token`). A rejected fenced write means ownership was lost — discard in-memory state, never retry.
+7. **An item always has exactly one location.** `container_id` is `NOT NULL`; `UNIQUE (container_id, slot)`. Moving an item is an `UPDATE`, never `DELETE` + `INSERT`.
 
-8. **Content is data.** Items, mobs, skills, passives, drops, maps, and balance constants are files in `content/`. If a content change needs a Go change, the abstraction is wrong.
+8. **Character mutation requires the lease,** and every persistence write carries the fencing token (`WHERE lease_token <= $token`). A rejected fenced write means ownership was lost — discard in-memory state, never retry.
 
-9. **Boot fails on invalid content.** Never start with partial content, never fall back to defaults.
+9. **Content is data.** Items, mobs, skills, passives, drops, maps, and balance constants are files in `content/`. If a content change needs a Go change, the abstraction is wrong.
 
-10. **The 50 ms tick budget is an SLO.** Alert at p99 > 25 ms. A room that overruns must be split or capacity-limited; more nodes will not fix it.
+10. **Boot fails on invalid content.** Never start with partial content, never fall back to defaults.
+
+11. **The 50 ms tick budget is an SLO.** Alert at p99 > 25 ms. A room that overruns must be split or capacity-limited; more nodes will not fix it. Layering multiplies entity count by active layers, so this is the budget's main pressure.
 
 ## Conventions
 

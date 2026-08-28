@@ -187,17 +187,32 @@ The server tracks each connection's last acknowledged snapshot tick and deltas a
 
 Positions are fixed-point (`1/256` world unit) rather than floats: smaller on the wire, and exactly reproducible across Go and WASM. **The simulation itself uses fixed-point integer math throughout** for the same reason — float determinism across platforms and compilers is not something to bet a prediction model on.
 
-## Area of interest
+## Area of interest and layering
 
-Initially the AOI filter is "everything in the room" — MapleStory-style maps are small and cap at ~40 players, so filtering costs more than it saves.
-
-The snapshot builder takes the filter as an interface so a grid-based filter drops in unchanged when large open zones arrive:
+The AOI filter answers one question: **may this viewer see this entity?** It combines two independent tests.
 
 ```go
 type AOI interface {
     Visible(viewer EntityID, e EntityID) bool
 }
 ```
+
+**Layer test (from M0).** An entity is visible if it is in the shared layer or in the viewer's own layer (`architecture.md` § Axis 2). Players are always shared-layer, so everyone in a room always sees everyone else; only hostile and lootable entities are layered. This test is not an optimisation — it is a correctness requirement, and a bug here leaks other players' mobs and loot into a client's view.
+
+**Spatial test (deferred).** Initially "everything in the room": MapleStory-style maps are small and capped at 20–30 players, so a spatial filter would cost more than it saves. A grid-based filter drops in behind the same interface when large open zones arrive.
+
+Because layering multiplies entity count by the number of active layers (`architecture.md` § What layering costs), the snapshot builder must iterate *the viewer's layer plus shared*, never the whole room filtered afterwards. Building a full entity list and discarding 95% of it per player is O(players x layers x mobs) and will dominate the tick at capacity.
+
+```go
+// Right: iterate only what this viewer can see.
+for _, e := range room.layer[viewer.layer] { ... }
+for _, e := range room.layer[SharedLayer]  { ... }
+
+// Wrong: O(players x all entities) per tick.
+for _, e := range room.allEntities { if aoi.Visible(viewer, e) { ... } }
+```
+
+Entity IDs are unique across the whole room regardless of layer, so nothing else in the protocol needs layer awareness — a client simply never receives IDs it cannot see.
 
 ## Events
 

@@ -21,6 +21,7 @@ Every milestone ends in something playable. If a milestone cannot be demonstrate
 - `Directory` interface + `memory` implementation
 - WebSocket gateway, envelope batching
 - Room instance with the 20 Hz tick loop and its phase order
+- `LayerID` on every entity and a layer-aware AOI filter (everything is shared-layer in M0, but the seam exists so mob layering in M1 is not a retrofit)
 - `internal/world/sim`: fixed-point platformer physics — gravity, AABB, one-way platforms, ropes, ladders
 - TinyGo → WASM build of `sim`, loaded by the client
 - PixiJS client: Tiled map rendering, sprite, camera
@@ -37,6 +38,8 @@ Every milestone ends in something playable. If a milestone cannot be demonstrate
 ## M1 — Combat
 
 - Mobs loaded from content files; spawn points with independent respawn timers
+- **Per-layer mob instancing**: `owner` spawn points instantiate per player, each layer with its own spawn timers; `shared` spawn points are common to the room
+- Ground drops inherit the layer of the mob that dropped them
 - AI state machine: idle → aggro → chase → attack → leash → dead
 - One melee skill with cooldown, cost, and a cone hitbox
 - Damage pipeline end to end (`data-model.md` § Damage resolution)
@@ -45,7 +48,7 @@ Every milestone ends in something playable. If a milestone cannot be demonstrate
 - Floating damage numbers, HP bars, death and hit feedback
 - Seeded per-room PRNG; room replay harness
 
-**Exit:** walk to a slime, kill it, watch damage numbers, gain exp, level up, pick up the drop. Replay the room from `(seed, input log)` and get identical results.
+**Exit:** walk to a slime, kill it, watch damage numbers, gain exp, level up, pick up the drop. Two players in the same room see each other but hunt independent mobs and cannot touch each other's drops. Replay the room from `(seed, input log)` and get identical results.
 
 ---
 
@@ -88,11 +91,13 @@ Every milestone ends in something playable. If a milestone cannot be demonstrate
 - Portals and the full handoff protocol — **including the local case, which must not be special-cased**
 - `shared` policy: auto-scaled channels, join least-full, capacity limits
 - `private` policy: party-keyed instances with TTL
+- Layer key follows party membership: partying merges mob views, leaving splits them
+- Proximity spawning and tiered AI ticking — the two mitigations that keep layering inside the tick budget
 - World map UI, waypoint unlock and teleport
 - Multiple maps with level ranges
 - Simulated multi-node in tests: two world roles in one process, forced to communicate over the bus
 
-**Exit:** walk through a portal into a different map hosted by a different world role, with no visible interruption. Channel switching works. A party gets its own dungeon instance.
+**Exit:** walk through a portal into a different map hosted by a different world role, with no visible interruption. Channel switching works. A party gets its own dungeon instance, and partying up in a hunting zone merges the members' mob layers.
 
 ---
 

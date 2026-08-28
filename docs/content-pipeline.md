@@ -219,7 +219,7 @@ Authored in **Tiled**, exported as TMJ. Tile layers are geometry; object layers 
 
 | Object type | Properties |
 |---|---|
-| `spawn_point` | `mob_id`, `respawn_ms`, `max_alive`, `elite_chance` |
+| `spawn_point` | `mob_id`, `respawn_ms`, `max_alive`, `elite_chance`, `layer` |
 | `portal` | `target_map`, `target_spawn`, `requires` |
 | `platform` | `one_way` (drop-through), `moving`, `path` |
 | `rope` / `ladder` | climb geometry |
@@ -231,6 +231,15 @@ Authored in **Tiled**, exported as TMJ. Tile layers are geometry; object layers 
 `*.meta.toml` alongside each map carries what does not belong in Tiled: instance policy (`shared` / `private`), player capacity, BGM, level range, PvP flag, instance TTL.
 
 **Each spawn point owns its own independent respawn timer** — MapleStory and OSRS behaviour, and a direct consequence of storing `respawn_ms` per object rather than running wave-based spawns.
+
+`layer` decides who fights the mob (`architecture.md` § Axis 2):
+
+- `owner` (default in hunting zones) — instanced per player, or per party when partied. Every layer gets its own copy of the spawn point with its own timer, so there is no contention and no kill stealing.
+- `shared` (default in dungeons) — one copy for everyone in the room. Field bosses, zone events, rare spawns.
+
+The two mix freely within one map, which is the point: a hunting zone can have private trash and a public field boss without either being a special case.
+
+Spawn density is the main driver of tick cost under layering, because it multiplies by the number of active layers. Treat a map's `capacity` in `*.meta.toml` and its `owner` spawn count as a single tuning decision, not two.
 
 The collision geometry the server simulates is derived from the tile layers at load and must match exactly what the client renders. It is generated from the same TMJ by the same code path, compiled to WASM — never hand-maintained twice.
 
