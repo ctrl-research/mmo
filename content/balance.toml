@@ -1,0 +1,38 @@
+# Global tuning constants.
+#
+# Anything a designer might want to change lives here rather than as a literal
+# in Go. A magic number in code is a number nobody can tune without a deploy,
+# and every one of them eventually needs tuning.
+
+[combat]
+# Critical hits multiply damage by this.
+crit_multiplier = 1.5
+
+# Elemental resistance is capped below 1.0 so stacking it can never reach
+# immunity. 0.75 is Path of Exile's cap, and it works: resistance is valuable
+# without ever being a solved problem.
+resistance_cap = 0.75
+
+# Armour reduces damage by armour / (armour + divisor * incoming). Strong
+# against many small hits, weak against one large one -- which is what gives
+# armour and resistance genuinely different roles rather than being two words
+# for the same thing.
+armour_divisor = 10
+
+# Damage floor after all mitigation, so a hit always registers. Zero-damage
+# hits read as broken even when they are correct.
+min_damage = 1
+
+hit_flash_ms = 150
+corpse_ms = 600
+
+[drops]
+ground_ms = 120000
+pickup_range = 48.0
+
+# Drops scatter rather than stacking in one unclickable pile.
+scatter_range = 40.0
+
+[party]
+exp_share_range = 600.0
+max_size = 6

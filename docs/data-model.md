@@ -236,7 +236,7 @@ expToNext(L) = floor(A · L^2.4 · (1 + B)^L)
 **Secondary skills (1–99), OSRS's actual curve**, because it is well-tuned and instantly legible to anyone who has played it:
 
 ```
-xpAt(L) = floor( (1/8) · Σ[i=1..L-1] ( i + 300 · 2^(i/7) ) )
+xpAt(L) = floor( (1/4) · Σ[i=1..L-1] floor( i + 300 · 2^(i/7) ) )
 ```
 
 Secondary skills level from *use*, not from combat exp: woodcutting rises by chopping, fishing by fishing. They resolve on the 600 ms action tick (`architecture.md` § The tick loop), deliberately matching OSRS's cadence.

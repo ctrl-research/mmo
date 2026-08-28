@@ -36,7 +36,33 @@ const (
 	classRope       = "rope"
 	classLadder     = "ladder"
 	classSpawnPoint = "spawn_point"
+	classMobSpawn   = "mob_spawn"
 )
+
+// SpawnLayer decides who fights a mob.
+//
+// This is the per-spawn-point half of the layering model: placement decides
+// who may enter a room, layering decides which entities inside it a player can
+// see and hit. Declaring it per spawn point rather than per map is what lets
+// one map hold private trash and a public field boss with neither being a
+// special case (see docs/architecture.md).
+type SpawnLayer string
+
+const (
+	// LayerOwner instances the mob per player, or per party when partied.
+	// Every layer gets its own copy of the spawn point with its own timer, so
+	// there is no contention, no kill stealing, and no loot sniping.
+	LayerOwner SpawnLayer = "owner"
+
+	// LayerShared is one copy for everyone in the room: field bosses, zone
+	// events, rare spawns.
+	LayerShared SpawnLayer = "shared"
+)
+
+var validSpawnLayers = map[SpawnLayer]bool{
+	LayerOwner:  true,
+	LayerShared: true,
+}
 
 // tmj mirrors the subset of Tiled's JSON export that the game reads. Fields
 // Tiled writes but the game does not use are simply absent.
@@ -83,6 +109,26 @@ type tmjProp struct {
 	Value any    `json:"value"`
 }
 
+// intProp reads a Tiled integer property.
+//
+// Tiled writes these as JSON numbers, which encoding/json decodes into float64
+// when the destination is `any` -- so a type assertion to int64 always fails
+// and silently falls through to a default. That produced a map where every
+// spawn point quietly used the fallback respawn timer, which is exactly the
+// kind of bug that is invisible until someone wonders why timers feel wrong.
+func intProp(m map[string]any, key string) (int, bool) {
+	switch v := m[key].(type) {
+	case float64:
+		return int(v), true
+	case int64:
+		return int(v), true
+	case int:
+		return v, true
+	default:
+		return 0, false
+	}
+}
+
 func props(list []tmjProp) map[string]any {
 	m := make(map[string]any, len(list))
 	for _, p := range list {
@@ -102,6 +148,32 @@ type SpawnPoint struct {
 	Default bool
 }
 
+// MobSpawn is one place mobs appear, with its own independent respawn timer.
+//
+// Per-spawn-point timers rather than wave respawns is MapleStory and OSRS
+// behaviour, and it falls out of storing the interval per object rather than
+// running a room-wide schedule.
+type MobSpawn struct {
+	Name  string
+	MobID string
+
+	// At is the feet position, matching how a designer places the marker.
+	At sim.Vec
+
+	// Layer decides who fights this mob.
+	Layer SpawnLayer
+
+	// RespawnTicks is the delay between a death and the next spawn.
+	RespawnTicks int
+
+	// MaxAlive bounds how many of this mob may exist at once, per layer.
+	MaxAlive int
+
+	// Radius spreads spawns around the marker so they are not stacked in a
+	// single unhittable column.
+	Radius fixed.F
+}
+
 // Map is one loaded, validated, immutable map.
 type Map struct {
 	ID          string
@@ -114,6 +186,9 @@ type Map struct {
 	World *sim.World
 
 	Spawns []SpawnPoint
+
+	// MobSpawns are the map's mob spawn points.
+	MobSpawns []MobSpawn
 
 	// Source is the original Tiled file, retained so the client renders the
 	// very same document the collision geometry was derived from.
@@ -163,8 +238,8 @@ func LoadMap(fsys fs.FS, name string) (*Map, error) {
 	if v, ok := mp["placement"].(string); ok && v != "" {
 		m.Placement = v
 	}
-	if v, ok := mp["capacity"].(float64); ok && v > 0 {
-		m.Capacity = int(v)
+	if v, ok := intProp(mp, "capacity"); ok && v > 0 {
+		m.Capacity = v
 	}
 
 	for _, layer := range doc.Layers {
@@ -194,6 +269,49 @@ func (m *Map) addObject(mapName string, obj tmjObject) error {
 		m.World.Platforms = append(m.World.Platforms, rect(obj))
 	case classRope, classLadder:
 		m.World.Climbables = append(m.World.Climbables, rect(obj))
+	case classMobSpawn:
+		props := props(obj.Properties)
+
+		mobID, _ := props["mob_id"].(string)
+		if mobID == "" {
+			return fmt.Errorf("content: %s: mob_spawn %d (%q) has no mob_id",
+				mapName, obj.ID, obj.Name)
+		}
+
+		layer := LayerOwner
+		if v, ok := props["layer"].(string); ok && v != "" {
+			layer = SpawnLayer(v)
+			if !validSpawnLayers[layer] {
+				return fmt.Errorf("content: %s: mob_spawn %d (%q) has unknown layer %q, want owner or shared",
+					mapName, obj.ID, obj.Name, v)
+			}
+		}
+
+		respawnMs := 5000
+		if v, ok := intProp(props, "respawn_ms"); ok && v > 0 {
+			respawnMs = v
+		}
+
+		maxAlive := 1
+		if v, ok := intProp(props, "max_alive"); ok && v > 0 {
+			maxAlive = v
+		}
+
+		radius := fixed.Zero
+		if v, ok := intProp(props, "radius"); ok && v > 0 {
+			radius = fixed.FromInt(v)
+		}
+
+		m.MobSpawns = append(m.MobSpawns, MobSpawn{
+			Name:         obj.Name,
+			MobID:        mobID,
+			At:           sim.Vec{X: toFixed(obj.X), Y: toFixed(obj.Y)},
+			Layer:        layer,
+			RespawnTicks: msToTicks(respawnMs, TickRate),
+			MaxAlive:     maxAlive,
+			Radius:       radius,
+		})
+
 	case classSpawnPoint:
 		sp := SpawnPoint{
 			Name: obj.Name,
@@ -262,4 +380,35 @@ func rect(o tmjObject) sim.Rect {
 // symmetrically instead of drifting toward zero.
 func toFixed(v float64) fixed.F {
 	return fixed.F(int32(math.Round(v * float64(fixed.One))))
+}
+
+// loadMaps reads every map in the content set.
+func (c *Content) loadMaps(fsys fs.FS, rec *hashRecorder) error {
+	files, err := listFiles(fsys, "maps", ".tmj")
+	if err != nil {
+		return err
+	}
+
+	for _, name := range files {
+		// Read through the recorder so maps are folded into the content hash
+		// alongside everything else; geometry changing is exactly the kind of
+		// disagreement the handshake check exists to catch.
+		if _, err := rec.readAndRecord(name); err != nil {
+			return err
+		}
+
+		m, err := LoadMap(fsys, name)
+		if err != nil {
+			return err
+		}
+		if _, dup := c.Maps[m.ID]; dup {
+			return fmt.Errorf("content: two maps both declare the id %q", m.ID)
+		}
+		c.Maps[m.ID] = m
+	}
+
+	if len(c.Maps) == 0 {
+		return fmt.Errorf("content: no maps found")
+	}
+	return nil
 }
