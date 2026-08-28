@@ -1,39 +1,78 @@
-# CLAUDE.md
+# AGENTS.md
+
+Operational expectations for humans and AI agents working in this repository.
 
 ## Purpose
 
-GitHub template repository for bootstrapping `ctrl-research` projects. Provides Renovate-managed dependency updates, branch protection, CODEOWNERS, license, and standard `.gitignore` as a starting point — not a runnable application.
+A self-hosted, horizontally scalable 2D MMO. Go authoritative server, TypeScript + PixiJS client, Postgres + Redis. Currently in the design phase — see `docs/roadmap.md` for milestones.
+
+## Read first
+
+Before making non-trivial changes, read the design docs. They encode decisions that are expensive to reverse:
+
+- `docs/architecture.md` — scaling model, process roles, tick loop
+- `docs/protocol.md` — wire format, prediction and reconciliation
+- `docs/data-model.md` — persistence and anti-duplication invariants
+- `docs/content-pipeline.md` — content as data, effect DSL
+- `docs/roadmap.md` — milestones and their exit criteria
 
 ## Tech stack
 
-- **Renovate** for dependency updates (managers: `docker-compose`, `github-actions`, `gomod`)
-- **GitHub Actions** for the Renovate workflow
-- **MIT License**
+- **Go 1.26** — server (`cmd/mmo`, single binary, `--roles` flag)
+- **TypeScript + PixiJS + Vite** — browser client
+- **TinyGo** — compiles `internal/world/sim` to WASM for the client
+- **Protobuf** — wire protocol, codegen for Go and TypeScript
+- **Postgres** — durable state; **Redis** — ephemeral state
+- **NATS** — bus, at scale only (M9)
+- **Tiled** — map authoring (TMJ)
 
-## Structure
+## Invariants
 
-```
-.
-├── .agents/                  # Agent instructions and skills
-├── .github/
-│   ├── CODEOWNERS            # @ctrl-research/reviewers
-│   ├── renovate-config.js    # Renovate platform config
-│   └── workflows/
-│       └── renovate.yaml     # Renovate workflow
-├── .tool-versions            # Pinned language/tool versions (asdf/mise)
-├── AGENTS.md                 # Operational expectations for humans and AI agents
-├── CONTRIBUTING.md
-├── LICENSE
-├── README.md
-├── SECURITY.md
-└── renovate.json             # Renovate settings
-```
+These are not style preferences. Violating one produces a bug that only appears under load, or in production, or as duplicated items.
+
+1. **A room never touches another room's state directly** — even in the same process. All cross-room communication goes over the `Bus`. The local shortcut always works today and breaks the day there are two world nodes.
+
+2. **Room handoff always follows the full transfer protocol** — even when source and destination are goroutines in one process. A special-cased local path means the distributed path is never exercised until it has to work.
+
+3. **`internal/world/sim` stays pure.** No goroutines, no reflection, no I/O, no wall-clock reads, no map iteration without sorted keys, no floating point. It compiles to WASM via TinyGo and must be deterministic across both targets. Fixed-point integer math throughout.
+
+4. **The client is never trusted.** It sends intents (buttons held), never outcomes and never positions. Every action is validated server-side against cooldowns, costs, ranges, and inventory contents.
+
+5. **Entity visibility is layer-filtered.** Players are always shared-layer and always see each other; hostile and lootable entities belong to a layer keyed by party ID (or character ID when unpartied). The snapshot builder iterates the viewer's layer plus shared — never the full entity list filtered afterwards, which is O(players x layers x mobs) and will dominate the tick.
+
+6. **All RNG is server-side, from the room's seeded PRNG,** rolled inside the tick loop. This is what makes rooms replayable.
+
+7. **An item always has exactly one location.** `container_id` is `NOT NULL`; `UNIQUE (container_id, slot)`. Moving an item is an `UPDATE`, never `DELETE` + `INSERT`.
+
+8. **Character mutation requires the lease,** and every persistence write carries the fencing token (`WHERE lease_token <= $token`). A rejected fenced write means ownership was lost — discard in-memory state, never retry.
+
+9. **Content is data.** Items, mobs, skills, passives, drops, maps, and balance constants are files in `content/`. If a content change needs a Go change, the abstraction is wrong.
+
+10. **Boot fails on invalid content.** Never start with partial content, never fall back to defaults.
+
+11. **The 50 ms tick budget is an SLO.** Alert at p99 > 25 ms. A room that overruns must be split or capacity-limited; more nodes will not fix it. Layering multiplies entity count by active layers, so this is the budget's main pressure.
 
 ## Conventions
 
-- `.tool-versions` is the single source of truth for language and tool versions. Before building, testing, or running any tooling, check it and use the pinned versions (install via `asdf install` or `mise install`). When adding a new language or tool to the project, pin its version there first — never assume a globally installed version.
-- Versioning: project artifacts (releases, tags, packages, images) follow [SemVer](https://semver.org/) as bare `X.Y.Z` — no `v` prefix (`1.4.2`, not `v1.4.2`). Bump MAJOR for breaking changes, MINOR for backwards-compatible features, PATCH for fixes.
-- See `AGENTS.md` for full agent workflow, code style, testing, and git/PR guidance.
-- Branch protection: never push directly to `main`; all changes via PR with review.
-- When adapting this template for a new project, update `renovate.json` managers/schedules and enable the repo in the Renovate GitHub App.
-- Project-specific `CLAUDE.md` / `AGENTS.md` content should be filled in once the actual stack is added (`src/`, `tests/`, build commands, etc. are placeholders in `AGENTS.md`, not present here).
+- `.tool-versions` is the single source of truth for language and tool versions. Check it before building, testing, or running tooling; install via `mise install` or `asdf install`. Pin new tools there first — never assume a globally installed version.
+- Versioning: [SemVer](https://semver.org/) as bare `X.Y.Z`, no `v` prefix.
+- Branch protection: never push directly to `main`. All changes via PR with review.
+- Migrations are plain SQL, sequentially numbered, **forward-only**. Schema changes follow expand → backfill → contract.
+- Balance numbers live in `content/balance.toml`, never as Go literals.
+- Structured logging via `log/slog`. Simulation log lines carry instance ID and tick number.
+
+## Testing
+
+- `internal/world/sim` is tested against a **golden-vector corpus**: `(initial state, input sequence) → expected positions`, replayed in CI against both the Go and WASM builds. Drift fails the build.
+- Room replay (`seed` + input log → identical outcome) is both a debugging tool and a regression harness.
+- Content validation runs on every PR — a broken drop table reference fails the build, not the server.
+
+## Build
+
+```
+mise install
+docker compose up          # postgres, redis, server, client dev server
+go test ./...
+```
+
+(Real once M0 lands.)

@@ -1,0 +1,72 @@
+{
+  "compressionlevel": -1,
+  "height": 20,
+  "infinite": false,
+  "orientation": "orthogonal",
+  "renderorder": "right-down",
+  "tiledversion": "1.11.0",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "map",
+  "version": "1.10",
+  "width": 40,
+  "nextlayerid": 3,
+  "nextobjectid": 20,
+  "properties": [
+    { "name": "mapId", "type": "string", "value": "tutorial" },
+    { "name": "displayName", "type": "string", "value": "Training Grounds" },
+    { "name": "placement", "type": "string", "value": "shared" },
+    { "name": "capacity", "type": "int", "value": 30 }
+  ],
+  "layers": [
+    {
+      "id": 1,
+      "name": "collision",
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "objects": [
+        { "id": 1, "name": "floor", "class": "solid", "x": 0, "y": 608, "width": 1280, "height": 32, "rotation": 0, "visible": true },
+        { "id": 2, "name": "wall-left", "class": "solid", "x": 0, "y": 0, "width": 32, "height": 608, "rotation": 0, "visible": true },
+        { "id": 3, "name": "wall-right", "class": "solid", "x": 1248, "y": 0, "width": 32, "height": 608, "rotation": 0, "visible": true },
+        { "id": 4, "name": "pillar", "class": "solid", "x": 1024, "y": 480, "width": 96, "height": 128, "rotation": 0, "visible": true },
+        { "id": 5, "name": "ledge-low-left", "class": "platform", "x": 160, "y": 512, "width": 192, "height": 16, "rotation": 0, "visible": true },
+        { "id": 6, "name": "ledge-mid", "class": "platform", "x": 448, "y": 416, "width": 192, "height": 16, "rotation": 0, "visible": true },
+        { "id": 7, "name": "ledge-low-right", "class": "platform", "x": 736, "y": 512, "width": 192, "height": 16, "rotation": 0, "visible": true },
+        { "id": 8, "name": "ledge-high", "class": "platform", "x": 352, "y": 288, "width": 160, "height": 16, "rotation": 0, "visible": true },
+        { "id": 9, "name": "ledge-top", "class": "platform", "x": 704, "y": 224, "width": 224, "height": 16, "rotation": 0, "visible": true },
+        { "id": 10, "name": "rope-main", "class": "rope", "x": 976, "y": 224, "width": 16, "height": 384, "rotation": 0, "visible": true },
+        { "id": 11, "name": "rope-short", "class": "rope", "x": 416, "y": 288, "width": 16, "height": 144, "rotation": 0, "visible": true }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "gameplay",
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "objects": [
+        {
+          "id": 12,
+          "name": "start",
+          "class": "spawn_point",
+          "x": 200,
+          "y": 608,
+          "width": 0,
+          "height": 0,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            { "name": "isDefault", "type": "bool", "value": true }
+          ]
+        }
+      ]
+    }
+  ]
+}

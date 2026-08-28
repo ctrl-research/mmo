@@ -7,29 +7,102 @@ on:
   pull_request:
 
 jobs:
-  validate:
+  server:
+    name: Server
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Check for sensitive files
+      # .tool-versions is the single source of truth for language versions, so
+      # CI reads it rather than pinning them a second time here and letting the
+      # two drift.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: .tool-versions
+
+      - name: Verify generated code is up to date
         run: |
-          # Fail if .env, secrets, or private keys are committed
-          if git grep -l "\.env\|PRIVATE_KEY\|AWS_SECRET" --cached 2>/dev/null; then
-            echo "Error: sensitive files committed"
+          go tool -modfile=tools/go.mod buf generate
+          if ! git diff --exit-code; then
+            echo "::error::Generated code is stale. Run 'make generate' and commit the result."
             exit 1
           fi
 
-      - name: Validate YAML files
-        run: |
-          for f in $(find . -name "*.yaml" -o -name "*.yml" 2>/dev/null | grep -v node_modules); do
-            python3 -c "import yaml, sys; yaml.safe_load(open('$f'))" 2>/dev/null || echo "Invalid YAML: $f"
-          done
+      - name: Lint protobuf
+        run: go tool -modfile=tools/go.mod buf lint
 
-      # Add project-specific validation steps below, e.g.:
-      # - name: Run tests
-      #   run: go test ./...
-      #
-      # - name: Build Docker image
-      #   run: docker build .
+      - name: Vet
+        run: go vet ./...
+
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::These files need gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Test
+        run: go test -race ./...
+
+      - name: Build
+        run: go build ./...
+
+  client:
+    name: Client
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: .tool-versions
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - run: npm ci
+        working-directory: client
+
+      - name: Build the simulation as WebAssembly
+        run: make wasm
+
+      # The check that makes client-side prediction trustworthy: the WASM the
+      # client predicts with must produce bit-identical results to the Go build
+      # the server runs. Divergence here is a hard failure, not a warning --
+      # while it fails, prediction cannot be relied on.
+      - name: WASM conformance against the Go golden corpus
+        run: npm test
+        working-directory: client
+
+      - name: Typecheck
+        run: npm run typecheck
+        working-directory: client
+
+      - name: Build
+        run: npm run build
+        working-directory: client
+
+  hygiene:
+    name: Hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for committed secrets
+        run: |
+          if git grep -lE 'PRIVATE_KEY|AWS_SECRET|BEGIN RSA' -- ':!.github/workflows'; then
+            echo "::error::Possible secret committed"
+            exit 1
+          fi
+
+      - name: Validate content
+        run: |
+          for f in $(find content -name '*.tmj'); do
+            python3 -c "import json,sys; json.load(open('$f'))" \
+              || { echo "::error::Invalid JSON in $f"; exit 1; }
+          done

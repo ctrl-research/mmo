@@ -1,0 +1,219 @@
+import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
+import {
+  EnvelopeSchema,
+  type ClientMessage,
+  ClientMessageSchema,
+  HelloSchema,
+  IntentSchema,
+  PingSchema,
+  type Snapshot,
+  type Welcome,
+  type Event,
+  type EntityState,
+} from "@/gen/mmo/v1/game_pb";
+
+/** Bumped on any incompatible wire change; must match gateway.ProtocolVersion. */
+export const PROTOCOL_VERSION = 1;
+
+/**
+ * Close codes, mirroring docs/protocol.md.
+ *
+ * They exist so the client can tell a transient blip from a permanent refusal.
+ * Without them, "your ticket expired, get another" and "you are banned" are
+ * indistinguishable, and the client either retries forever or gives up too
+ * early.
+ */
+export const Close = {
+  TicketInvalid: 4000,
+  ProtocolVersion: 4001,
+  ContentHash: 4002,
+  NotAllowed: 4003,
+  Kicked: 4004,
+  LeaseLost: 4005,
+  RateLimited: 4006,
+  ServerShutdown: 4007,
+} as const;
+
+export interface ConnectionHandlers {
+  onWelcome(w: Welcome): void;
+  onSnapshot(s: Snapshot): void;
+  onEvent(e: Event): void;
+  onPong(clientTimeMs: number): void;
+  onClosed(code: number, reason: string): void;
+}
+
+export interface ConnectionStats {
+  rttMs: number;
+  snapshotsReceived: number;
+  bytesReceived: number;
+}
+
+/**
+ * Connection owns the WebSocket and speaks the protocol.
+ *
+ * It deliberately knows nothing about prediction or rendering: it decodes
+ * frames and hands them upward. That separation is what lets the reconciliation
+ * logic be reasoned about, and tested, without a socket.
+ */
+export class Connection {
+  #ws: WebSocket | null = null;
+  #handlers: ConnectionHandlers;
+  #pingTimer: number | undefined;
+
+  #stats: ConnectionStats = { rttMs: 0, snapshotsReceived: 0, bytesReceived: 0 };
+
+  /** Highest snapshot tick received, echoed back so the server can ack. */
+  #lastSnapshotTick = 0n;
+
+  constructor(handlers: ConnectionHandlers) {
+    this.#handlers = handlers;
+  }
+
+  get stats(): Readonly<ConnectionStats> {
+    return this.#stats;
+  }
+
+  get connected(): boolean {
+    return this.#ws?.readyState === WebSocket.OPEN;
+  }
+
+  /**
+   * Opens a connection and completes the handshake.
+   *
+   * The ticket travels in the first frame rather than in the URL. URLs end up
+   * in proxy logs, browser history, and referrer headers; a credential must
+   * not.
+   */
+  async connect(ticket: string, contentHash = ""): Promise<void> {
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(`${proto}//${location.host}/ws`);
+    ws.binaryType = "arraybuffer";
+    this.#ws = ws;
+
+    await new Promise<void>((resolve, reject) => {
+      ws.onopen = () => resolve();
+      ws.onerror = () => reject(new Error("could not reach the server"));
+    });
+
+    ws.onmessage = (ev) => this.#onMessage(ev);
+    ws.onclose = (ev) => this.#onClose(ev);
+
+    this.send({
+      case: "hello",
+      value: create(HelloSchema, { ticket, protocolVersion: PROTOCOL_VERSION, contentHash }),
+    });
+
+    this.#pingTimer = window.setInterval(() => this.#ping(), 2000);
+  }
+
+  /** Sends one tick of intent. */
+  sendIntent(seq: number, moveX: number, jump: boolean, up: boolean, down: boolean): void {
+    this.send({
+      case: "intent",
+      value: create(IntentSchema, {
+        seq,
+        ackSnapshot: this.#lastSnapshotTick,
+        moveX,
+        jump,
+        up,
+        down,
+      }),
+    });
+  }
+
+  send(body: ClientMessage["body"]): void {
+    if (!this.connected) return;
+    const msg = create(ClientMessageSchema, { body });
+    const env = create(EnvelopeSchema, { client: [msg] });
+    this.#ws!.send(toBinary(EnvelopeSchema, env));
+  }
+
+  close(): void {
+    if (this.#pingTimer !== undefined) clearInterval(this.#pingTimer);
+    this.#ws?.close(1000, "client closing");
+    this.#ws = null;
+  }
+
+  #ping(): void {
+    this.send({ case: "ping", value: create(PingSchema, { clientTimeMs: BigInt(Date.now()) }) });
+  }
+
+  #onMessage(ev: MessageEvent): void {
+    const bytes = new Uint8Array(ev.data as ArrayBuffer);
+    this.#stats.bytesReceived += bytes.byteLength;
+
+    const env = fromBinary(EnvelopeSchema, bytes);
+
+    // The server batches a whole tick into one frame, so a frame usually holds
+    // a snapshot plus whatever events fired alongside it.
+    for (const msg of env.server) {
+      switch (msg.body.case) {
+        case "welcome":
+          this.#handlers.onWelcome(msg.body.value);
+          break;
+        case "snapshot": {
+          const snap = msg.body.value;
+          if (snap.tick > this.#lastSnapshotTick) this.#lastSnapshotTick = snap.tick;
+          this.#stats.snapshotsReceived++;
+          this.#handlers.onSnapshot(snap);
+          break;
+        }
+        case "event":
+          this.#handlers.onEvent(msg.body.value);
+          break;
+        case "pong": {
+          const sent = Number(msg.body.value.clientTimeMs);
+          this.#stats.rttMs = Date.now() - sent;
+          this.#handlers.onPong(sent);
+          break;
+        }
+        case "kick":
+          this.#handlers.onClosed(msg.body.value.code, msg.body.value.reason);
+          break;
+      }
+    }
+  }
+
+  #onClose(ev: CloseEvent): void {
+    if (this.#pingTimer !== undefined) clearInterval(this.#pingTimer);
+    this.#handlers.onClosed(ev.code, ev.reason || describeClose(ev.code));
+  }
+}
+
+/** Turns a close code into something worth showing a player. */
+export function describeClose(code: number): string {
+  switch (code) {
+    case Close.TicketInvalid:
+      return "Your session expired. Connect again.";
+    case Close.ProtocolVersion:
+      return "This client is out of date. Reload the page.";
+    case Close.ContentHash:
+      return "Game content changed. Reload the page.";
+    case Close.NotAllowed:
+      return "You are not allowed to join.";
+    case Close.Kicked:
+      return "You were disconnected.";
+    case Close.LeaseLost:
+      return "Your character was claimed elsewhere.";
+    case Close.RateLimited:
+      return "Connection could not keep up.";
+    case Close.ServerShutdown:
+      return "The server is restarting.";
+    case 1000:
+      return "Disconnected.";
+    default:
+      return `Connection lost (${code}).`;
+  }
+}
+
+/** Whether reconnecting is worth attempting for this close code. */
+export function isRetryable(code: number): boolean {
+  return (
+    code === Close.ServerShutdown ||
+    code === Close.LeaseLost ||
+    code === 1001 ||
+    code === 1006
+  );
+}
+
+export type { Snapshot, Welcome, Event, EntityState };

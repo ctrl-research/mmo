@@ -1,0 +1,68 @@
+# Hobby-scale deployment: the whole game on one box.
+#
+# Postgres and Redis are here from the start even though M0 uses neither, so
+# that persistence in M2 is a configuration change rather than an
+# infrastructure project. Scaling out to many nodes replaces this file with
+# Kubernetes manifests in M9; nothing in the game code changes.
+
+name: mmo
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: mmo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpassword}
+      POSTGRES_DB: mmo
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mmo -d mmo"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    # Presence, sessions, leases, and the room directory all live here, and
+    # every one of them is reconstructible. Losing Redis costs players a
+    # disconnect, not data, so persistence is deliberately off.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    command:
+      - "--roles=all"
+      - "--addr=:8080"
+      - "--admin-addr=0.0.0.0:9090"
+      # Development authentication has no identity check at all. It is on here
+      # because M2 has not built OIDC yet, and this compose file is meant for a
+      # laptop. Remove it before this is reachable by anyone else.
+      - "--dev-auth"
+      - "--client-dir=/srv/client"
+    environment:
+      DATABASE_URL: postgres://mmo:${POSTGRES_PASSWORD:-devpassword}@postgres:5432/mmo?sslmode=disable
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "8080:8080"
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

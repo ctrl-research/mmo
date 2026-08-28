@@ -1,0 +1,15 @@
+version: v2
+managed:
+  enabled: true
+plugins:
+  # Go types. protoc-gen-go is resolved from tools/go.mod, so no system protoc
+  # install is required anywhere in the build.
+  - local: ["go", "tool", "-modfile=tools/go.mod", "protoc-gen-go"]
+    out: internal/wire
+    opt: paths=source_relative
+
+  # TypeScript types, generated from the same schema so the client and server
+  # cannot drift. protoc-gen-es comes from the client's node_modules.
+  - local: ./client/node_modules/.bin/protoc-gen-es
+    out: client/src/gen
+    opt: target=ts
