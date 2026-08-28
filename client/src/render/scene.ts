@@ -282,7 +282,13 @@ class EntitySprite {
 
     if (this.#label) {
       this.#label.position.set(px + pw / 2, py - (e.kind === KIND_MOB ? 12 : 14));
-      this.#label.alpha = e.kind === KIND_MOB && e.hp === 0 ? 0.3 : 1;
+
+      // A mob is named only while it is damaged, the same condition as its
+      // health bar. Labelling every mob buries the map in overlapping text --
+      // two slimes standing together render as "Green SlimGreen Slime" -- and
+      // the name matters when you are fighting something, not when you are
+      // walking past it.
+      this.#label.visible = e.kind !== KIND_MOB || (e.hp > 0 && e.hp < e.hpMax);
     }
   }
 }

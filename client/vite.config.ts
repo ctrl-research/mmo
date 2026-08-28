@@ -8,6 +8,14 @@ import { fileURLToPath, URL } from "node:url";
 // in production.
 const SERVER = process.env.MMO_SERVER ?? "http://localhost:8080";
 
+// Printed at startup because the proxy target is invisible otherwise, and
+// pointing at the wrong port produces a failure several steps downstream that
+// says nothing about the proxy. Port 8080 is occupied on many machines by
+// Docker, Lima, or similar -- and whatever holds it answers these requests
+// perfectly happily.
+console.log(`[mmo] proxying /api, /ws and /healthz to ${SERVER}`);
+console.log("[mmo] override with MMO_SERVER=http://localhost:PORT npm run dev");
+
 export default defineConfig({
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
