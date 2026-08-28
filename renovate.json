@@ -1,0 +1,112 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "timezone": "America/Toronto",
+  "rebaseWhen": "conflicted",
+  "commitBodyTable": true,
+  "printConfig": true,
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "enabledManagers": [
+    "asdf",
+    "docker-compose",
+    "github-actions",
+    "gomod"
+  ],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "asdf"
+      ],
+      "commitMessageTopic": "tool {{depName}}",
+      "matchUpdateTypes": [
+        "major",
+        "minor",
+        "patch"
+      ],
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "tools",
+      "addLabels": [
+        "tools"
+      ]
+    },
+    {
+      "matchDatasources": [
+        "docker"
+      ],
+      "commitMessageTopic": "docker {{depName}}",
+      "matchUpdateTypes": [
+        "major",
+        "minor",
+        "patch"
+      ],
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "docker",
+      "bumpVersion": "patch",
+      "addLabels": [
+        "docker"
+      ]
+    },
+    {
+      "matchDatasources": [
+        "github-actions"
+      ],
+      "commitMessageTopic": "github action {{depName}}",
+      "matchUpdateTypes": [
+        "major",
+        "minor",
+        "patch"
+      ],
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "ci",
+      "addLabels": [
+        "ci"
+      ]
+    },
+    {
+      "matchDatasources": [
+        "gomod"
+      ],
+      "commitMessageTopic": "go module {{depName}}",
+      "matchUpdateTypes": [
+        "major",
+        "minor",
+        "patch"
+      ],
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "deps",
+      "addLabels": [
+        "go"
+      ]
+    },
+    {
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "addLabels": [
+        "major"
+      ]
+    },
+    {
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "addLabels": [
+        "minor"
+      ]
+    },
+    {
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "addLabels": [
+        "patch"
+      ]
+    }
+  ],
+  "labels": [
+    "renovate"
+  ]
+}

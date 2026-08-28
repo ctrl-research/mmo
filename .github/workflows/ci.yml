@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for sensitive files
+        run: |
+          # Fail if .env, secrets, or private keys are committed
+          if git grep -l "\.env\|PRIVATE_KEY\|AWS_SECRET" --cached 2>/dev/null; then
+            echo "Error: sensitive files committed"
+            exit 1
+          fi
+
+      - name: Validate YAML files
+        run: |
+          for f in $(find . -name "*.yaml" -o -name "*.yml" 2>/dev/null | grep -v node_modules); do
+            python3 -c "import yaml, sys; yaml.safe_load(open('$f'))" 2>/dev/null || echo "Invalid YAML: $f"
+          done
+
+      # Add project-specific validation steps below, e.g.:
+      # - name: Run tests
+      #   run: go test ./...
+      #
+      # - name: Build Docker image
+      #   run: docker build .

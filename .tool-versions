@@ -1,0 +1,8 @@
+# Single source of truth for language/tool versions (asdf/mise format).
+# Humans and AI agents should use these versions for all builds, tests, and tooling.
+# Install with `asdf install` or `mise install`.
+#
+# Uncomment/add entries for your project's stack, e.g.:
+# golang 1.24.4
+# nodejs 22.16.0
+# python 3.13.5
