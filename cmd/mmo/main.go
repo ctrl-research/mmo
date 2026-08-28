@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -162,7 +163,6 @@ func run() error {
 			// and a write deadline on the whole connection would sever it.
 			// Individual writes are bounded inside the session instead.
 		})
-		log.Info("gateway listening", "addr", cfg.addr)
 	}
 
 	// The admin server carries metrics and pprof. It is always a separate
@@ -179,15 +179,32 @@ func run() error {
 		Handler:           admin,
 		ReadHeaderTimeout: 10 * time.Second,
 	})
-	log.Info("admin listening", "addr", cfg.adminAddr)
+
+	// Bind every port before serving any of them, and before logging that
+	// anything is listening. Starting the goroutines first means a bind
+	// failure arrives after the "listening" and "ready" lines have already
+	// printed, so the log claims success a moment before the process dies --
+	// exactly the wrong thing to read while diagnosing a port collision.
+	listeners := make([]net.Listener, 0, len(servers))
+	for _, srv := range servers {
+		ln, err := net.Listen("tcp", srv.Addr)
+		if err != nil {
+			for _, open := range listeners {
+				open.Close()
+			}
+			return describeListenError(srv.Addr, err)
+		}
+		listeners = append(listeners, ln)
+		log.Info("listening", "addr", ln.Addr().String())
+	}
 
 	errs := make(chan error, len(servers))
-	for _, srv := range servers {
-		go func(s *http.Server) {
-			if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				errs <- fmt.Errorf("listening on %s: %w", s.Addr, err)
+	for i, srv := range servers {
+		go func(s *http.Server, ln net.Listener) {
+			if err := s.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				errs <- fmt.Errorf("serving on %s: %w", s.Addr, err)
 			}
-		}(srv)
+		}(srv, listeners[i])
 	}
 
 	log.Info("server ready", "roles", cfg.roles, "node", cfg.nodeID, "content", game.Hash)
@@ -306,4 +323,32 @@ func splitAndTrim(s string) []string {
 		}
 	}
 	return out
+}
+
+// describeListenError turns a bind failure into something actionable.
+//
+// A port collision is by far the most common way starting this fails, and
+// 8080 in particular is occupied on a lot of developer machines by Docker,
+// Lima, or another service. The raw syscall error says what happened but not
+// what to do, and the resulting symptom downstream -- a dev proxy forwarding
+// to whatever else holds the port -- is genuinely confusing to trace back.
+func describeListenError(addr string, err error) error {
+	if errors.Is(err, syscall.EADDRINUSE) {
+		return fmt.Errorf(
+			"port %s is already in use by another process.\n"+
+				"  Find it with:  lsof -nP -iTCP%s -sTCP:LISTEN\n"+
+				"  Or pick another port:  --addr=:8088\n"+
+				"  If you are also running the Vite dev server, point it at the same port:\n"+
+				"    MMO_SERVER=http://localhost:8088 npm --prefix client run dev",
+			addr, portOf(addr))
+	}
+	return fmt.Errorf("listening on %s: %w", addr, err)
+}
+
+// portOf extracts ":8080" from an address like "0.0.0.0:8080".
+func portOf(addr string) string {
+	if i := strings.LastIndex(addr, ":"); i >= 0 {
+		return addr[i:]
+	}
+	return addr
 }

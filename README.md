@@ -64,8 +64,20 @@ two clients share a room.
 `--dev-auth` issues game tickets with no identity check, because OIDC arrives in
 M2. Never enable it on anything reachable by someone you do not trust.
 
-If port 8080 is taken, pass `--addr=:8088` and start the client with
-`MMO_SERVER=http://localhost:8088 npm --prefix client run dev`.
+### If port 8080 is taken
+
+It often is — Docker, Lima, and similar hold it on many machines. Use another
+port on **both** sides, or the dev proxy forwards to whatever else is listening
+and you get a confusing error from a server that is not this one:
+
+```
+./bin/mmo --dev-auth --addr=:8088
+MMO_SERVER=http://localhost:8088 npm --prefix client run dev
+```
+
+Vite prints its proxy target at startup, and the client checks that whatever
+answers is actually the game server before trying to connect, so a mismatch
+says so plainly rather than failing further downstream.
 
 ### Testing
 
