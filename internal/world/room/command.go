@@ -29,6 +29,12 @@ type Handle interface {
 	// Input queues one tick of intent. It never blocks the caller: a room that
 	// is mid-tick must not be able to stall a gateway goroutine.
 	Input(ctx context.Context, id EntityID, seq uint32, in sim.Input)
+
+	// Cast queues a skill request.
+	Cast(ctx context.Context, id EntityID, skillID string, facingLeft bool)
+
+	// Interact queues a request to act on a nearby entity.
+	Interact(ctx context.Context, id EntityID, target EntityID, kind InteractKind)
 }
 
 // command is one message to the room goroutine.
@@ -53,9 +59,36 @@ type inputCmd struct {
 	in  sim.Input
 }
 
-func (joinCmd) isCommand()  {}
-func (leaveCmd) isCommand() {}
-func (inputCmd) isCommand() {}
+type castCmd struct {
+	id  EntityID
+	req castRequest
+}
+
+// castRequest is a client's request to use a skill. It carries no target and
+// no damage: the server resolves what the swing reaches from its own state.
+type castRequest struct {
+	skillID    string
+	facingLeft bool
+}
+
+type interactCmd struct {
+	id     EntityID
+	target EntityID
+	kind   InteractKind
+}
+
+// InteractKind is what a player wants to do with a nearby entity.
+type InteractKind uint8
+
+const (
+	InteractLoot InteractKind = iota + 1
+)
+
+func (joinCmd) isCommand()     {}
+func (leaveCmd) isCommand()    {}
+func (inputCmd) isCommand()    {}
+func (castCmd) isCommand()     {}
+func (interactCmd) isCommand() {}
 
 // handle dispatches one command. It runs on the room goroutine, so it may
 // touch room state freely.
@@ -68,6 +101,10 @@ func (r *Room) handle(c command) {
 		r.leave(cmd.id)
 	case inputCmd:
 		r.input(cmd.id, cmd.seq, cmd.in)
+	case castCmd:
+		r.queueCast(cmd.id, cmd.req)
+	case interactCmd:
+		r.interact(cmd.id, cmd.target, cmd.kind)
 	default:
 		// Test-only commands implement the interface elsewhere in the package.
 		if insp, ok := c.(interface{ run(*Room) }); ok {
@@ -81,20 +118,33 @@ func (r *Room) join(name string, sink Sink) (EntityID, error) {
 		return 0, ErrRoomFull
 	}
 
+	state := newPlayerState()
+
 	e := r.spawnEntity(&Entity{
 		Kind: KindPlayer,
 		// Players are always shared-layer: everyone in a room sees everyone
-		// else. Only hostile and lootable entities are layered.
-		Layer: SharedLayer,
-		Body:  r.spawnBody(),
-		HP:    100,
-		MaxHP: 100,
-		Name:  name,
+		// else, chats with them, and can party with them. Only hostile and
+		// lootable entities are layered.
+		Layer:  SharedLayer,
+		Body:   r.spawnBody(),
+		HP:     MaxHPFor(state.Level),
+		MaxHP:  MaxHPFor(state.Level),
+		Name:   name,
+		Player: state,
 	})
+
+	// Allocate the layer this player's mobs and drops live in. From M5 the key
+	// is the party ID, so partying up merges views; until parties exist every
+	// player gets their own, which is the same code path with a different key.
+	r.nextLayer++
+	layer := r.nextLayer
+	r.layerFor(layer)
+	e.HuntLayer = layer
 
 	p := &player{
 		entity:      e,
 		sink:        sink,
+		layer:       layer,
 		sent:        make(map[EntityID]view),
 		seenScratch: make(map[EntityID]struct{}),
 	}
@@ -139,6 +189,11 @@ func (r *Room) leave(id EntityID) {
 		}
 	}
 	r.removeEntity(id)
+
+	// Releasing the layer tears down its mobs and drops once the last player
+	// using it leaves. Without this a long-lived room accumulates populations
+	// nobody can see -- pure tick cost, and a slow leak.
+	r.releaseLayer(p.layer)
 
 	r.broadcastExcept(id, &mmov1.ServerMessage{
 		Body: &mmov1.ServerMessage_Event{Event: &mmov1.Event{
@@ -217,6 +272,20 @@ func (h *localHandle) Leave(ctx context.Context, id EntityID) {
 	}
 }
 
+func (h *localHandle) Cast(_ context.Context, id EntityID, skillID string, facingLeft bool) {
+	select {
+	case h.room.cmds <- castCmd{id: id, req: castRequest{skillID: skillID, facingLeft: facingLeft}}:
+	default:
+	}
+}
+
+func (h *localHandle) Interact(_ context.Context, id EntityID, target EntityID, kind InteractKind) {
+	select {
+	case h.room.cmds <- interactCmd{id: id, target: target, kind: kind}:
+	default:
+	}
+}
+
 func (h *localHandle) Input(_ context.Context, id EntityID, seq uint32, in sim.Input) {
 	// Never block. If the room is saturated the input is dropped, and the
 	// simulation repeats the player's last intent -- which reads as brief
@@ -228,3 +297,29 @@ func (h *localHandle) Input(_ context.Context, id EntityID, seq uint32, in sim.I
 }
 
 var _ Handle = (*localHandle)(nil)
+
+// maxQueuedCasts bounds how many casts one client may have pending.
+//
+// A player can legitimately queue at most one per tick; anything beyond a
+// small buffer is a client sending faster than it simulates, and the excess is
+// dropped rather than allowed to grow.
+const maxQueuedCasts = 4
+
+func (r *Room) queueCast(id EntityID, req castRequest) {
+	p, ok := r.players[id]
+	if !ok || len(p.casts) >= maxQueuedCasts {
+		return
+	}
+	p.casts = append(p.casts, req)
+}
+
+func (r *Room) interact(id EntityID, target EntityID, kind InteractKind) {
+	p, ok := r.players[id]
+	if !ok {
+		return
+	}
+	switch kind {
+	case InteractLoot:
+		r.tryLoot(p.entity, target)
+	}
+}

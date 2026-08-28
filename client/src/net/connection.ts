@@ -6,6 +6,9 @@ import {
   HelloSchema,
   IntentSchema,
   PingSchema,
+  CastSchema,
+  InteractSchema,
+  InteractKind,
   type Snapshot,
   type Welcome,
   type Event,
@@ -117,6 +120,28 @@ export class Connection {
         jump,
         up,
         down,
+      }),
+    });
+  }
+
+  /**
+   * Requests a skill. The client asks; the server decides what it reached and
+   * for how much, so there is deliberately no target or damage to send.
+   */
+  sendCast(seq: number, skillId: string, facingLeft: boolean): void {
+    this.send({
+      case: "cast",
+      value: create(CastSchema, { seq, skillId, facingLeft }),
+    });
+  }
+
+  /** Requests to loot a nearby drop. */
+  sendLoot(entityId: number): void {
+    this.send({
+      case: "interact",
+      value: create(InteractSchema, {
+        entityId,
+        kind: InteractKind.LOOT,
       }),
     });
   }

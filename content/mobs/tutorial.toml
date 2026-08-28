@@ -1,0 +1,88 @@
+# Mob definitions.
+#
+# AI profiles are Go state machines; everything here is parameters. A handful
+# of profiles covers most mobs, and bosses get bespoke profiles in M7 because a
+# boss's mechanics *are* the encounter.
+
+[mob.slime_green]
+name = "Green Slime"
+level = 3
+hp = 60
+attack = 4
+armour = 2
+exp = 12
+width = 32.0
+height = 28.0
+drop_table = "slime_green"
+
+[mob.slime_green.ai]
+profile = "aggressive_melee"
+aggro_range = 180.0
+leash_range = 420.0
+attack_range = 40.0
+
+# Per second; converted to per tick at load so the simulation never divides by
+# a tick rate at runtime.
+move_speed = 45.0
+
+# Idle mobs run their behaviour on a slower beat. Under per-player layering a
+# room holds roughly layers x mobs entities and most are idle at any moment, so
+# this is the largest saving available -- and it is invisible in play, because
+# an idle mob has nothing to decide.
+idle_tick_interval = 8
+
+[[mob.slime_green.abilities]]
+skill = "mob_bite"
+weight = 1
+cooldown_ms = 1400
+
+[mob.boar_wild]
+name = "Wild Boar"
+level = 8
+hp = 140
+attack = 11
+armour = 6
+exp = 34
+width = 44.0
+height = 36.0
+drop_table = "boar_wild"
+
+[mob.boar_wild.ai]
+profile = "aggressive_melee"
+aggro_range = 260.0
+leash_range = 560.0
+attack_range = 48.0
+move_speed = 70.0
+idle_tick_interval = 8
+
+[[mob.boar_wild.abilities]]
+skill = "mob_bite"
+weight = 1
+cooldown_ms = 1100
+
+# Placed on a shared spawn point in the tutorial map, so everyone in the room
+# fights the same one. It is the counterweight to per-player mobs: without
+# shared-layer content a hunting zone reads as single-player with chat.
+[mob.slime_king]
+name = "Slime King"
+level = 12
+hp = 900
+attack = 18
+armour = 10
+exp = 400
+width = 64.0
+height = 56.0
+drop_table = "slime_king"
+
+[mob.slime_king.ai]
+profile = "aggressive_melee"
+aggro_range = 320.0
+leash_range = 900.0
+attack_range = 64.0
+move_speed = 55.0
+idle_tick_interval = 4
+
+[[mob.slime_king.abilities]]
+skill = "mob_bite"
+weight = 1
+cooldown_ms = 900

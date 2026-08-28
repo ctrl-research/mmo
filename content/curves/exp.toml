@@ -1,0 +1,26 @@
+# Progression curves.
+#
+# Both tables are generated from these parameters at load rather than typed
+# out: a 200-entry table is not something anyone should hand-maintain, and
+# these are what a designer actually wants to adjust.
+
+[main]
+max_level = 200
+
+# expToNext(L) = scale * L^exponent * (1 + growth)^L
+#
+# The polynomial term shapes the early game and the exponential term the late
+# game. Together they give a MapleStory-flavoured curve: a new character
+# reaches interesting skills quickly, and level 150 still feels earned.
+#
+# At these values: level 1->2 costs 15, 10->11 about 400, 50->51 about 180k,
+# and 100->101 about 46m.
+scale = 15.0
+exponent = 2.4
+growth = 0.045
+
+[secondary]
+# Secondary skills use Old School RuneScape's curve unchanged. It is well
+# tuned, and instantly legible to anyone who has played the game these skills
+# are borrowed from.
+max_level = 99

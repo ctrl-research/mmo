@@ -44,20 +44,40 @@ TinyGo is also still unpinned: the WASM module is 1.9 MB from the stock Go toolc
 
 ---
 
-## M1 — Combat
+## M1 — Combat — **done**
 
-- Mobs loaded from content files; spawn points with independent respawn timers
-- **Per-layer mob instancing**: `owner` spawn points instantiate per player, each layer with its own spawn timers; `shared` spawn points are common to the room
-- Ground drops inherit the layer of the mob that dropped them
-- AI state machine: idle → aggro → chase → attack → leash → dead
-- One melee skill with cooldown, cost, and a cone hitbox
-- Damage pipeline end to end (`data-model.md` § Damage resolution)
-- Death, respawn, exp award, level-up
-- Gold and item drops on the ground, with pickup
-- Floating damage numbers, HP bars, death and hit feedback
-- Seeded per-room PRNG; room replay harness
+- [x] Mobs loaded from content files; spawn points with independent respawn timers
+- [x] **Per-layer mob instancing**: `owner` spawn points instantiate per player, each layer with its own spawn timers and its own RNG stream; `shared` spawn points are common to the room
+- [x] Ground drops inherit the layer of the mob that dropped them
+- [x] AI state machine: idle → aggro → chase → attack → leash → dead
+- [x] One melee skill with cooldown, cost, and a bounded hitbox
+- [x] Damage pipeline end to end, including the armour curve
+- [x] Death, respawn, exp award, level-up (including multi-level from one kill)
+- [x] Gold and item drops on the ground, with pickup
+- [x] Floating damage numbers, HP bars, hit and death feedback
+- [x] Seeded per-room PRNG; determinism verified across scripted runs
 
-**Exit:** walk to a slime, kill it, watch damage numbers, gain exp, level up, pick up the drop. Two players in the same room see each other but hunt independent mobs and cannot touch each other's drops. Replay the room from `(seed, input log)` and get identical results.
+**Exit criteria, and how each was verified:**
+
+| Criterion | Status |
+|---|---|
+| Kill a mob, gain exp, level up, pick up the drop | Verified — end to end over a real socket |
+| Two players see each other but hunt independent mobs | Verified — over the wire, including that the shared-layer boss reaches both |
+| Cannot touch another player's mobs or loot | Verified — and this caught a real bug (see below) |
+| Deterministic from a seed | Verified — 120 scripted ticks compared entity by entity across repeated runs |
+
+**Not yet judged:** combat *feel* — swing timing, hit reaction, whether the
+damage numbers read at speed. Same caveat as M0's movement feel: it needs a
+human at a foreground browser, and the numbers in `content/` are a considered
+first guess rather than a tuned one.
+
+**Deferred to where it belongs.** Critical hits are threaded through the damage
+pipeline and the wire format but never fire, because nothing grants crit chance
+until equipment lands in M3. Item drops are acknowledged and consumed rather
+than stored, for the same reason — there is no inventory yet. Player death
+restores in place; a real death penalty needs persistence (M2).
+
+---
 
 ---
 

@@ -19,7 +19,9 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/ctrl-research/mmo/internal/content"
 	"github.com/ctrl-research/mmo/internal/directory"
+	"github.com/ctrl-research/mmo/internal/rng"
 	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
 	"github.com/ctrl-research/mmo/internal/world/sim"
 )
@@ -97,6 +99,13 @@ type player struct {
 	// seenScratch is reused by the snapshot builder each tick to avoid
 	// allocating a map per player per tick.
 	seenScratch map[EntityID]struct{}
+
+	// casts queued since the last tick, drained in the cast phase.
+	casts []castRequest
+
+	// layer is the visibility layer this player's mobs and drops live in.
+	// From M5 it is the party ID; until then, one per player.
+	layer LayerID
 }
 
 type queuedInput struct {
@@ -113,6 +122,17 @@ type Config struct {
 	Tuning     sim.Tuning
 	Spawn      sim.Vec
 	Logger     *slog.Logger
+
+	// Content is the loaded, immutable game data. Rooms read it concurrently
+	// with no locking, which is part of what keeps the tick cheap.
+	Content *content.Content
+
+	// Map is this room's map definition, including its spawn points.
+	Map *content.Map
+
+	// Seed determines every roll this room will make. Recording it alongside
+	// the input log makes the room's entire history reproducible.
+	Seed uint64
 
 	// Observer receives per-tick statistics. Optional; the metrics package
 	// provides one. Kept as an interface so the simulation has no dependency
@@ -145,7 +165,44 @@ type Room struct {
 
 	nextEntityID EntityID
 
+	// content and mapDef are the loaded game data this room simulates.
+	content *content.Content
+	mapDef  *content.Map
+
+	// rand is the room's own generator, advanced only inside the tick loop.
+	// Shared-layer content rolls from here; each layer has its own stream.
+	rand *rng.Source
+
+	// layers hold per-player mob populations. layerOrder keeps iteration
+	// deterministic, because Go randomises map order and spawning in a
+	// different sequence would break replay.
+	layers     map[LayerID]*layerState
+	layerOrder []LayerID
+
+	// sharedSpawns are the spawn points every player in the room shares.
+	sharedSpawns []*spawnState
+
+	// nextLayer allocates layer keys. From M5 the key is the party ID.
+	nextLayer LayerID
+
+	// pending accumulates events produced during a tick, flushed with the
+	// snapshot so a client receives a tick's outcome as one frame.
+	pending []pendingEvent
+
 	cmds chan command
+}
+
+// pendingEvent is an event awaiting delivery, with the audience it belongs to.
+type pendingEvent struct {
+	event *mmov1.Event
+
+	// layer scopes the event to one layer's viewers. SharedLayer means
+	// everyone in the room.
+	layer LayerID
+
+	// only, when non-zero, restricts delivery to a single entity's owner --
+	// experience and loot are nobody else's business.
+	only EntityID
 }
 
 // New builds a room. It does not start ticking; call Run.
@@ -156,15 +213,64 @@ func New(cfg Config) *Room {
 	if cfg.Capacity <= 0 {
 		cfg.Capacity = 30
 	}
-	return &Room{
+	r := &Room{
 		cfg:     cfg,
 		log:     cfg.Logger.With("instance", uint64(cfg.InstanceID), "map", cfg.MapID),
 		index:   make(map[EntityID]int),
 		players: make(map[EntityID]*player),
+		content: cfg.Content,
+		mapDef:  cfg.Map,
+		rand:    rng.New(cfg.Seed),
+		layers:  make(map[LayerID]*layerState),
 		// Buffered so a burst of input from many clients never blocks a
 		// gateway goroutine while the room is mid-tick.
 		cmds: make(chan command, 1024),
 	}
+
+	// Shared-layer spawn points exist once for the whole room: the field boss
+	// everyone fights, which is the counterweight to per-player mobs.
+	if cfg.Map != nil {
+		for i := range cfg.Map.MobSpawns {
+			sp := &cfg.Map.MobSpawns[i]
+			if sp.Layer == content.LayerShared {
+				r.sharedSpawns = append(r.sharedSpawns, newSpawnState(sp, SharedLayer))
+			}
+		}
+	}
+	return r
+}
+
+// randFor returns the generator scoped to a layer.
+//
+// Per-layer streams mean one player's drop luck never depends on how many
+// other players happen to be in the room, which would otherwise make loot
+// subtly non-reproducible in a replay.
+func (r *Room) randFor(layer LayerID) *rng.Source {
+	if layer == SharedLayer {
+		return r.rand
+	}
+	if l, ok := r.layers[layer]; ok {
+		return l.rand
+	}
+	return r.rand
+}
+
+// entity returns an entity by ID, or nil.
+func (r *Room) entity(id EntityID) *Entity {
+	if i, ok := r.index[id]; ok {
+		return r.entities[i]
+	}
+	return nil
+}
+
+// emit queues an event for everyone who can see the given layer.
+func (r *Room) emit(ev *mmov1.Event, layer LayerID) {
+	r.pending = append(r.pending, pendingEvent{event: ev, layer: layer})
+}
+
+// emitTo queues an event for one player only.
+func (r *Room) emitTo(id EntityID, ev *mmov1.Event) {
+	r.pending = append(r.pending, pendingEvent{event: ev, only: id})
 }
 
 // ID returns the instance ID.
@@ -203,12 +309,17 @@ func (r *Room) doTick() {
 	start := time.Now()
 	r.tick++
 
+	// The phase order is part of the game's observable behaviour. It decides,
+	// for example, whether a mob that dies this tick still lands the hit it
+	// queued this tick -- it does not, because AI runs before its own death is
+	// processed but after players have already acted.
 	r.phaseIngestAndMove()
-
-	// M1 adds: abilities, AI, effects, rewards, spawns -- between movement and
-	// snapshot, in that order.
-
+	r.phaseCasts()
+	r.phaseAI()
+	r.phaseDrops()
+	r.phaseSpawns()
 	r.phaseSnapshot()
+	r.pending = r.pending[:0]
 
 	elapsed := time.Since(start)
 	if r.cfg.Observer != nil {

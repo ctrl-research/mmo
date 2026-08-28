@@ -2,7 +2,7 @@
 
 A self-hosted, horizontally scalable 2D MMO — drawing on MapleStory's side-scrolling combat and channels, Path of Exile's passive tree and stat math, and Old School RuneScape's secondary skills.
 
-**Status: M0 complete** — the movement vertical slice runs. Two clients can connect to a shared map and see each other move, with client-side prediction verified bit-identical to the server. See `docs/roadmap.md`.
+**Status: M1 complete** — the combat vertical slice runs. Two players share a map, see each other, and hunt their own private mobs: kill, gain experience, level up, and loot. Client-side prediction is verified bit-identical to the server. See `docs/roadmap.md`.
 
 ## Design goals
 

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ctrl-research/mmo/internal/fixed"
+	"github.com/ctrl-research/mmo/internal/content/contenttest"
 	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
 	"github.com/ctrl-research/mmo/internal/world/sim"
 )
@@ -79,18 +79,24 @@ func (s *recordSink) isClosed() bool {
 func testRoom(t *testing.T, capacity int) (*Room, Handle, context.CancelFunc) {
 	t.Helper()
 
-	world := &sim.World{
-		Solids: []sim.Rect{sim.RectFromInts(0, 400, 640, 80)},
-		Bounds: sim.RectFromInts(0, 0, 640, 480),
+	game, err := contenttest.Load()
+	if err != nil {
+		t.Fatalf("load test content: %v", err)
 	}
+	m := game.Maps["test"]
+
 	r := New(Config{
 		InstanceID: 1,
-		MapID:      "test",
+		MapID:      m.ID,
 		Capacity:   capacity,
-		World:      world,
+		World:      m.World,
 		Tuning:     sim.DefaultTuning(),
-		Spawn:      sim.Vec{X: fixed.FromInt(100), Y: fixed.FromInt(400)},
+		Spawn:      m.DefaultSpawn().At,
 		Logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Content:    game,
+		Map:        m,
+		// Fixed, so a failure is reproducible rather than a roll of the day.
+		Seed: 0xA11CE,
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())

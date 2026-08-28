@@ -21,6 +21,52 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type InteractKind int32
+
+const (
+	InteractKind_INTERACT_KIND_UNSPECIFIED InteractKind = 0
+	InteractKind_INTERACT_KIND_LOOT        InteractKind = 1
+)
+
+// Enum value maps for InteractKind.
+var (
+	InteractKind_name = map[int32]string{
+		0: "INTERACT_KIND_UNSPECIFIED",
+		1: "INTERACT_KIND_LOOT",
+	}
+	InteractKind_value = map[string]int32{
+		"INTERACT_KIND_UNSPECIFIED": 0,
+		"INTERACT_KIND_LOOT":        1,
+	}
+)
+
+func (x InteractKind) Enum() *InteractKind {
+	p := new(InteractKind)
+	*p = x
+	return p
+}
+
+func (x InteractKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (InteractKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_mmo_v1_game_proto_enumTypes[0].Descriptor()
+}
+
+func (InteractKind) Type() protoreflect.EnumType {
+	return &file_mmo_v1_game_proto_enumTypes[0]
+}
+
+func (x InteractKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use InteractKind.Descriptor instead.
+func (InteractKind) EnumDescriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{0}
+}
+
 type EntityKind int32
 
 const (
@@ -60,11 +106,11 @@ func (x EntityKind) String() string {
 }
 
 func (EntityKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_mmo_v1_game_proto_enumTypes[0].Descriptor()
+	return file_mmo_v1_game_proto_enumTypes[1].Descriptor()
 }
 
 func (EntityKind) Type() protoreflect.EnumType {
-	return &file_mmo_v1_game_proto_enumTypes[0]
+	return &file_mmo_v1_game_proto_enumTypes[1]
 }
 
 func (x EntityKind) Number() protoreflect.EnumNumber {
@@ -73,7 +119,7 @@ func (x EntityKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use EntityKind.Descriptor instead.
 func (EntityKind) EnumDescriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{0}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{1}
 }
 
 // Bit positions in EntityDelta.field_mask.
@@ -119,11 +165,11 @@ func (x EntityField) String() string {
 }
 
 func (EntityField) Descriptor() protoreflect.EnumDescriptor {
-	return file_mmo_v1_game_proto_enumTypes[1].Descriptor()
+	return file_mmo_v1_game_proto_enumTypes[2].Descriptor()
 }
 
 func (EntityField) Type() protoreflect.EnumType {
-	return &file_mmo_v1_game_proto_enumTypes[1]
+	return &file_mmo_v1_game_proto_enumTypes[2]
 }
 
 func (x EntityField) Number() protoreflect.EnumNumber {
@@ -132,7 +178,7 @@ func (x EntityField) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use EntityField.Descriptor instead.
 func (EntityField) EnumDescriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{1}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{2}
 }
 
 // Bit positions in EntityState.flags and EntityDelta.flags.
@@ -175,11 +221,11 @@ func (x EntityFlag) String() string {
 }
 
 func (EntityFlag) Descriptor() protoreflect.EnumDescriptor {
-	return file_mmo_v1_game_proto_enumTypes[2].Descriptor()
+	return file_mmo_v1_game_proto_enumTypes[3].Descriptor()
 }
 
 func (EntityFlag) Type() protoreflect.EnumType {
-	return &file_mmo_v1_game_proto_enumTypes[2]
+	return &file_mmo_v1_game_proto_enumTypes[3]
 }
 
 func (x EntityFlag) Number() protoreflect.EnumNumber {
@@ -188,7 +234,7 @@ func (x EntityFlag) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use EntityFlag.Descriptor instead.
 func (EntityFlag) EnumDescriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{2}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{3}
 }
 
 // Envelope is exactly one WebSocket binary frame.
@@ -255,6 +301,8 @@ type ClientMessage struct {
 	//	*ClientMessage_Hello
 	//	*ClientMessage_Intent
 	//	*ClientMessage_Ping
+	//	*ClientMessage_Cast
+	//	*ClientMessage_Interact
 	Body          isClientMessage_Body `protobuf_oneof:"body"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -324,6 +372,24 @@ func (x *ClientMessage) GetPing() *Ping {
 	return nil
 }
 
+func (x *ClientMessage) GetCast() *Cast {
+	if x != nil {
+		if x, ok := x.Body.(*ClientMessage_Cast); ok {
+			return x.Cast
+		}
+	}
+	return nil
+}
+
+func (x *ClientMessage) GetInteract() *Interact {
+	if x != nil {
+		if x, ok := x.Body.(*ClientMessage_Interact); ok {
+			return x.Interact
+		}
+	}
+	return nil
+}
+
 type isClientMessage_Body interface {
 	isClientMessage_Body()
 }
@@ -340,11 +406,144 @@ type ClientMessage_Ping struct {
 	Ping *Ping `protobuf:"bytes,3,opt,name=ping,proto3,oneof"`
 }
 
+type ClientMessage_Cast struct {
+	Cast *Cast `protobuf:"bytes,4,opt,name=cast,proto3,oneof"`
+}
+
+type ClientMessage_Interact struct {
+	Interact *Interact `protobuf:"bytes,5,opt,name=interact,proto3,oneof"`
+}
+
 func (*ClientMessage_Hello) isClientMessage_Body() {}
 
 func (*ClientMessage_Intent) isClientMessage_Body() {}
 
 func (*ClientMessage_Ping) isClientMessage_Body() {}
+
+func (*ClientMessage_Cast) isClientMessage_Body() {}
+
+func (*ClientMessage_Interact) isClientMessage_Body() {}
+
+// Cast requests a skill. The client asks; the server decides.
+//
+// There is deliberately no field for a target or for damage. The server
+// resolves what the cast hits from its own state and rolls the outcome itself,
+// so a client can ask to swing but never assert what it connected with.
+type Cast struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Seq     uint32                 `protobuf:"varint,1,opt,name=seq,proto3" json:"seq,omitempty"` // client sequence, echoed for reconciliation
+	SkillId string                 `protobuf:"bytes,2,opt,name=skill_id,json=skillId,proto3" json:"skill_id,omitempty"`
+	// Facing at the moment of the cast, since a swing resolves in the direction
+	// the character is looking rather than at a chosen entity.
+	FacingLeft    bool `protobuf:"varint,3,opt,name=facing_left,json=facingLeft,proto3" json:"facing_left,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Cast) Reset() {
+	*x = Cast{}
+	mi := &file_mmo_v1_game_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Cast) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Cast) ProtoMessage() {}
+
+func (x *Cast) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Cast.ProtoReflect.Descriptor instead.
+func (*Cast) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *Cast) GetSeq() uint32 {
+	if x != nil {
+		return x.Seq
+	}
+	return 0
+}
+
+func (x *Cast) GetSkillId() string {
+	if x != nil {
+		return x.SkillId
+	}
+	return ""
+}
+
+func (x *Cast) GetFacingLeft() bool {
+	if x != nil {
+		return x.FacingLeft
+	}
+	return false
+}
+
+// Interact is a request to act on a nearby entity: loot a drop, use a portal,
+// talk to an NPC.
+type Interact struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	Kind          InteractKind           `protobuf:"varint,2,opt,name=kind,proto3,enum=mmo.v1.InteractKind" json:"kind,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Interact) Reset() {
+	*x = Interact{}
+	mi := &file_mmo_v1_game_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Interact) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Interact) ProtoMessage() {}
+
+func (x *Interact) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Interact.ProtoReflect.Descriptor instead.
+func (*Interact) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Interact) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *Interact) GetKind() InteractKind {
+	if x != nil {
+		return x.Kind
+	}
+	return InteractKind_INTERACT_KIND_UNSPECIFIED
+}
 
 type ServerMessage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -362,7 +561,7 @@ type ServerMessage struct {
 
 func (x *ServerMessage) Reset() {
 	*x = ServerMessage{}
-	mi := &file_mmo_v1_game_proto_msgTypes[2]
+	mi := &file_mmo_v1_game_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -374,7 +573,7 @@ func (x *ServerMessage) String() string {
 func (*ServerMessage) ProtoMessage() {}
 
 func (x *ServerMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[2]
+	mi := &file_mmo_v1_game_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -387,7 +586,7 @@ func (x *ServerMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerMessage.ProtoReflect.Descriptor instead.
 func (*ServerMessage) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{2}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ServerMessage) GetBody() isServerMessage_Body {
@@ -493,7 +692,7 @@ type Hello struct {
 
 func (x *Hello) Reset() {
 	*x = Hello{}
-	mi := &file_mmo_v1_game_proto_msgTypes[3]
+	mi := &file_mmo_v1_game_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -505,7 +704,7 @@ func (x *Hello) String() string {
 func (*Hello) ProtoMessage() {}
 
 func (x *Hello) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[3]
+	mi := &file_mmo_v1_game_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -518,7 +717,7 @@ func (x *Hello) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Hello.ProtoReflect.Descriptor instead.
 func (*Hello) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{3}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Hello) GetTicket() string {
@@ -556,7 +755,7 @@ type Welcome struct {
 
 func (x *Welcome) Reset() {
 	*x = Welcome{}
-	mi := &file_mmo_v1_game_proto_msgTypes[4]
+	mi := &file_mmo_v1_game_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -568,7 +767,7 @@ func (x *Welcome) String() string {
 func (*Welcome) ProtoMessage() {}
 
 func (x *Welcome) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[4]
+	mi := &file_mmo_v1_game_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -581,7 +780,7 @@ func (x *Welcome) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Welcome.ProtoReflect.Descriptor instead.
 func (*Welcome) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{4}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Welcome) GetEntityId() uint32 {
@@ -638,7 +837,7 @@ type Kick struct {
 
 func (x *Kick) Reset() {
 	*x = Kick{}
-	mi := &file_mmo_v1_game_proto_msgTypes[5]
+	mi := &file_mmo_v1_game_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -650,7 +849,7 @@ func (x *Kick) String() string {
 func (*Kick) ProtoMessage() {}
 
 func (x *Kick) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[5]
+	mi := &file_mmo_v1_game_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -663,7 +862,7 @@ func (x *Kick) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Kick.ProtoReflect.Descriptor instead.
 func (*Kick) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{5}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *Kick) GetCode() uint32 {
@@ -703,7 +902,7 @@ type Intent struct {
 
 func (x *Intent) Reset() {
 	*x = Intent{}
-	mi := &file_mmo_v1_game_proto_msgTypes[6]
+	mi := &file_mmo_v1_game_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -715,7 +914,7 @@ func (x *Intent) String() string {
 func (*Intent) ProtoMessage() {}
 
 func (x *Intent) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[6]
+	mi := &file_mmo_v1_game_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -728,7 +927,7 @@ func (x *Intent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Intent.ProtoReflect.Descriptor instead.
 func (*Intent) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{6}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *Intent) GetSeq() uint32 {
@@ -782,7 +981,7 @@ type Ping struct {
 
 func (x *Ping) Reset() {
 	*x = Ping{}
-	mi := &file_mmo_v1_game_proto_msgTypes[7]
+	mi := &file_mmo_v1_game_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -794,7 +993,7 @@ func (x *Ping) String() string {
 func (*Ping) ProtoMessage() {}
 
 func (x *Ping) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[7]
+	mi := &file_mmo_v1_game_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -807,7 +1006,7 @@ func (x *Ping) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Ping.ProtoReflect.Descriptor instead.
 func (*Ping) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{7}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *Ping) GetClientTimeMs() uint64 {
@@ -827,7 +1026,7 @@ type Pong struct {
 
 func (x *Pong) Reset() {
 	*x = Pong{}
-	mi := &file_mmo_v1_game_proto_msgTypes[8]
+	mi := &file_mmo_v1_game_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -839,7 +1038,7 @@ func (x *Pong) String() string {
 func (*Pong) ProtoMessage() {}
 
 func (x *Pong) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[8]
+	mi := &file_mmo_v1_game_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -852,7 +1051,7 @@ func (x *Pong) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Pong.ProtoReflect.Descriptor instead.
 func (*Pong) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{8}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Pong) GetClientTimeMs() uint64 {
@@ -897,16 +1096,32 @@ type EntityState struct {
 	// State the player's own entity needs for prediction but other entities do
 	// not. Only ever populated for self. Omitting any of it would make the
 	// client's replay diverge from the server.
-	Coyote        uint32 `protobuf:"varint,15,opt,name=coyote,proto3" json:"coyote,omitempty"`
-	JumpBuffer    uint32 `protobuf:"varint,16,opt,name=jump_buffer,json=jumpBuffer,proto3" json:"jump_buffer,omitempty"`
-	DropThrough   uint32 `protobuf:"varint,17,opt,name=drop_through,json=dropThrough,proto3" json:"drop_through,omitempty"`
+	Coyote      uint32 `protobuf:"varint,15,opt,name=coyote,proto3" json:"coyote,omitempty"`
+	JumpBuffer  uint32 `protobuf:"varint,16,opt,name=jump_buffer,json=jumpBuffer,proto3" json:"jump_buffer,omitempty"`
+	DropThrough uint32 `protobuf:"varint,17,opt,name=drop_through,json=dropThrough,proto3" json:"drop_through,omitempty"`
+	// Progression, only populated for self.
+	Level     uint32 `protobuf:"varint,18,opt,name=level,proto3" json:"level,omitempty"`
+	Exp       uint64 `protobuf:"varint,19,opt,name=exp,proto3" json:"exp,omitempty"`
+	ExpToNext uint64 `protobuf:"varint,20,opt,name=exp_to_next,json=expToNext,proto3" json:"exp_to_next,omitempty"`
+	Mp        uint32 `protobuf:"varint,21,opt,name=mp,proto3" json:"mp,omitempty"`
+	MpMax     uint32 `protobuf:"varint,22,opt,name=mp_max,json=mpMax,proto3" json:"mp_max,omitempty"`
+	// Ground drops. A drop is an entity like any other so that visibility,
+	// layering, and removal all work without a special case -- which is also
+	// what makes cross-layer looting unrepresentable rather than merely
+	// forbidden.
+	DropItem string `protobuf:"bytes,23,opt,name=drop_item,json=dropItem,proto3" json:"drop_item,omitempty"`
+	DropQty  uint32 `protobuf:"varint,24,opt,name=drop_qty,json=dropQty,proto3" json:"drop_qty,omitempty"`
+	DropGold uint32 `protobuf:"varint,25,opt,name=drop_gold,json=dropGold,proto3" json:"drop_gold,omitempty"`
+	// Content id of a mob, so the client can pick its sprite without the server
+	// sending a name string every time one spawns.
+	MobId         string `protobuf:"bytes,26,opt,name=mob_id,json=mobId,proto3" json:"mob_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EntityState) Reset() {
 	*x = EntityState{}
-	mi := &file_mmo_v1_game_proto_msgTypes[9]
+	mi := &file_mmo_v1_game_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -918,7 +1133,7 @@ func (x *EntityState) String() string {
 func (*EntityState) ProtoMessage() {}
 
 func (x *EntityState) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[9]
+	mi := &file_mmo_v1_game_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -931,7 +1146,7 @@ func (x *EntityState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EntityState.ProtoReflect.Descriptor instead.
 func (*EntityState) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{9}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *EntityState) GetId() uint32 {
@@ -1053,6 +1268,69 @@ func (x *EntityState) GetDropThrough() uint32 {
 	return 0
 }
 
+func (x *EntityState) GetLevel() uint32 {
+	if x != nil {
+		return x.Level
+	}
+	return 0
+}
+
+func (x *EntityState) GetExp() uint64 {
+	if x != nil {
+		return x.Exp
+	}
+	return 0
+}
+
+func (x *EntityState) GetExpToNext() uint64 {
+	if x != nil {
+		return x.ExpToNext
+	}
+	return 0
+}
+
+func (x *EntityState) GetMp() uint32 {
+	if x != nil {
+		return x.Mp
+	}
+	return 0
+}
+
+func (x *EntityState) GetMpMax() uint32 {
+	if x != nil {
+		return x.MpMax
+	}
+	return 0
+}
+
+func (x *EntityState) GetDropItem() string {
+	if x != nil {
+		return x.DropItem
+	}
+	return ""
+}
+
+func (x *EntityState) GetDropQty() uint32 {
+	if x != nil {
+		return x.DropQty
+	}
+	return 0
+}
+
+func (x *EntityState) GetDropGold() uint32 {
+	if x != nil {
+		return x.DropGold
+	}
+	return 0
+}
+
+func (x *EntityState) GetMobId() string {
+	if x != nil {
+		return x.MobId
+	}
+	return ""
+}
+
 // EntityDelta carries only what changed since the baseline tick.
 type EntityDelta struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1073,7 +1351,7 @@ type EntityDelta struct {
 
 func (x *EntityDelta) Reset() {
 	*x = EntityDelta{}
-	mi := &file_mmo_v1_game_proto_msgTypes[10]
+	mi := &file_mmo_v1_game_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1085,7 +1363,7 @@ func (x *EntityDelta) String() string {
 func (*EntityDelta) ProtoMessage() {}
 
 func (x *EntityDelta) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[10]
+	mi := &file_mmo_v1_game_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1098,7 +1376,7 @@ func (x *EntityDelta) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EntityDelta.ProtoReflect.Descriptor instead.
 func (*EntityDelta) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{10}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *EntityDelta) GetId() uint32 {
@@ -1194,7 +1472,7 @@ type Snapshot struct {
 
 func (x *Snapshot) Reset() {
 	*x = Snapshot{}
-	mi := &file_mmo_v1_game_proto_msgTypes[11]
+	mi := &file_mmo_v1_game_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1206,7 +1484,7 @@ func (x *Snapshot) String() string {
 func (*Snapshot) ProtoMessage() {}
 
 func (x *Snapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[11]
+	mi := &file_mmo_v1_game_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1219,7 +1497,7 @@ func (x *Snapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Snapshot.ProtoReflect.Descriptor instead.
 func (*Snapshot) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{11}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *Snapshot) GetTick() uint64 {
@@ -1280,6 +1558,12 @@ type Event struct {
 	//
 	//	*Event_PlayerJoined
 	//	*Event_PlayerLeft
+	//	*Event_Damage
+	//	*Event_Died
+	//	*Event_SkillCast
+	//	*Event_ExpGained
+	//	*Event_LevelUp
+	//	*Event_LootTaken
 	Body          isEvent_Body `protobuf_oneof:"body"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1287,7 +1571,7 @@ type Event struct {
 
 func (x *Event) Reset() {
 	*x = Event{}
-	mi := &file_mmo_v1_game_proto_msgTypes[12]
+	mi := &file_mmo_v1_game_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1299,7 +1583,7 @@ func (x *Event) String() string {
 func (*Event) ProtoMessage() {}
 
 func (x *Event) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[12]
+	mi := &file_mmo_v1_game_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1312,7 +1596,7 @@ func (x *Event) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event.ProtoReflect.Descriptor instead.
 func (*Event) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{12}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *Event) GetBody() isEvent_Body {
@@ -1340,6 +1624,60 @@ func (x *Event) GetPlayerLeft() *PlayerLeft {
 	return nil
 }
 
+func (x *Event) GetDamage() *DamageDealt {
+	if x != nil {
+		if x, ok := x.Body.(*Event_Damage); ok {
+			return x.Damage
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetDied() *EntityDied {
+	if x != nil {
+		if x, ok := x.Body.(*Event_Died); ok {
+			return x.Died
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetSkillCast() *SkillCast {
+	if x != nil {
+		if x, ok := x.Body.(*Event_SkillCast); ok {
+			return x.SkillCast
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetExpGained() *ExpGained {
+	if x != nil {
+		if x, ok := x.Body.(*Event_ExpGained); ok {
+			return x.ExpGained
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetLevelUp() *LevelUp {
+	if x != nil {
+		if x, ok := x.Body.(*Event_LevelUp); ok {
+			return x.LevelUp
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetLootTaken() *LootTaken {
+	if x != nil {
+		if x, ok := x.Body.(*Event_LootTaken); ok {
+			return x.LootTaken
+		}
+	}
+	return nil
+}
+
 type isEvent_Body interface {
 	isEvent_Body()
 }
@@ -1352,9 +1690,408 @@ type Event_PlayerLeft struct {
 	PlayerLeft *PlayerLeft `protobuf:"bytes,2,opt,name=player_left,json=playerLeft,proto3,oneof"`
 }
 
+type Event_Damage struct {
+	Damage *DamageDealt `protobuf:"bytes,3,opt,name=damage,proto3,oneof"`
+}
+
+type Event_Died struct {
+	Died *EntityDied `protobuf:"bytes,4,opt,name=died,proto3,oneof"`
+}
+
+type Event_SkillCast struct {
+	SkillCast *SkillCast `protobuf:"bytes,5,opt,name=skill_cast,json=skillCast,proto3,oneof"`
+}
+
+type Event_ExpGained struct {
+	ExpGained *ExpGained `protobuf:"bytes,6,opt,name=exp_gained,json=expGained,proto3,oneof"`
+}
+
+type Event_LevelUp struct {
+	LevelUp *LevelUp `protobuf:"bytes,7,opt,name=level_up,json=levelUp,proto3,oneof"`
+}
+
+type Event_LootTaken struct {
+	LootTaken *LootTaken `protobuf:"bytes,8,opt,name=loot_taken,json=lootTaken,proto3,oneof"`
+}
+
 func (*Event_PlayerJoined) isEvent_Body() {}
 
 func (*Event_PlayerLeft) isEvent_Body() {}
+
+func (*Event_Damage) isEvent_Body() {}
+
+func (*Event_Died) isEvent_Body() {}
+
+func (*Event_SkillCast) isEvent_Body() {}
+
+func (*Event_ExpGained) isEvent_Body() {}
+
+func (*Event_LevelUp) isEvent_Body() {}
+
+func (*Event_LootTaken) isEvent_Body() {}
+
+// DamageDealt is sent rather than inferred from a falling HP number, because a
+// client deriving "took damage" from state cannot tell 200 damage from two
+// hits of 100 -- and the difference is the whole feel of a fight.
+type DamageDealt struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SourceId      uint32                 `protobuf:"varint,1,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
+	TargetId      uint32                 `protobuf:"varint,2,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
+	Amount        uint32                 `protobuf:"varint,3,opt,name=amount,proto3" json:"amount,omitempty"`
+	Critical      bool                   `protobuf:"varint,4,opt,name=critical,proto3" json:"critical,omitempty"`
+	Element       string                 `protobuf:"bytes,5,opt,name=element,proto3" json:"element,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DamageDealt) Reset() {
+	*x = DamageDealt{}
+	mi := &file_mmo_v1_game_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DamageDealt) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DamageDealt) ProtoMessage() {}
+
+func (x *DamageDealt) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DamageDealt.ProtoReflect.Descriptor instead.
+func (*DamageDealt) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *DamageDealt) GetSourceId() uint32 {
+	if x != nil {
+		return x.SourceId
+	}
+	return 0
+}
+
+func (x *DamageDealt) GetTargetId() uint32 {
+	if x != nil {
+		return x.TargetId
+	}
+	return 0
+}
+
+func (x *DamageDealt) GetAmount() uint32 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *DamageDealt) GetCritical() bool {
+	if x != nil {
+		return x.Critical
+	}
+	return false
+}
+
+func (x *DamageDealt) GetElement() string {
+	if x != nil {
+		return x.Element
+	}
+	return ""
+}
+
+type EntityDied struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	KillerId      uint32                 `protobuf:"varint,2,opt,name=killer_id,json=killerId,proto3" json:"killer_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EntityDied) Reset() {
+	*x = EntityDied{}
+	mi := &file_mmo_v1_game_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EntityDied) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EntityDied) ProtoMessage() {}
+
+func (x *EntityDied) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EntityDied.ProtoReflect.Descriptor instead.
+func (*EntityDied) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *EntityDied) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *EntityDied) GetKillerId() uint32 {
+	if x != nil {
+		return x.KillerId
+	}
+	return 0
+}
+
+type SkillCast struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CasterId      uint32                 `protobuf:"varint,1,opt,name=caster_id,json=casterId,proto3" json:"caster_id,omitempty"`
+	SkillId       string                 `protobuf:"bytes,2,opt,name=skill_id,json=skillId,proto3" json:"skill_id,omitempty"`
+	FacingLeft    bool                   `protobuf:"varint,3,opt,name=facing_left,json=facingLeft,proto3" json:"facing_left,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SkillCast) Reset() {
+	*x = SkillCast{}
+	mi := &file_mmo_v1_game_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SkillCast) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SkillCast) ProtoMessage() {}
+
+func (x *SkillCast) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SkillCast.ProtoReflect.Descriptor instead.
+func (*SkillCast) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *SkillCast) GetCasterId() uint32 {
+	if x != nil {
+		return x.CasterId
+	}
+	return 0
+}
+
+func (x *SkillCast) GetSkillId() string {
+	if x != nil {
+		return x.SkillId
+	}
+	return ""
+}
+
+func (x *SkillCast) GetFacingLeft() bool {
+	if x != nil {
+		return x.FacingLeft
+	}
+	return false
+}
+
+type ExpGained struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Amount        uint64                 `protobuf:"varint,1,opt,name=amount,proto3" json:"amount,omitempty"`
+	Total         uint64                 `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExpGained) Reset() {
+	*x = ExpGained{}
+	mi := &file_mmo_v1_game_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExpGained) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExpGained) ProtoMessage() {}
+
+func (x *ExpGained) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExpGained.ProtoReflect.Descriptor instead.
+func (*ExpGained) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *ExpGained) GetAmount() uint64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *ExpGained) GetTotal() uint64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type LevelUp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Level         uint32                 `protobuf:"varint,1,opt,name=level,proto3" json:"level,omitempty"`
+	ExpToNext     uint64                 `protobuf:"varint,2,opt,name=exp_to_next,json=expToNext,proto3" json:"exp_to_next,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LevelUp) Reset() {
+	*x = LevelUp{}
+	mi := &file_mmo_v1_game_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LevelUp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LevelUp) ProtoMessage() {}
+
+func (x *LevelUp) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LevelUp.ProtoReflect.Descriptor instead.
+func (*LevelUp) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *LevelUp) GetLevel() uint32 {
+	if x != nil {
+		return x.Level
+	}
+	return 0
+}
+
+func (x *LevelUp) GetExpToNext() uint64 {
+	if x != nil {
+		return x.ExpToNext
+	}
+	return 0
+}
+
+type LootTaken struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	ItemId        string                 `protobuf:"bytes,2,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"`
+	Qty           uint32                 `protobuf:"varint,3,opt,name=qty,proto3" json:"qty,omitempty"`
+	Gold          uint32                 `protobuf:"varint,4,opt,name=gold,proto3" json:"gold,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LootTaken) Reset() {
+	*x = LootTaken{}
+	mi := &file_mmo_v1_game_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LootTaken) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LootTaken) ProtoMessage() {}
+
+func (x *LootTaken) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LootTaken.ProtoReflect.Descriptor instead.
+func (*LootTaken) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *LootTaken) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *LootTaken) GetItemId() string {
+	if x != nil {
+		return x.ItemId
+	}
+	return ""
+}
+
+func (x *LootTaken) GetQty() uint32 {
+	if x != nil {
+		return x.Qty
+	}
+	return 0
+}
+
+func (x *LootTaken) GetGold() uint32 {
+	if x != nil {
+		return x.Gold
+	}
+	return 0
+}
 
 type PlayerJoined struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1366,7 +2103,7 @@ type PlayerJoined struct {
 
 func (x *PlayerJoined) Reset() {
 	*x = PlayerJoined{}
-	mi := &file_mmo_v1_game_proto_msgTypes[13]
+	mi := &file_mmo_v1_game_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1378,7 +2115,7 @@ func (x *PlayerJoined) String() string {
 func (*PlayerJoined) ProtoMessage() {}
 
 func (x *PlayerJoined) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[13]
+	mi := &file_mmo_v1_game_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1391,7 +2128,7 @@ func (x *PlayerJoined) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerJoined.ProtoReflect.Descriptor instead.
 func (*PlayerJoined) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{13}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *PlayerJoined) GetEntityId() uint32 {
@@ -1417,7 +2154,7 @@ type PlayerLeft struct {
 
 func (x *PlayerLeft) Reset() {
 	*x = PlayerLeft{}
-	mi := &file_mmo_v1_game_proto_msgTypes[14]
+	mi := &file_mmo_v1_game_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1429,7 +2166,7 @@ func (x *PlayerLeft) String() string {
 func (*PlayerLeft) ProtoMessage() {}
 
 func (x *PlayerLeft) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[14]
+	mi := &file_mmo_v1_game_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1442,7 +2179,7 @@ func (x *PlayerLeft) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerLeft.ProtoReflect.Descriptor instead.
 func (*PlayerLeft) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{14}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *PlayerLeft) GetEntityId() uint32 {
@@ -1459,13 +2196,23 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\x11mmo/v1/game.proto\x12\x06mmo.v1\"h\n" +
 	"\bEnvelope\x12-\n" +
 	"\x06server\x18\x01 \x03(\v2\x15.mmo.v1.ServerMessageR\x06server\x12-\n" +
-	"\x06client\x18\x02 \x03(\v2\x15.mmo.v1.ClientMessageR\x06client\"\x92\x01\n" +
+	"\x06client\x18\x02 \x03(\v2\x15.mmo.v1.ClientMessageR\x06client\"\xe6\x01\n" +
 	"\rClientMessage\x12%\n" +
 	"\x05hello\x18\x01 \x01(\v2\r.mmo.v1.HelloH\x00R\x05hello\x12(\n" +
 	"\x06intent\x18\x02 \x01(\v2\x0e.mmo.v1.IntentH\x00R\x06intent\x12\"\n" +
-	"\x04ping\x18\x03 \x01(\v2\f.mmo.v1.PingH\x00R\x04pingB\x06\n" +
-	"\x04bodyJ\x04\b\x04\x10\n" +
-	"\"\xe9\x01\n" +
+	"\x04ping\x18\x03 \x01(\v2\f.mmo.v1.PingH\x00R\x04ping\x12\"\n" +
+	"\x04cast\x18\x04 \x01(\v2\f.mmo.v1.CastH\x00R\x04cast\x12.\n" +
+	"\binteract\x18\x05 \x01(\v2\x10.mmo.v1.InteractH\x00R\binteractB\x06\n" +
+	"\x04bodyJ\x04\b\x06\x10\n" +
+	"\"T\n" +
+	"\x04Cast\x12\x10\n" +
+	"\x03seq\x18\x01 \x01(\rR\x03seq\x12\x19\n" +
+	"\bskill_id\x18\x02 \x01(\tR\askillId\x12\x1f\n" +
+	"\vfacing_left\x18\x03 \x01(\bR\n" +
+	"facingLeft\"Q\n" +
+	"\bInteract\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12(\n" +
+	"\x04kind\x18\x02 \x01(\x0e2\x14.mmo.v1.InteractKindR\x04kind\"\xe9\x01\n" +
 	"\rServerMessage\x12+\n" +
 	"\awelcome\x18\x01 \x01(\v2\x0f.mmo.v1.WelcomeH\x00R\awelcome\x12.\n" +
 	"\bsnapshot\x18\x02 \x01(\v2\x10.mmo.v1.SnapshotH\x00R\bsnapshot\x12%\n" +
@@ -1501,7 +2248,7 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\x04Pong\x12$\n" +
 	"\x0eclient_time_ms\x18\x01 \x01(\x04R\fclientTimeMs\x12\x1f\n" +
 	"\vserver_tick\x18\x02 \x01(\x04R\n" +
-	"serverTick\"\xf4\x02\n" +
+	"serverTick\"\xcf\x04\n" +
 	"\vEntityState\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12&\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x12.mmo.v1.EntityKindR\x04kind\x12\x14\n" +
@@ -1521,7 +2268,16 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\x06coyote\x18\x0f \x01(\rR\x06coyote\x12\x1f\n" +
 	"\vjump_buffer\x18\x10 \x01(\rR\n" +
 	"jumpBuffer\x12!\n" +
-	"\fdrop_through\x18\x11 \x01(\rR\vdropThrough\"\xc9\x01\n" +
+	"\fdrop_through\x18\x11 \x01(\rR\vdropThrough\x12\x14\n" +
+	"\x05level\x18\x12 \x01(\rR\x05level\x12\x10\n" +
+	"\x03exp\x18\x13 \x01(\x04R\x03exp\x12\x1e\n" +
+	"\vexp_to_next\x18\x14 \x01(\x04R\texpToNext\x12\x0e\n" +
+	"\x02mp\x18\x15 \x01(\rR\x02mp\x12\x15\n" +
+	"\x06mp_max\x18\x16 \x01(\rR\x05mpMax\x12\x1b\n" +
+	"\tdrop_item\x18\x17 \x01(\tR\bdropItem\x12\x19\n" +
+	"\bdrop_qty\x18\x18 \x01(\rR\adropQty\x12\x1b\n" +
+	"\tdrop_gold\x18\x19 \x01(\rR\bdropGold\x12\x15\n" +
+	"\x06mob_id\x18\x1a \x01(\tR\x05mobId\"\xc9\x01\n" +
 	"\vEntityDelta\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x1d\n" +
 	"\n" +
@@ -1542,18 +2298,56 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\bentities\x18\x04 \x03(\v2\x13.mmo.v1.EntityDeltaR\bentities\x12-\n" +
 	"\aentered\x18\x05 \x03(\v2\x13.mmo.v1.EntityStateR\aentered\x12\x18\n" +
 	"\aremoved\x18\x06 \x03(\rR\aremoved\x12'\n" +
-	"\x04self\x18\a \x01(\v2\x13.mmo.v1.EntityStateR\x04self\"\x89\x01\n" +
+	"\x04self\x18\a \x01(\v2\x13.mmo.v1.EntityStateR\x04self\"\xac\x03\n" +
 	"\x05Event\x12;\n" +
 	"\rplayer_joined\x18\x01 \x01(\v2\x14.mmo.v1.PlayerJoinedH\x00R\fplayerJoined\x125\n" +
 	"\vplayer_left\x18\x02 \x01(\v2\x12.mmo.v1.PlayerLeftH\x00R\n" +
-	"playerLeftB\x06\n" +
-	"\x04bodyJ\x04\b\x03\x10\x10\"?\n" +
+	"playerLeft\x12-\n" +
+	"\x06damage\x18\x03 \x01(\v2\x13.mmo.v1.DamageDealtH\x00R\x06damage\x12(\n" +
+	"\x04died\x18\x04 \x01(\v2\x12.mmo.v1.EntityDiedH\x00R\x04died\x122\n" +
+	"\n" +
+	"skill_cast\x18\x05 \x01(\v2\x11.mmo.v1.SkillCastH\x00R\tskillCast\x122\n" +
+	"\n" +
+	"exp_gained\x18\x06 \x01(\v2\x11.mmo.v1.ExpGainedH\x00R\texpGained\x12,\n" +
+	"\blevel_up\x18\a \x01(\v2\x0f.mmo.v1.LevelUpH\x00R\alevelUp\x122\n" +
+	"\n" +
+	"loot_taken\x18\b \x01(\v2\x11.mmo.v1.LootTakenH\x00R\tlootTakenB\x06\n" +
+	"\x04bodyJ\x04\b\t\x10\x10\"\x95\x01\n" +
+	"\vDamageDealt\x12\x1b\n" +
+	"\tsource_id\x18\x01 \x01(\rR\bsourceId\x12\x1b\n" +
+	"\ttarget_id\x18\x02 \x01(\rR\btargetId\x12\x16\n" +
+	"\x06amount\x18\x03 \x01(\rR\x06amount\x12\x1a\n" +
+	"\bcritical\x18\x04 \x01(\bR\bcritical\x12\x18\n" +
+	"\aelement\x18\x05 \x01(\tR\aelement\"F\n" +
+	"\n" +
+	"EntityDied\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12\x1b\n" +
+	"\tkiller_id\x18\x02 \x01(\rR\bkillerId\"d\n" +
+	"\tSkillCast\x12\x1b\n" +
+	"\tcaster_id\x18\x01 \x01(\rR\bcasterId\x12\x19\n" +
+	"\bskill_id\x18\x02 \x01(\tR\askillId\x12\x1f\n" +
+	"\vfacing_left\x18\x03 \x01(\bR\n" +
+	"facingLeft\"9\n" +
+	"\tExpGained\x12\x16\n" +
+	"\x06amount\x18\x01 \x01(\x04R\x06amount\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x04R\x05total\"?\n" +
+	"\aLevelUp\x12\x14\n" +
+	"\x05level\x18\x01 \x01(\rR\x05level\x12\x1e\n" +
+	"\vexp_to_next\x18\x02 \x01(\x04R\texpToNext\"g\n" +
+	"\tLootTaken\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12\x17\n" +
+	"\aitem_id\x18\x02 \x01(\tR\x06itemId\x12\x10\n" +
+	"\x03qty\x18\x03 \x01(\rR\x03qty\x12\x12\n" +
+	"\x04gold\x18\x04 \x01(\rR\x04gold\"?\n" +
 	"\fPlayerJoined\x12\x1b\n" +
 	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\")\n" +
 	"\n" +
 	"PlayerLeft\x12\x1b\n" +
-	"\tentity_id\x18\x01 \x01(\rR\bentityId*\x81\x01\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId*E\n" +
+	"\fInteractKind\x12\x1d\n" +
+	"\x19INTERACT_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12INTERACT_KIND_LOOT\x10\x01*\x81\x01\n" +
 	"\n" +
 	"EntityKind\x12\x1b\n" +
 	"\x17ENTITY_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
@@ -1590,51 +2384,69 @@ func file_mmo_v1_game_proto_rawDescGZIP() []byte {
 	return file_mmo_v1_game_proto_rawDescData
 }
 
-var file_mmo_v1_game_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_mmo_v1_game_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_mmo_v1_game_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_mmo_v1_game_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_mmo_v1_game_proto_goTypes = []any{
-	(EntityKind)(0),       // 0: mmo.v1.EntityKind
-	(EntityField)(0),      // 1: mmo.v1.EntityField
-	(EntityFlag)(0),       // 2: mmo.v1.EntityFlag
-	(*Envelope)(nil),      // 3: mmo.v1.Envelope
-	(*ClientMessage)(nil), // 4: mmo.v1.ClientMessage
-	(*ServerMessage)(nil), // 5: mmo.v1.ServerMessage
-	(*Hello)(nil),         // 6: mmo.v1.Hello
-	(*Welcome)(nil),       // 7: mmo.v1.Welcome
-	(*Kick)(nil),          // 8: mmo.v1.Kick
-	(*Intent)(nil),        // 9: mmo.v1.Intent
-	(*Ping)(nil),          // 10: mmo.v1.Ping
-	(*Pong)(nil),          // 11: mmo.v1.Pong
-	(*EntityState)(nil),   // 12: mmo.v1.EntityState
-	(*EntityDelta)(nil),   // 13: mmo.v1.EntityDelta
-	(*Snapshot)(nil),      // 14: mmo.v1.Snapshot
-	(*Event)(nil),         // 15: mmo.v1.Event
-	(*PlayerJoined)(nil),  // 16: mmo.v1.PlayerJoined
-	(*PlayerLeft)(nil),    // 17: mmo.v1.PlayerLeft
+	(InteractKind)(0),     // 0: mmo.v1.InteractKind
+	(EntityKind)(0),       // 1: mmo.v1.EntityKind
+	(EntityField)(0),      // 2: mmo.v1.EntityField
+	(EntityFlag)(0),       // 3: mmo.v1.EntityFlag
+	(*Envelope)(nil),      // 4: mmo.v1.Envelope
+	(*ClientMessage)(nil), // 5: mmo.v1.ClientMessage
+	(*Cast)(nil),          // 6: mmo.v1.Cast
+	(*Interact)(nil),      // 7: mmo.v1.Interact
+	(*ServerMessage)(nil), // 8: mmo.v1.ServerMessage
+	(*Hello)(nil),         // 9: mmo.v1.Hello
+	(*Welcome)(nil),       // 10: mmo.v1.Welcome
+	(*Kick)(nil),          // 11: mmo.v1.Kick
+	(*Intent)(nil),        // 12: mmo.v1.Intent
+	(*Ping)(nil),          // 13: mmo.v1.Ping
+	(*Pong)(nil),          // 14: mmo.v1.Pong
+	(*EntityState)(nil),   // 15: mmo.v1.EntityState
+	(*EntityDelta)(nil),   // 16: mmo.v1.EntityDelta
+	(*Snapshot)(nil),      // 17: mmo.v1.Snapshot
+	(*Event)(nil),         // 18: mmo.v1.Event
+	(*DamageDealt)(nil),   // 19: mmo.v1.DamageDealt
+	(*EntityDied)(nil),    // 20: mmo.v1.EntityDied
+	(*SkillCast)(nil),     // 21: mmo.v1.SkillCast
+	(*ExpGained)(nil),     // 22: mmo.v1.ExpGained
+	(*LevelUp)(nil),       // 23: mmo.v1.LevelUp
+	(*LootTaken)(nil),     // 24: mmo.v1.LootTaken
+	(*PlayerJoined)(nil),  // 25: mmo.v1.PlayerJoined
+	(*PlayerLeft)(nil),    // 26: mmo.v1.PlayerLeft
 }
 var file_mmo_v1_game_proto_depIdxs = []int32{
-	5,  // 0: mmo.v1.Envelope.server:type_name -> mmo.v1.ServerMessage
-	4,  // 1: mmo.v1.Envelope.client:type_name -> mmo.v1.ClientMessage
-	6,  // 2: mmo.v1.ClientMessage.hello:type_name -> mmo.v1.Hello
-	9,  // 3: mmo.v1.ClientMessage.intent:type_name -> mmo.v1.Intent
-	10, // 4: mmo.v1.ClientMessage.ping:type_name -> mmo.v1.Ping
-	7,  // 5: mmo.v1.ServerMessage.welcome:type_name -> mmo.v1.Welcome
-	14, // 6: mmo.v1.ServerMessage.snapshot:type_name -> mmo.v1.Snapshot
-	15, // 7: mmo.v1.ServerMessage.event:type_name -> mmo.v1.Event
-	11, // 8: mmo.v1.ServerMessage.pong:type_name -> mmo.v1.Pong
-	8,  // 9: mmo.v1.ServerMessage.kick:type_name -> mmo.v1.Kick
-	12, // 10: mmo.v1.Welcome.self:type_name -> mmo.v1.EntityState
-	0,  // 11: mmo.v1.EntityState.kind:type_name -> mmo.v1.EntityKind
-	13, // 12: mmo.v1.Snapshot.entities:type_name -> mmo.v1.EntityDelta
-	12, // 13: mmo.v1.Snapshot.entered:type_name -> mmo.v1.EntityState
-	12, // 14: mmo.v1.Snapshot.self:type_name -> mmo.v1.EntityState
-	16, // 15: mmo.v1.Event.player_joined:type_name -> mmo.v1.PlayerJoined
-	17, // 16: mmo.v1.Event.player_left:type_name -> mmo.v1.PlayerLeft
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	8,  // 0: mmo.v1.Envelope.server:type_name -> mmo.v1.ServerMessage
+	5,  // 1: mmo.v1.Envelope.client:type_name -> mmo.v1.ClientMessage
+	9,  // 2: mmo.v1.ClientMessage.hello:type_name -> mmo.v1.Hello
+	12, // 3: mmo.v1.ClientMessage.intent:type_name -> mmo.v1.Intent
+	13, // 4: mmo.v1.ClientMessage.ping:type_name -> mmo.v1.Ping
+	6,  // 5: mmo.v1.ClientMessage.cast:type_name -> mmo.v1.Cast
+	7,  // 6: mmo.v1.ClientMessage.interact:type_name -> mmo.v1.Interact
+	0,  // 7: mmo.v1.Interact.kind:type_name -> mmo.v1.InteractKind
+	10, // 8: mmo.v1.ServerMessage.welcome:type_name -> mmo.v1.Welcome
+	17, // 9: mmo.v1.ServerMessage.snapshot:type_name -> mmo.v1.Snapshot
+	18, // 10: mmo.v1.ServerMessage.event:type_name -> mmo.v1.Event
+	14, // 11: mmo.v1.ServerMessage.pong:type_name -> mmo.v1.Pong
+	11, // 12: mmo.v1.ServerMessage.kick:type_name -> mmo.v1.Kick
+	15, // 13: mmo.v1.Welcome.self:type_name -> mmo.v1.EntityState
+	1,  // 14: mmo.v1.EntityState.kind:type_name -> mmo.v1.EntityKind
+	16, // 15: mmo.v1.Snapshot.entities:type_name -> mmo.v1.EntityDelta
+	15, // 16: mmo.v1.Snapshot.entered:type_name -> mmo.v1.EntityState
+	15, // 17: mmo.v1.Snapshot.self:type_name -> mmo.v1.EntityState
+	25, // 18: mmo.v1.Event.player_joined:type_name -> mmo.v1.PlayerJoined
+	26, // 19: mmo.v1.Event.player_left:type_name -> mmo.v1.PlayerLeft
+	19, // 20: mmo.v1.Event.damage:type_name -> mmo.v1.DamageDealt
+	20, // 21: mmo.v1.Event.died:type_name -> mmo.v1.EntityDied
+	21, // 22: mmo.v1.Event.skill_cast:type_name -> mmo.v1.SkillCast
+	22, // 23: mmo.v1.Event.exp_gained:type_name -> mmo.v1.ExpGained
+	23, // 24: mmo.v1.Event.level_up:type_name -> mmo.v1.LevelUp
+	24, // 25: mmo.v1.Event.loot_taken:type_name -> mmo.v1.LootTaken
+	26, // [26:26] is the sub-list for method output_type
+	26, // [26:26] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_mmo_v1_game_proto_init() }
@@ -1646,25 +2458,33 @@ func file_mmo_v1_game_proto_init() {
 		(*ClientMessage_Hello)(nil),
 		(*ClientMessage_Intent)(nil),
 		(*ClientMessage_Ping)(nil),
+		(*ClientMessage_Cast)(nil),
+		(*ClientMessage_Interact)(nil),
 	}
-	file_mmo_v1_game_proto_msgTypes[2].OneofWrappers = []any{
+	file_mmo_v1_game_proto_msgTypes[4].OneofWrappers = []any{
 		(*ServerMessage_Welcome)(nil),
 		(*ServerMessage_Snapshot)(nil),
 		(*ServerMessage_Event)(nil),
 		(*ServerMessage_Pong)(nil),
 		(*ServerMessage_Kick)(nil),
 	}
-	file_mmo_v1_game_proto_msgTypes[12].OneofWrappers = []any{
+	file_mmo_v1_game_proto_msgTypes[14].OneofWrappers = []any{
 		(*Event_PlayerJoined)(nil),
 		(*Event_PlayerLeft)(nil),
+		(*Event_Damage)(nil),
+		(*Event_Died)(nil),
+		(*Event_SkillCast)(nil),
+		(*Event_ExpGained)(nil),
+		(*Event_LevelUp)(nil),
+		(*Event_LootTaken)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mmo_v1_game_proto_rawDesc), len(file_mmo_v1_game_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   15,
+			NumEnums:      4,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

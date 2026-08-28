@@ -5,6 +5,7 @@ go 1.26.5
 require google.golang.org/protobuf v1.36.12
 
 require (
+	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/coder/websocket v1.8.15 // indirect

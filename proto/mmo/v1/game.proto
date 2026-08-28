@@ -34,11 +34,38 @@ message ClientMessage {
     Hello  hello  = 1;
     Intent intent = 2;
     Ping   ping   = 3;
+    Cast   cast   = 4;
+    Interact interact = 5;
   }
-  // Reserved for messages arriving in later milestones -- cast, interact,
-  // chat, inventory, party, trade -- so adding them never renumbers what is
-  // already deployed.
-  reserved 4 to 9;
+  // Reserved for messages arriving in later milestones -- chat, inventory,
+  // party, trade -- so adding them never renumbers what is already deployed.
+  reserved 6 to 9;
+}
+
+// Cast requests a skill. The client asks; the server decides.
+//
+// There is deliberately no field for a target or for damage. The server
+// resolves what the cast hits from its own state and rolls the outcome itself,
+// so a client can ask to swing but never assert what it connected with.
+message Cast {
+  uint32 seq = 1;       // client sequence, echoed for reconciliation
+  string skill_id = 2;
+
+  // Facing at the moment of the cast, since a swing resolves in the direction
+  // the character is looking rather than at a chosen entity.
+  bool facing_left = 3;
+}
+
+// Interact is a request to act on a nearby entity: loot a drop, use a portal,
+// talk to an NPC.
+message Interact {
+  uint32 entity_id = 1;
+  InteractKind kind = 2;
+}
+
+enum InteractKind {
+  INTERACT_KIND_UNSPECIFIED = 0;
+  INTERACT_KIND_LOOT = 1;
 }
 
 message ServerMessage {
@@ -186,6 +213,25 @@ message EntityState {
   uint32 coyote = 15;
   uint32 jump_buffer = 16;
   uint32 drop_through = 17;
+
+  // Progression, only populated for self.
+  uint32 level = 18;
+  uint64 exp = 19;
+  uint64 exp_to_next = 20;
+  uint32 mp = 21;
+  uint32 mp_max = 22;
+
+  // Ground drops. A drop is an entity like any other so that visibility,
+  // layering, and removal all work without a special case -- which is also
+  // what makes cross-layer looting unrepresentable rather than merely
+  // forbidden.
+  string drop_item = 23;
+  uint32 drop_qty = 24;
+  uint32 drop_gold = 25;
+
+  // Content id of a mob, so the client can pick its sprite without the server
+  // sending a name string every time one spawns.
+  string mob_id = 26;
 }
 
 // EntityDelta carries only what changed since the baseline tick.
@@ -240,8 +286,53 @@ message Event {
   oneof body {
     PlayerJoined player_joined = 1;
     PlayerLeft player_left = 2;
+    DamageDealt damage = 3;
+    EntityDied died = 4;
+    SkillCast skill_cast = 5;
+    ExpGained exp_gained = 6;
+    LevelUp level_up = 7;
+    LootTaken loot_taken = 8;
   }
-  reserved 3 to 15;  // damage, death, cast, chat, loot, level-up
+  reserved 9 to 15;  // chat, buffs, party
+}
+
+// DamageDealt is sent rather than inferred from a falling HP number, because a
+// client deriving "took damage" from state cannot tell 200 damage from two
+// hits of 100 -- and the difference is the whole feel of a fight.
+message DamageDealt {
+  uint32 source_id = 1;
+  uint32 target_id = 2;
+  uint32 amount = 3;
+  bool critical = 4;
+  string element = 5;
+}
+
+message EntityDied {
+  uint32 entity_id = 1;
+  uint32 killer_id = 2;
+}
+
+message SkillCast {
+  uint32 caster_id = 1;
+  string skill_id = 2;
+  bool facing_left = 3;
+}
+
+message ExpGained {
+  uint64 amount = 1;
+  uint64 total = 2;
+}
+
+message LevelUp {
+  uint32 level = 1;
+  uint64 exp_to_next = 2;
+}
+
+message LootTaken {
+  uint32 entity_id = 1;
+  string item_id = 2;
+  uint32 qty = 3;
+  uint32 gold = 4;
 }
 
 message PlayerJoined {

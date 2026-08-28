@@ -55,6 +55,7 @@ type config struct {
 	devAuth    bool
 	logLevel   string
 	logJSON    bool
+	seed       uint64
 }
 
 func main() {
@@ -91,10 +92,13 @@ func run() error {
 	)
 	m := metrics.New(registry)
 
-	maps, err := loadMaps(cfg, log)
+	game, err := loadContent(cfg, log)
 	if err != nil {
 		return err
 	}
+	log.Info("content loaded",
+		"hash", game.Hash, "maps", len(game.Maps), "mobs", len(game.Mobs),
+		"items", len(game.Items), "skills", len(game.Skills))
 
 	dir := directory.NewMemory(directory.NodeID(cfg.nodeID))
 	defer dir.Close()
@@ -103,10 +107,11 @@ func run() error {
 	if roles[RoleWorld] {
 		node, err = world.NewNode(world.Config{
 			Directory:  dir,
-			Maps:       maps,
+			Content:    game,
 			DefaultMap: cfg.defaultMap,
 			Logger:     log,
 			Observer:   m,
+			Seed:       cfg.seed,
 		})
 		if err != nil {
 			return err
@@ -131,7 +136,8 @@ func run() error {
 
 		gw, err := gateway.New(gateway.Config{
 			Rooms:          node,
-			Maps:           maps,
+			Maps:           game.Maps,
+			ContentHash:    game.Hash,
 			Tickets:        gateway.NewTicketStore(),
 			Metrics:        m,
 			Logger:         log,
@@ -184,7 +190,7 @@ func run() error {
 		}(srv)
 	}
 
-	log.Info("server ready", "roles", cfg.roles, "node", cfg.nodeID, "maps", len(maps))
+	log.Info("server ready", "roles", cfg.roles, "node", cfg.nodeID, "content", game.Hash)
 
 	select {
 	case err := <-errs:
@@ -217,6 +223,8 @@ func parseFlags() config {
 		"comma-separated allowed WebSocket origins; empty means same-origin only")
 	flag.BoolVar(&cfg.devAuth, "dev-auth", false,
 		"issue game tickets with no identity check (development only)")
+	flag.Uint64Var(&cfg.seed, "seed", 0,
+		"fixed simulation seed, making a session reproducible; 0 draws a fresh one")
 	flag.StringVar(&cfg.logLevel, "log-level", "info", "debug, info, warn, or error")
 	flag.BoolVar(&cfg.logJSON, "log-json", false, "emit logs as JSON")
 	flag.Parse()
@@ -244,50 +252,27 @@ func parseRoles(s string) (map[Role]bool, error) {
 	return roles, nil
 }
 
-// loadMaps reads every map, from disk if --content-dir was given and from the
-// embedded copy otherwise.
+// loadContent reads every content file, from disk if --content-dir was given
+// and from the embedded copy otherwise.
 //
-// Any invalid map fails startup. Never start with a partial world: a server
-// that silently comes up with a broken map produces bug reports weeks later
-// that trace back to a warning nobody read.
-func loadMaps(cfg config, log *slog.Logger) (map[string]*content.Map, error) {
+// Any invalid content fails startup. Never start with a partial world: a
+// server that silently comes up with a broken drop table produces bug reports
+// weeks later that trace back to a warning nobody read.
+func loadContent(cfg config, log *slog.Logger) (*content.Content, error) {
 	var fsys fs.FS = gamedata.FS
-	root := "maps"
-
 	if cfg.contentDir != "" {
 		fsys = os.DirFS(cfg.contentDir)
-		root = "maps"
 		log.Info("loading content from disk", "dir", cfg.contentDir)
 	}
 
-	entries, err := fs.ReadDir(fsys, root)
+	game, err := content.Load(fsys)
 	if err != nil {
-		return nil, fmt.Errorf("reading maps: %w", err)
+		return nil, err
 	}
-
-	maps := make(map[string]*content.Map)
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".tmj") {
-			continue
-		}
-		m, err := content.LoadMap(fsys, root+"/"+e.Name())
-		if err != nil {
-			return nil, err
-		}
-		if _, dup := maps[m.ID]; dup {
-			return nil, fmt.Errorf("two maps both declare the id %q", m.ID)
-		}
-		maps[m.ID] = m
-		log.Debug("map loaded", "id", m.ID, "spawns", len(m.Spawns))
-	}
-
-	if len(maps) == 0 {
-		return nil, errors.New("no maps found")
-	}
-	if _, ok := maps[cfg.defaultMap]; !ok {
+	if _, ok := game.Maps[cfg.defaultMap]; !ok {
 		return nil, fmt.Errorf("default map %q was not found among the loaded maps", cfg.defaultMap)
 	}
-	return maps, nil
+	return game, nil
 }
 
 func newLogger(cfg config) (*slog.Logger, error) {

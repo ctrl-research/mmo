@@ -20,6 +20,22 @@ export const theme = {
   other: 0x7f8899,
   otherEdge: 0xa8b1c2,
 
+  mob: 0xc25b5b,
+  mobEdge: 0xe08585,
+  mobHit: 0xffd0d0,
+  mobDead: 0x4a3535,
+
+  dropItem: 0x6fc28a,
+  dropGold: 0xe0b44a,
+
+  healthHigh: 0x5fbf6a,
+  healthMid: 0xd8b243,
+  healthLow: 0xd05353,
+
+  damageDealt: 0xffe9a8,
+  damageCrit: 0xffb347,
+  damageTaken: 0xff7a7a,
+
   nameText: 0xd7dce6,
   ghost: 0x2ecc71,
 } as const;

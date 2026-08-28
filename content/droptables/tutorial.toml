@@ -1,0 +1,61 @@
+# Drop tables.
+#
+# Entries roll independently rather than as one weighted pick, because a mob
+# dropping two different things at once is normal and a single pick would make
+# it impossible.
+#
+# Chances are authored as decimals because that is readable; the loader
+# converts them once to parts-per-million, and every roll from then on is
+# integer arithmetic that reproduces exactly in a replay.
+
+[drop_table.slime_green]
+gold = { min = 3, max = 12, chance = 0.75 }
+
+[[drop_table.slime_green.entries]]
+item = "material.slime_gel"
+chance = 0.35
+qty = { min = 1, max = 2 }
+
+[[drop_table.slime_green.entries]]
+item = "potion.red_small"
+chance = 0.12
+
+[[drop_table.slime_green.entries]]
+item = "equipment.rusty_sword"
+chance = 0.02
+
+[drop_table.boar_wild]
+gold = { min = 10, max = 30, chance = 0.85 }
+
+[[drop_table.boar_wild.entries]]
+item = "material.boar_hide"
+chance = 0.40
+
+[[drop_table.boar_wild.entries]]
+item = "potion.red_small"
+chance = 0.18
+qty = { min = 1, max = 3 }
+
+[[drop_table.boar_wild.entries]]
+item = "potion.blue_small"
+chance = 0.10
+
+[drop_table.slime_king]
+gold = { min = 200, max = 500, chance = 1.0 }
+
+[[drop_table.slime_king.entries]]
+item = "material.slime_gel"
+chance = 1.0
+qty = { min = 5, max = 12 }
+
+[[drop_table.slime_king.entries]]
+item = "potion.red_small"
+chance = 0.80
+qty = { min = 2, max = 5 }
+
+# Rare enough to be worth announcing. Reserved for genuinely rare items -- an
+# announcement on anything common is noise.
+[[drop_table.slime_king.entries]]
+item = "equipment.slime_crown"
+chance = 0.03
+announce = true

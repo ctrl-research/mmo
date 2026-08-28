@@ -266,6 +266,27 @@ func (s *session) handleClientMessage(ctx context.Context, cm *mmov1.ClientMessa
 			Down:  in.GetDown(),
 		})
 
+	case cm.GetCast() != nil:
+		// Casts share the intent rate limit: a client legitimately produces at
+		// most one per simulated tick, and the room bounds its own queue on
+		// top of this.
+		if !limiter.allow() {
+			s.gw.metrics.InputsDropped.Inc()
+			return
+		}
+		c := cm.GetCast()
+		s.handle.Cast(ctx, s.entityID, c.GetSkillId(), c.GetFacingLeft())
+
+	case cm.GetInteract() != nil:
+		if !limiter.allow() {
+			s.gw.metrics.InputsDropped.Inc()
+			return
+		}
+		in := cm.GetInteract()
+		if in.GetKind() == mmov1.InteractKind_INTERACT_KIND_LOOT {
+			s.handle.Interact(ctx, s.entityID, room.EntityID(in.GetEntityId()), room.InteractLoot)
+		}
+
 	case cm.GetPing() != nil:
 		s.Send(&mmov1.ServerMessage{
 			Body: &mmov1.ServerMessage_Pong{Pong: &mmov1.Pong{

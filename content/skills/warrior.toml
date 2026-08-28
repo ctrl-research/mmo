@@ -1,0 +1,55 @@
+# Active skills.
+#
+# A skill is targeting plus an ordered list of effects, never Go code. That is
+# what makes hundreds of them tractable, and it is the precondition for
+# PoE-style support modifiers in M6: a support transforms a skill's effect
+# list, so a new support works with every existing compatible skill.
+#
+# M1 implements only the `damage` effect. Any other type is a load error rather
+# than a silent no-op.
+
+[skill.slash]
+name = "Slash"
+class = "warrior"
+max_rank = 20
+cost_mp = 0
+cooldown_ms = 500
+cast_time_ms = 0
+animation = "slash_1h"
+tags = ["melee", "attack", "physical"]
+
+[skill.slash.targeting]
+kind = "cone"
+range = 72.0
+
+# A 2D platformer needs a vertical bound on melee, or a ground-level swing
+# hits everything standing on the platform above.
+half_height = 40.0
+max_targets = 3
+
+[[skill.slash.effects]]
+type = "damage"
+element = "physical"
+base = { min = 8, max = 14 }
+scaling = { attack = 1.0 }
+per_rank = { base_pct = 8 }
+
+# The mob attack that AI profiles use. Mobs and players draw from the same
+# skill system, so a mob ability is not a separate concept to maintain.
+[skill.mob_bite]
+name = "Bite"
+max_rank = 1
+cooldown_ms = 1200
+tags = ["melee", "attack", "physical"]
+
+[skill.mob_bite.targeting]
+kind = "cone"
+range = 40.0
+half_height = 32.0
+max_targets = 1
+
+[[skill.mob_bite.effects]]
+type = "damage"
+element = "physical"
+base = { min = 3, max = 6 }
+scaling = { attack = 1.0 }

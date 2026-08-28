@@ -17,6 +17,19 @@ func (r *Room) phaseSnapshot() {
 		if p == nil {
 			continue
 		}
+		// Events first, then the snapshot: a client should learn that damage
+		// was dealt before it sees the HP that resulted from it, or the number
+		// it renders lags a tick behind the bar.
+		for i := range r.pending {
+			ev := &r.pending[i]
+			if !r.deliversTo(p, ev) {
+				continue
+			}
+			p.sink.Send(&mmov1.ServerMessage{
+				Body: &mmov1.ServerMessage_Event{Event: ev.event},
+			})
+		}
+
 		p.sink.Send(&mmov1.ServerMessage{
 			Body: &mmov1.ServerMessage_Snapshot{Snapshot: r.buildSnapshot(p)},
 		})
@@ -56,7 +69,7 @@ func (r *Room) buildSnapshot(p *player) *mmov1.Snapshot {
 	clear(seen)
 
 	for _, e := range r.entities {
-		if !visible(p.entity, e) {
+		if !visibleTo(p.layer, e) && e.Kind != KindPlayer {
 			continue
 		}
 		// Self is carried in full in its own field and must not be duplicated
@@ -99,5 +112,22 @@ func (r *Room) buildSnapshot(p *player) *mmov1.Snapshot {
 	// debugging tool.
 	slices.Sort(snap.Removed)
 
+	if p.entity.Player != nil {
+		snap.Self.ExpToNext = uint64(r.expToNext(p.entity.Player))
+	}
+
 	return snap
+}
+
+// deliversTo reports whether an event should reach a given player.
+//
+// Events are scoped the same way entities are. Experience and loot go only to
+// the player who earned them; damage and deaths go to whoever could see the
+// entity involved. Broadcasting everything would leak another player's hunting
+// into their client just as surely as sending the mobs themselves would.
+func (r *Room) deliversTo(p *player, ev *pendingEvent) bool {
+	if ev.only != 0 {
+		return ev.only == p.entity.ID
+	}
+	return ev.layer == SharedLayer || ev.layer == p.layer
 }

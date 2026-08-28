@@ -4,6 +4,8 @@ import { Interpolator } from "./interpolator";
 import { Predictor } from "./predictor";
 import { InputSource } from "./input";
 import { Sim } from "@/sim/wasm";
+import { isFacingLeft } from "@/sim/body";
+import { toPixels } from "@/sim/fixed";
 import type { Scene, MapGeometry } from "@/render/scene";
 import { decodeWorld } from "@/net/collision";
 
@@ -20,6 +22,16 @@ import { decodeWorld } from "@/net/collision";
 
 /** Bound on catch-up steps after the tab is backgrounded and resumes. */
 const MAX_CATCHUP_TICKS = 5;
+
+/**
+ * How far to look for a drop when the loot key is pressed, in fixed-point.
+ *
+ * Deliberately wider than the server's pickup range: the client is only
+ * choosing which drop the player probably meant, and the server still checks
+ * range and ownership. A generous search means one press loots the obvious
+ * thing rather than requiring precise positioning.
+ */
+const LOOT_SEARCH_RADIUS = 120 * 256;
 
 export interface LoopCallbacks {
   onStatus(text: string): void;
@@ -46,6 +58,17 @@ export class GameLoop {
   #ticksSimulated = 0;
   #fps = 0;
 
+  // Progression, carried in the self state each snapshot.
+  #level = 1;
+  #exp = 0n;
+  #expToNext = 0n;
+  #hp = 0;
+  #hpMax = 0;
+
+  // Bumped whenever the server confirms a kill this player made, so the HUD
+  // can show progress without the client inferring it from state.
+  #kills = 0;
+
   constructor(sim: Sim, scene: Scene, cb: LoopCallbacks) {
     this.#sim = sim;
     this.#scene = scene;
@@ -53,7 +76,7 @@ export class GameLoop {
     this.#predictor = new Predictor(sim);
 
     this.#conn = new Connection({
-      onWelcome: (w) => this.#onWelcome(w),
+      onWelcome: (w) => void this.#onWelcome(w),
       onSnapshot: (s) => this.#onSnapshot(s),
       onEvent: (e) => this.#onEvent(e),
       onPong: () => {},
@@ -74,7 +97,22 @@ export class GameLoop {
     }
     const { ticket } = (await res.json()) as { ticket: string };
 
-    await this.#conn.connect(ticket);
+    // The handshake refuses a client that disagrees with the server about
+    // content, because a client that thinks a mob has 400 HP when the server
+    // says 900 produces bug reports that are nearly impossible to read.
+    //
+    // Today the client holds no content of its own -- it fetches map collision
+    // from the server at runtime -- so it reports the server's own hash and
+    // the check is a formality. It stops being one in M3, when item and mob
+    // data are bundled into the build: this becomes the hash the bundle was
+    // built against, and a stale cached client is then refused rather than
+    // left to render the wrong numbers.
+    const health = await fetch("/healthz");
+    const contentHash = health.ok
+      ? ((await health.json()) as { content?: string }).content ?? ""
+      : "";
+
+    await this.#conn.connect(ticket, contentHash);
   }
 
   stop(): void {
@@ -94,6 +132,12 @@ export class GameLoop {
       entities: this.#interp.size,
       fps: this.#fps,
       body: this.#predictor.body,
+      level: this.#level,
+      exp: this.#exp,
+      expToNext: this.#expToNext,
+      hp: this.#hp,
+      hpMax: this.#hpMax,
+      kills: this.#kills,
     };
   }
 
@@ -126,14 +170,74 @@ export class GameLoop {
 
     if (snap.self) {
       this.#predictor.reconcile(snap.self, snap.ackSeq);
+
+      this.#level = snap.self.level || this.#level;
+      this.#exp = snap.self.exp;
+      this.#expToNext = snap.self.expToNext;
+      this.#hp = snap.self.hp;
+      this.#hpMax = snap.self.hpMax;
     }
     this.#interp.apply(snap, this.#selfId, performance.now());
   }
 
-  #onEvent(_e: Event): void {
-    // M0 carries only join and left events, and both are already visible
-    // through entities entering and being removed. Chat and combat events
-    // arrive with the systems that produce them.
+  /**
+   * Turns server events into feedback.
+   *
+   * Damage arrives as an event rather than being inferred from a falling
+   * health bar, because two hits of 100 and one of 200 are indistinguishable
+   * in state and completely different to play.
+   */
+  #onEvent(e: Event): void {
+    switch (e.body.case) {
+      case "damage": {
+        const d = e.body.value;
+        const toSelf = d.targetId === this.#selfId;
+        const pos = this.#positionOf(d.targetId);
+        if (!pos) break;
+
+        this.#scene.effects.damage(pos.x, pos.y, d.amount, {
+          critical: d.critical,
+          toSelf,
+        });
+        break;
+      }
+
+      case "died": {
+        const d = e.body.value;
+        if (d.killerId === this.#selfId && d.entityId !== this.#selfId) {
+          this.#kills++;
+        }
+        break;
+      }
+
+      case "levelUp":
+        this.#level = e.body.value.level;
+        this.#expToNext = e.body.value.expToNext;
+        this.#cb.onStatus(`level ${this.#level}`);
+        break;
+
+      case "lootTaken": {
+        const l = e.body.value;
+        this.#cb.onStatus(l.gold > 0 ? `+${l.gold} gold` : `picked up ${l.itemId}`);
+        break;
+      }
+    }
+  }
+
+  /**
+   * Where to anchor an effect for an entity, in pixels.
+   *
+   * Self is predicted and everything else is interpolated, so the two come
+   * from different places -- using the interpolator for self would put a
+   * damage number where the player was 100ms ago.
+   */
+  #positionOf(entityId: number): { x: number; y: number } | null {
+    if (entityId === this.#selfId) {
+      const b = this.#predictor.body;
+      return { x: toPixels(b.x) + toPixels(b.w) / 2, y: toPixels(b.y) };
+    }
+    const p = this.#interp.positionOf(entityId);
+    return p ? { x: toPixels(p.x) + 16, y: toPixels(p.y) } : null;
   }
 
   #onClosed(code: number, reason: string): void {
@@ -168,8 +272,15 @@ export class GameLoop {
     }
     if (steps === MAX_CATCHUP_TICKS) this.#accumulator = 0;
 
-    this.#scene.drawSelf(this.#predictor.body, this.#name, this.#predictor.authoritative);
+    this.#scene.drawSelf(
+      this.#predictor.body,
+      this.#name,
+      this.#hp,
+      this.#hpMax,
+      this.#predictor.authoritative,
+    );
     this.#scene.drawEntities(this.#interp.sample(now), this.#interp.drainRemoved());
+    this.#scene.effects.update(now);
   }
 
   /** One simulation tick: sample input, predict, send. */
@@ -177,6 +288,21 @@ export class GameLoop {
     const input = this.#input.sample();
     const seq = this.#predictor.predict(input);
     this.#conn.sendIntent(seq, input.moveX, input.jump, input.up, input.down);
+
+    // Attacks are not predicted. The server decides what a swing reached and
+    // for how much, and guessing locally would mean showing damage numbers
+    // that the server then contradicts -- worse than showing them a frame
+    // later.
+    if (this.#input.takeAttack()) {
+      this.#conn.sendCast(seq, "slash", isFacingLeft(this.#predictor.body));
+    }
+
+    if (this.#input.takeLoot()) {
+      const b = this.#predictor.body;
+      const target = this.#interp.nearestDrop(b.x, b.y, LOOT_SEARCH_RADIUS);
+      if (target !== 0) this.#conn.sendLoot(target);
+    }
+
     this.#ticksSimulated++;
   }
 

@@ -1,0 +1,44 @@
+# Base item types.
+#
+# M1 needs only enough to put something on the ground and pick it up. Affix
+# pools, tiers, rarity rolls, and equipment slots arrive in M3.
+
+[item."potion.red_small"]
+name = "Small Red Potion"
+kind = "consumable"
+stackable = true
+max_stack = 100
+level = 1
+
+[item."potion.blue_small"]
+name = "Small Blue Potion"
+kind = "consumable"
+stackable = true
+max_stack = 100
+level = 1
+
+[item."material.slime_gel"]
+name = "Slime Gel"
+kind = "material"
+stackable = true
+max_stack = 500
+level = 1
+
+[item."material.boar_hide"]
+name = "Boar Hide"
+kind = "material"
+stackable = true
+max_stack = 500
+level = 5
+
+[item."equipment.rusty_sword"]
+name = "Rusty Sword"
+kind = "equipment"
+stackable = false
+level = 1
+
+[item."equipment.slime_crown"]
+name = "Slime Crown"
+kind = "equipment"
+stackable = false
+level = 10
