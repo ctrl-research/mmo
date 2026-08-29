@@ -89,6 +89,22 @@ export class Predictor {
   }
 
   /**
+   * Discards prediction state ahead of a map change.
+   *
+   * The pending inputs describe movement in a room the character has left, and
+   * replaying them against the new map would push them through geometry that
+   * does not exist there. Clearing the smoothing offset too means the arrival
+   * is a hard snap rather than a visible glide across the new map from
+   * wherever they stood in the old one.
+   */
+  suspend(): void {
+    this.#pending.length = 0;
+    this.#offsetX = 0;
+    this.#offsetY = 0;
+    this.#replayDepth = 0;
+  }
+
+  /**
    * Simulates one tick locally and returns the sequence number to send.
    *
    * The client ticks at the server's rate rather than at the display rate:

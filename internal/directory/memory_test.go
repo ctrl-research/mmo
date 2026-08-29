@@ -344,3 +344,174 @@ func TestConcurrentJoinAndLeave(t *testing.T) {
 		}
 	}
 }
+
+// --- multi-node placement ----------------------------------------------------
+
+// Which node hosts a room is the directory's decision, and it is the decision
+// that makes "hosted by a different world role" true rather than nominal.
+func TestNewInstancesSpreadAcrossNodes(t *testing.T) {
+	m := NewMemory("node-a")
+	m.AddNode("node-b")
+	ctx := context.Background()
+
+	// Two maps, so each Join has to create an instance rather than filling one.
+	a, err := m.Join(ctx, RoomKey{MapID: "one", Placement: PlacementShared}, 4)
+	if err != nil {
+		t.Fatalf("join: %v", err)
+	}
+	b, err := m.Join(ctx, RoomKey{MapID: "two", Placement: PlacementShared}, 4)
+	if err != nil {
+		t.Fatalf("join: %v", err)
+	}
+
+	if a.Node == b.Node {
+		t.Errorf("both instances went to %s; the emptier node should have taken the second",
+			a.Node)
+	}
+}
+
+func TestAddNodeIsIdempotent(t *testing.T) {
+	m := NewMemory("node-a")
+	m.AddNode("node-a")
+	m.AddNode("node-b")
+	m.AddNode("node-b")
+
+	if got := m.Nodes(); len(got) != 2 {
+		t.Errorf("registered nodes are %v, want two distinct ones", got)
+	}
+}
+
+// --- releasing ---------------------------------------------------------------
+
+// Checking occupancy and releasing separately leaves a window in which a player
+// joins the instance between the two, and the room they were placed in stops
+// ticking a moment later.
+func TestTryReleaseRefusesAnOccupiedInstance(t *testing.T) {
+	m := NewMemory("node-a")
+	ctx := context.Background()
+
+	inst, err := m.Join(ctx, RoomKey{MapID: "one", Placement: PlacementShared}, 4)
+	if err != nil {
+		t.Fatalf("join: %v", err)
+	}
+
+	released, err := m.TryRelease(ctx, inst.ID)
+	if err != nil {
+		t.Fatalf("try release: %v", err)
+	}
+	if released {
+		t.Fatal("released an instance with a player in it")
+	}
+
+	if err := m.Leave(ctx, inst.ID); err != nil {
+		t.Fatalf("leave: %v", err)
+	}
+
+	released, err = m.TryRelease(ctx, inst.ID)
+	if err != nil || !released {
+		t.Fatalf("TryRelease on an empty instance returned (%v, %v), want (true, nil)",
+			released, err)
+	}
+	if _, ok := m.Lookup(ctx, inst.ID); ok {
+		t.Error("the instance is still listed after being released")
+	}
+}
+
+// Already gone is the outcome the caller wanted, not an error to handle.
+func TestTryReleaseOnAnUnknownInstanceSucceeds(t *testing.T) {
+	m := NewMemory("node-a")
+
+	released, err := m.TryRelease(context.Background(), 999)
+	if err != nil || !released {
+		t.Errorf("TryRelease on an unknown instance returned (%v, %v), want (true, nil)",
+			released, err)
+	}
+}
+
+// --- channels ----------------------------------------------------------------
+
+// A player picking channel 3 means that instance and no other, so the placement
+// that spreads players across the least-full channel is exactly wrong here.
+func TestJoinInstanceTakesTheNamedChannel(t *testing.T) {
+	m := NewMemory("node-a")
+	ctx := context.Background()
+	key := RoomKey{MapID: "one", Placement: PlacementShared}
+
+	busy, err := m.Join(ctx, key, 4)
+	if err != nil {
+		t.Fatalf("join: %v", err)
+	}
+	quiet, err := m.NewInstance(ctx, key, 4)
+	if err != nil {
+		t.Fatalf("new instance: %v", err)
+	}
+	if err := m.Leave(ctx, quiet.ID); err != nil {
+		t.Fatalf("leave: %v", err)
+	}
+
+	// The emptier channel is the one Join would pick, so asking for the busy
+	// one proves the choice was honoured rather than coincidental.
+	got, err := m.JoinInstance(ctx, busy.ID)
+	if err != nil {
+		t.Fatalf("join instance: %v", err)
+	}
+	if got.ID != busy.ID {
+		t.Errorf("asked for instance %d, got %d", busy.ID, got.ID)
+	}
+	if got.Players != 2 {
+		t.Errorf("the named channel holds %d players, want 2", got.Players)
+	}
+}
+
+func TestJoinInstanceRefusesAFullOrMissingChannel(t *testing.T) {
+	m := NewMemory("node-a")
+	ctx := context.Background()
+
+	inst, err := m.Join(ctx, RoomKey{MapID: "one", Placement: PlacementShared}, 1)
+	if err != nil {
+		t.Fatalf("join: %v", err)
+	}
+
+	if _, err := m.JoinInstance(ctx, inst.ID); err != ErrNoCapacity {
+		t.Errorf("joining a full channel returned %v, want ErrNoCapacity", err)
+	}
+	if _, err := m.JoinInstance(ctx, 999); err != ErrUnknownInstance {
+		t.Errorf("joining a missing channel returned %v, want ErrUnknownInstance", err)
+	}
+}
+
+// A second instance would split a party across two dungeons.
+func TestNewInstanceRefusesAPrivateKey(t *testing.T) {
+	m := NewMemory("node-a")
+	key := RoomKey{MapID: "one", Placement: PlacementPrivate, OwnerKey: "party-1"}
+
+	if _, err := m.NewInstance(context.Background(), key, 4); err != ErrNoCapacity {
+		t.Errorf("creating a second private instance returned %v, want ErrNoCapacity", err)
+	}
+}
+
+// The channel list a player picks from.
+func TestInstancesForListsEveryChannelOfAKey(t *testing.T) {
+	m := NewMemory("node-a")
+	ctx := context.Background()
+	key := RoomKey{MapID: "one", Placement: PlacementShared}
+
+	if _, err := m.Join(ctx, key, 4); err != nil {
+		t.Fatalf("join: %v", err)
+	}
+	if _, err := m.NewInstance(ctx, key, 4); err != nil {
+		t.Fatalf("new instance: %v", err)
+	}
+	// A different map must not appear in this map's channel list.
+	if _, err := m.Join(ctx, RoomKey{MapID: "two", Placement: PlacementShared}, 4); err != nil {
+		t.Fatalf("join other map: %v", err)
+	}
+
+	got := m.InstancesFor(ctx, key)
+	if len(got) != 2 {
+		t.Fatalf("listed %d channels, want 2", len(got))
+	}
+	if got[0].ID > got[1].ID {
+		t.Error("channels are not ordered by id, so the numbers a player sees would move")
+	}
+}

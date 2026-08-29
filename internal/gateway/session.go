@@ -9,6 +9,7 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/ctrl-research/mmo/internal/content"
+	"github.com/ctrl-research/mmo/internal/directory"
 	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
 	"github.com/ctrl-research/mmo/internal/world"
 	"github.com/ctrl-research/mmo/internal/world/room"
@@ -276,13 +277,29 @@ func (s *session) readHello(ctx context.Context) error {
 	})
 
 	s.play = play
-	s.handle, s.entityID = play.Handle(), play.EntityID()
 
-	s.log.Info("player connected", "entity", uint32(s.entityID))
+	s.log.Info("player connected", "entity", uint32(play.EntityID()))
 	return nil
 }
 
+// where returns the room and entity to address right now.
+//
+// Read per message rather than cached at connect: a transfer moves the
+// character to a different room with a different entity id, and a cached pair
+// would keep sending input into the map the player has just left.
+func (s *session) where() (room.Handle, room.EntityID) {
+	if s.play == nil {
+		return nil, 0
+	}
+	return s.play.Where()
+}
+
 func (s *session) handleClientMessage(ctx context.Context, cm *mmov1.ClientMessage, limiter *rateLimiter) {
+	handle, entityID := s.where()
+	if handle == nil && cm.GetPing() == nil && cm.GetHello() == nil {
+		return
+	}
+
 	switch {
 	case cm.GetIntent() != nil:
 		if !limiter.allow() {
@@ -295,7 +312,7 @@ func (s *session) handleClientMessage(ctx context.Context, cm *mmov1.ClientMessa
 		// The simulation clamps too. Doing it here as well keeps a hostile
 		// value from ever reaching the room, and keeps the clamp visible at
 		// the trust boundary where it belongs.
-		s.handle.Input(ctx, s.entityID, in.GetSeq(), sim.Input{
+		handle.Input(ctx, entityID, in.GetSeq(), sim.Input{
 			MoveX: clampMoveX(in.GetMoveX()),
 			Jump:  in.GetJump(),
 			Up:    in.GetUp(),
@@ -311,7 +328,7 @@ func (s *session) handleClientMessage(ctx context.Context, cm *mmov1.ClientMessa
 			return
 		}
 		c := cm.GetCast()
-		s.handle.Cast(ctx, s.entityID, c.GetSkillId(), c.GetFacingLeft())
+		handle.Cast(ctx, entityID, c.GetSkillId(), c.GetFacingLeft())
 
 	case cm.GetInteract() != nil:
 		if !limiter.allow() {
@@ -320,7 +337,7 @@ func (s *session) handleClientMessage(ctx context.Context, cm *mmov1.ClientMessa
 		}
 		in := cm.GetInteract()
 		if in.GetKind() == mmov1.InteractKind_INTERACT_KIND_LOOT {
-			s.handle.Interact(ctx, s.entityID, room.EntityID(in.GetEntityId()), room.InteractLoot)
+			handle.Interact(ctx, entityID, room.EntityID(in.GetEntityId()), room.InteractLoot)
 		}
 
 	case cm.GetItemAction() != nil:
@@ -329,6 +346,24 @@ func (s *session) handleClientMessage(ctx context.Context, cm *mmov1.ClientMessa
 			return
 		}
 		s.handleItemAction(ctx, cm.GetItemAction())
+
+	case cm.GetOpenWorldMap() != nil:
+		if !limiter.allow() {
+			s.gw.metrics.InputsDropped.Inc()
+			return
+		}
+		s.Send(&mmov1.ServerMessage{
+			Body: &mmov1.ServerMessage_Event{Event: &mmov1.Event{
+				Body: &mmov1.Event_WorldMap{WorldMap: s.play.WorldMap(ctx)},
+			}},
+		})
+
+	case cm.GetTravel() != nil:
+		if !limiter.allow() {
+			s.gw.metrics.InputsDropped.Inc()
+			return
+		}
+		s.handleTravel(ctx, cm.GetTravel())
 
 	case cm.GetPing() != nil:
 		s.Send(&mmov1.ServerMessage{
@@ -454,6 +489,37 @@ func (s *session) gracefulDisconnect() bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// handleTravel forwards a fast-travel or channel-switch request.
+func (s *session) handleTravel(ctx context.Context, req *mmov1.Travel) {
+	if s.play == nil {
+		return
+	}
+
+	var out world.TravelRequest
+	switch {
+	case req.GetWaypointId() != "":
+		out.WaypointID = req.GetWaypointId()
+	case req.GetChannelInstanceId() != 0:
+		out.Channel = directory.InstanceID(req.GetChannelInstanceId())
+	case req.GetNewChannel():
+		out.NewChannel = true
+	default:
+		return
+	}
+
+	// Returns as soon as the request is queued: the transfer itself runs on
+	// the session's goroutine, so this loop stays free to read the socket.
+	if err := s.play.Travel(ctx, out); err != nil {
+		s.Send(&mmov1.ServerMessage{
+			Body: &mmov1.ServerMessage_Event{Event: &mmov1.Event{
+				Body: &mmov1.Event_PortalRefused{PortalRefused: &mmov1.PortalRefused{
+					Reason: world.TravelMessage(err),
+				}},
+			}},
+		})
 	}
 }
 

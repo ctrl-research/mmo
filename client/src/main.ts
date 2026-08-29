@@ -3,6 +3,7 @@ import { Scene } from "@/render/scene";
 import { Sim } from "@/sim/wasm";
 import { Shell } from "@/ui/screens";
 import { InventoryPanel } from "@/ui/inventory";
+import { WorldMapPanel } from "@/ui/worldmap";
 import type { Character } from "@/ui/api";
 import { toPixels } from "@/sim/fixed";
 import { isClimbing, isGrounded } from "@/sim/body";
@@ -24,11 +25,13 @@ const hud = document.getElementById("hud") as HTMLDivElement;
 const stage = document.getElementById("stage") as HTMLDivElement;
 const inventoryEl = document.getElementById("inventory") as HTMLDivElement;
 const tooltipEl = document.getElementById("tooltip") as HTMLDivElement;
+const worldMapEl = document.getElementById("worldmap") as HTMLDivElement;
 
 let loop: GameLoop | null = null;
 let scene: Scene | null = null;
 let sim: Sim | null = null;
 let panel: InventoryPanel | null = null;
+let worldMap: WorldMapPanel | null = null;
 let status = "";
 
 const shell = new Shell(overlay, {
@@ -49,10 +52,17 @@ async function main(): Promise<void> {
       // Prevented, or the keypress also reaches the game and the character
       // acts on the same press that opened the panel.
       e.preventDefault();
+      worldMap?.close();
       panel?.toggle();
+    }
+    if (e.code === "KeyM") {
+      e.preventDefault();
+      panel?.close();
+      worldMap?.toggle();
     }
     if (e.code === "Escape") {
       panel?.close();
+      worldMap?.close();
     }
   });
 
@@ -75,9 +85,16 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
     const game = new GameLoop(sim, scene, {
       onStatus: setStatus,
       onInventory: () => panel?.render(),
+      onWorldMap: (m) => worldMap?.update(m),
+      onMapChanged: () => {
+        // The channel list and "you are here" both belong to the map that was
+        // just left. Refetching beats showing a screen that is quietly wrong.
+        if (worldMap?.isOpen) game.openWorldMap();
+      },
       onDisconnect: (reason) => {
         loop = null;
         panel?.close();
+        worldMap?.close();
         void shell.resume(reason);
       },
     });
@@ -87,6 +104,13 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
       onAction: (kind, item, slot, equipSlot) => {
         game.itemAction(kind, item?.itemId ?? "", slot ?? 0, equipSlot ?? "");
       },
+    });
+
+    worldMap = new WorldMapPanel(worldMapEl, {
+      onRefresh: () => game.openWorldMap(),
+      onTravel: (id) => game.travelTo(id),
+      onSwitchChannel: (id) => game.switchChannel(id),
+      onNewChannel: () => game.newChannel(),
     });
 
     setStatus(`connecting as ${character.name}...`);
@@ -122,7 +146,7 @@ function startHud(): void {
         `correct  ${s.lastCorrectionPx.toFixed(2)} px  (${s.hardCorrections} hard)\n` +
         `others   ${s.entities}\n` +
         `net      ${s.snapshotsReceived} snaps, ${(s.bytesReceived / 1024).toFixed(1)} KiB\n` +
-        `\n[i] inventory   [g] server ghost`;
+        `\n[i] inventory   [m] world map   [g] server ghost`;
       hud.hidden = false;
     } else {
       hud.hidden = true;

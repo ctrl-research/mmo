@@ -32,7 +32,7 @@ These are not style preferences. Violating one produces a bug that only appears 
 
 1. **A room never touches another room's state directly** — even in the same process. All cross-room communication goes over the `Bus`. The local shortcut always works today and breaks the day there are two world nodes.
 
-2. **Room handoff always follows the full transfer protocol** — even when source and destination are goroutines in one process. A special-cased local path means the distributed path is never exercised until it has to work.
+2. **Room handoff always follows the full transfer protocol** — even when source and destination are goroutines in one process. A special-cased local path means the distributed path is never exercised until it has to work. Nothing a live session holds — the socket, the channel the room reports portals and loot on — can travel in the transfer request; it is an in-process reference to the node the *player* is connected to. It is handed to the destination room as a `room.Attachment` after the transfer is accepted.
 
 3. **`internal/world/sim` stays pure.** No goroutines, no reflection, no I/O, no wall-clock reads, no map iteration without sorted keys, no floating point. It compiles to WASM via TinyGo and must be deterministic across both targets. Fixed-point integer math throughout.
 

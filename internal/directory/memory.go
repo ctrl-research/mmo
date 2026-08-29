@@ -12,21 +12,74 @@ import (
 // holds is reconstructible: losing it costs players a disconnect, not data,
 // which is the same property the Redis implementation will have.
 type Memory struct {
-	node NodeID
+	mu sync.Mutex
 
-	mu        sync.Mutex
+	// nodes is every world node available to host a room, in registration
+	// order. Order is kept so that placement is deterministic when several
+	// nodes are equally loaded, which is what makes a multi-node test
+	// reproducible rather than flaky.
+	nodes []NodeID
+
 	instances map[InstanceID]*Instance
 	byKey     map[RoomKey][]InstanceID
 	nextID    InstanceID
 }
 
-// NewMemory returns an empty directory that places every room on node.
+// NewMemory returns an empty directory that places rooms on node.
+//
+// More nodes can be added with AddNode. One is the hobby-scale case; the
+// interesting one is two, because that is what proves a transfer between world
+// roles goes over the bus rather than through a local shortcut.
 func NewMemory(node NodeID) *Memory {
 	return &Memory{
-		node:      node,
+		nodes:     []NodeID{node},
 		instances: make(map[InstanceID]*Instance),
 		byKey:     make(map[RoomKey][]InstanceID),
 	}
+}
+
+// AddNode registers another world node as a placement target.
+//
+// Idempotent, because a node that restarts and re-registers must not be
+// counted twice and given half the world.
+func (m *Memory) AddNode(node NodeID) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, existing := range m.nodes {
+		if existing == node {
+			return
+		}
+	}
+	m.nodes = append(m.nodes, node)
+}
+
+// Nodes returns the registered nodes in registration order.
+func (m *Memory) Nodes() []NodeID {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]NodeID(nil), m.nodes...)
+}
+
+// placeLocked picks the node to host a new instance.
+//
+// Fewest rooms wins, ties broken by registration order. Counting rooms rather
+// than players is deliberate: a room costs a goroutine and a tick loop whether
+// or not anyone is in it, and an empty room on an overloaded node still burns
+// its share of the budget.
+func (m *Memory) placeLocked() NodeID {
+	load := make(map[NodeID]int, len(m.nodes))
+	for _, inst := range m.instances {
+		load[inst.Node]++
+	}
+
+	best := m.nodes[0]
+	for _, node := range m.nodes[1:] {
+		if load[node] < load[best] {
+			best = node
+		}
+	}
+	return best
 }
 
 // Join reserves a slot, creating an instance if necessary.
@@ -53,16 +106,56 @@ func (m *Memory) Join(_ context.Context, key RoomKey, capacity int) (Instance, e
 		return Instance{}, ErrNoCapacity
 	}
 
+	return *m.createLocked(key, capacity), nil
+}
+
+// createLocked adds an instance with one slot reserved.
+func (m *Memory) createLocked(key RoomKey, capacity int) *Instance {
 	m.nextID++
 	inst := &Instance{
 		ID:       m.nextID,
-		Node:     m.node,
+		Node:     m.placeLocked(),
 		Key:      key,
 		Players:  1,
 		Capacity: capacity,
 	}
 	m.instances[inst.ID] = inst
 	m.byKey[key] = append(m.byKey[key], inst.ID)
+	return inst
+}
+
+// NewInstance creates an additional instance for a key.
+func (m *Memory) NewInstance(_ context.Context, key RoomKey, capacity int) (Instance, error) {
+	if !key.Valid() {
+		return Instance{}, &KeyError{Key: key}
+	}
+	if capacity <= 0 {
+		return Instance{}, &CapacityError{Capacity: capacity}
+	}
+	if key.Placement == PlacementPrivate {
+		// One instance per owner is what private means. A second would split
+		// a party across two dungeons.
+		return Instance{}, ErrNoCapacity
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return *m.createLocked(key, capacity), nil
+}
+
+// JoinInstance reserves a slot in one named instance.
+func (m *Memory) JoinInstance(_ context.Context, id InstanceID) (Instance, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	inst, ok := m.instances[id]
+	if !ok {
+		return Instance{}, ErrUnknownInstance
+	}
+	if inst.Full() {
+		return Instance{}, ErrNoCapacity
+	}
+	inst.Players++
 	return *inst, nil
 }
 
@@ -112,11 +205,16 @@ func (m *Memory) Release(_ context.Context, id InstanceID) error {
 	if !ok {
 		return ErrUnknownInstance
 	}
-	delete(m.instances, id)
+	m.releaseLocked(inst)
+	return nil
+}
+
+func (m *Memory) releaseLocked(inst *Instance) {
+	delete(m.instances, inst.ID)
 
 	ids := m.byKey[inst.Key]
 	for i, other := range ids {
-		if other == id {
+		if other == inst.ID {
 			m.byKey[inst.Key] = append(ids[:i:i], ids[i+1:]...)
 			break
 		}
@@ -124,7 +222,43 @@ func (m *Memory) Release(_ context.Context, id InstanceID) error {
 	if len(m.byKey[inst.Key]) == 0 {
 		delete(m.byKey, inst.Key)
 	}
-	return nil
+}
+
+// InstancesFor returns every live instance satisfying a key, ordered by ID.
+//
+// This is the channel list: for a shared map the entries are the channels a
+// player may switch between, and their occupancy is what makes one worth
+// choosing over another.
+func (m *Memory) InstancesFor(_ context.Context, key RoomKey) []Instance {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	ids := m.byKey[key]
+	out := make([]Instance, 0, len(ids))
+	for _, id := range ids {
+		if inst, ok := m.instances[id]; ok {
+			out = append(out, *inst)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out
+}
+
+// TryRelease removes an instance only if it is unoccupied.
+func (m *Memory) TryRelease(_ context.Context, id InstanceID) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	inst, ok := m.instances[id]
+	if !ok {
+		// Already gone, which is the outcome the caller wanted.
+		return true, nil
+	}
+	if inst.Players > 0 {
+		return false, nil
+	}
+	m.releaseLocked(inst)
+	return true, nil
 }
 
 // Lookup returns one instance by ID.

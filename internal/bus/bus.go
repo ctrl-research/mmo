@@ -59,6 +59,35 @@ type Bus interface {
 	// contain the "*" and "&gt;" wildcards.
 	Subscribe(ctx context.Context, pattern string, fn Handler) (Subscription, error)
 
+	// Request publishes a message and waits for a single reply.
+	//
+	// Built on top of publish/subscribe rather than being a separate
+	// mechanism: the requester subscribes to a private inbox and names it in
+	// the envelope. That keeps one transport rather than two, and means the
+	// NATS implementation maps onto NATS's own request/reply directly.
+	Request(ctx context.Context, subject string, msg proto.Message, reply proto.Message) error
+
+	// Respond registers a handler that answers requests on a subject.
+	//
+	// A responder returning an error sends it back to the requester, so a
+	// refusal arrives immediately rather than as a timeout -- the difference
+	// between "the destination rejected this" and "something is wrong with the
+	// cluster".
+	Respond(ctx context.Context, pattern string, fn Responder) (Subscription, error)
+
 	// Close shuts down the bus and releases every subscription.
 	Close() error
 }
+
+// Responder answers a request. Returning an error sends it to the requester.
+type Responder func(ctx context.Context, subject string, payload []byte) (proto.Message, error)
+
+// ErrRequestTimeout means no reply arrived before the context expired.
+var ErrRequestTimeout = errors.New("bus: request timed out")
+
+// ErrNoResponder means nothing was listening on the subject.
+//
+// Distinct from a timeout on purpose: nothing listening usually means a
+// misconfigured subject or a node that never started, which is a different
+// problem from one that is merely slow.
+var ErrNoResponder = errors.New("bus: no responder")

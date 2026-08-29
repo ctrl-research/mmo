@@ -28,6 +28,7 @@ import (
 
 	gamedata "github.com/ctrl-research/mmo/content"
 	"github.com/ctrl-research/mmo/internal/auth"
+	"github.com/ctrl-research/mmo/internal/bus"
 	"github.com/ctrl-research/mmo/internal/content"
 	"github.com/ctrl-research/mmo/internal/directory"
 	"github.com/ctrl-research/mmo/internal/gateway"
@@ -142,6 +143,12 @@ func run() error {
 	dir := directory.NewMemory(directory.NodeID(cfg.nodeID))
 	defer dir.Close()
 
+	// In-process channels at this scale. Transfers run over it either way, so
+	// the distributed path is exercised from the first portal rather than
+	// first meeting reality in M9.
+	msgBus := bus.NewInProc()
+	defer msgBus.Close()
+
 	// Redis is optional at hobby scale: with one process, in-memory leases and
 	// token storage are correct, and the fencing check in Postgres -- which is
 	// what actually enforces single-writer -- is identical either way. With
@@ -159,6 +166,7 @@ func run() error {
 			Directory:  dir,
 			Leases:     leases,
 			Store:      db,
+			Bus:        msgBus,
 			NodeID:     cfg.nodeID,
 			Content:    game,
 			DefaultMap: cfg.defaultMap,
@@ -169,7 +177,9 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		node.Start(ctx)
+		if err := node.Start(ctx); err != nil {
+			return err
+		}
 		defer node.Stop()
 	}
 

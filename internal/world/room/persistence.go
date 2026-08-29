@@ -43,6 +43,23 @@ type Progress struct {
 	MapID string
 }
 
+// Attachment is everything a room needs about the live session driving a
+// character.
+//
+// It is grouped rather than passed as three arguments because it is one idea:
+// the connection, the channel back to the session, and what that session
+// already knows. None of it can cross a process boundary, which is exactly why
+// it is handed over separately from the transfer that moved the character.
+type Attachment struct {
+	Sink   Sink
+	Events SessionEvents
+
+	// KnownWaypoints are the ones already unlocked, so standing on one does
+	// not generate a database write every tick. Nil leaves the room's existing
+	// set alone.
+	KnownWaypoints []string
+}
+
 // JoinSpec describes the character entering a room.
 type JoinSpec struct {
 	// CharacterID identifies the character across nodes and sessions.
@@ -62,9 +79,21 @@ type JoinSpec struct {
 
 	Sink Sink
 
-	// Items receives loot claims for this player. Set by the session, which is
-	// where item persistence happens.
-	Items ItemSink
+	// Events is this player's channel back to their session, where work the
+	// tick loop must not do -- database writes, transfers -- happens.
+	Events SessionEvents
+
+	// KnownWaypoints are the ones already unlocked, so standing on one does
+	// not generate a write every tick.
+	KnownWaypoints []string
+
+	// Spawn overrides where a fresh character is placed, so a portal can land
+	// them at a named entrance rather than the map's default.
+	Spawn sim.Vec
+
+	// Arrived marks a character coming through a portal, which starts the
+	// portal cooldown so they do not immediately take the one they landed on.
+	Arrived bool
 }
 
 // Snapshot is a character's current persistable state, taken on the room
@@ -114,7 +143,14 @@ func (r *Room) applyCharacter(e *Entity, spec JoinSpec) {
 	p.MaxMP = uint32(50 + (p.Level-1)*10)
 
 	if spec.Fresh {
-		// A new character starts at the map's spawn point, at full health.
+		// A new character starts at a spawn point, at full health. A named
+		// spawn overrides the map default, which is how a portal decides where
+		// its arrivals land.
+		if spec.Spawn != (sim.Vec{}) {
+			e.Body.SetFeetCenter(spec.Spawn)
+			tuning := r.cfg.Tuning
+			sim.Settle(&e.Body, r.cfg.World, &tuning)
+		}
 		e.HP = e.MaxHP
 		p.MP = p.MaxMP
 		return

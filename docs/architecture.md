@@ -209,11 +209,13 @@ That third row is the one that pays for the design: a hunting zone where trash i
 
 Simulation cost scales with **layers × mobs**, not mobs. Forty players in forty layers with sixty spawn points each is 2,400 mob entities in a room that would otherwise hold sixty. That is a direct threat to the 50 ms tick budget, and it is the main thing to watch in this design.
 
-Three mitigations, all of which should exist by M4:
+Three mitigations, all in place as of M4:
 
-1. **Proximity spawning.** An `owner` spawn point only activates within ~1.5 screens of its owner. In a typical map a player is near ~15 of 60 spawn points, cutting entity count by ~4×.
-2. **Tiered AI ticking.** A mob with no aggro and no player nearby runs a cheap idle step every 8th tick; only aggroed mobs run the full behaviour tree each tick. Most mobs in most layers are idle, so this is the largest win available.
+1. **Proximity spawning.** A spawn point only produces mobs while someone who could see them is within `rooms.spawn_activation_range` (800 units, wider than half a viewport so nothing appears on screen out of nothing). The other half is the cull: mobs that are idle or walking home, with nobody near, are removed on a once-a-second sweep. Without the cull the saving only ever applies to ground a player has not walked yet — cross a map once and every spawn point on it stays populated for as long as the room lives. A culled spawn point clears its respawn timer, so returning finds the area as it was rather than empty for an interval.
+2. **Tiered AI ticking.** A mob with no aggro runs its behaviour on a slower beat set per mob (`idle_tick_interval`), staggered by entity ID so a room full of mobs does not run every behaviour on the same tick. Most mobs in most layers are idle, so this is the largest win available, and it is invisible in play because an idle mob has nothing to decide.
 3. **Lower room capacity.** Since players no longer compete for spawns, room capacity is purely a social and rendering concern. Cap `shared` hunting rooms around 20–30 and let channels absorb the rest — which is what MapleStory does anyway.
+
+Mobs that are chasing or attacking are never culled: they are by definition next to a player, and one that has just been hit and is walking home must not evaporate while its attacker watches.
 
 `room_entities_total{layer_kind}` and the tick histogram are the metrics that tell you when a map's spawn density is too high for its capacity. Expect to tune per-map capacity down from the naive value.
 
@@ -264,20 +266,31 @@ Consequences: no wall-clock reads inside the sim (tick number is the only clock)
 
 ## Room handoff
 
-Moving a character between rooms is the trickiest correctness-critical path, because it is where the single-writer invariant is most easily broken. The protocol is identical whether the target room is local or on another node:
+Moving a character between rooms is the trickiest correctness-critical path, because it is where the single-writer invariant is most easily broken. The protocol is identical whether the target room is local or on another node — there is deliberately no local fast path, because the shortcut works today and means the distributed path is never exercised until the day it has to.
 
 ```
-1. source room   → freeze character, stop applying its input
-2. source room   → serialize character state, persist checkpoint to Postgres
-3. source node   → directory.LookupRoom / PlaceRoom for the destination
-4. source node   → publish char.{id}.transfer with state + fencing token
-5. target node   → acquire lease (fencing token must be > last seen)
-6. target room   → deserialize, insert into room, resume input
-7. target node   → ack; source releases lease and drops character
-8. gateway       → repoint the player's packet routing to the new instance
+1. source room   → freeze the character, stop applying its input
+2. source room   → capture state; checkpoint to Postgres, fenced by the lease
+3. source node   → directory places the character: which instance, which node
+4. source node   → request world.node.{id}.transfer with state + fencing token
+5. target node   → refuse a token older than one already accepted
+6. target room   → deserialize, insert frozen, at the named spawn or waypoint
+7. target node   → reply with the new entity id
+8. source node   → swap the session's handle, leave the source room, release its slot
+9. source node   → attach the session to the new room, which Welcomes the client
 ```
 
-If step 5 or 6 fails, the source retains the lease and returns the player to a safe point. The character is never live in two rooms; a crash mid-transfer leaves it recoverable from the step-2 checkpoint, at worst losing the transfer.
+Steps 1–7 are all reversible: a failure at any of them leaves the character exactly where it was, unfrozen and playable, which is why the source is not torn down first. A crash mid-transfer leaves the character recoverable from the step-2 checkpoint, at worst losing the transfer. The character is never live in two rooms.
+
+Step 9 is not an afterthought. Everything a live session holds — the socket, and the channel the room reports portals, waypoints, and loot on — is an in-process reference to the node the *player* is connected to, not the one hosting the room, so none of it can travel in step 4. It is handed over separately, as a `room.Attachment`, once the destination has accepted. A destination that never receives one holds a character who can move and do nothing else.
+
+The same protocol carries every way of moving through the world. A portal names a spawn point; fast travel names a waypoint, which the destination resolves from its own copy of the content rather than trusting coordinates off the wire; a channel switch names an instance and keeps the character where they stood. One handoff, three destinations.
+
+### Room lifecycle
+
+Rooms are created lazily, when the directory first places somebody in one, and stop on their own once they have stood empty for `rooms.idle_ms`. An empty room is not free — a goroutine, twenty wakeups a second, and every mob it has spawned — and a world of many maps is mostly empty rooms. It is not worthless either: a player who steps through a portal and straight back should find the room they left, with its mobs where they left them, so the timeout is generous rather than immediate.
+
+Stopping is a handshake, not a decision the room makes alone. The room asks the node; the node releases the instance from the directory *first*, under the directory's own lock, and only deregisters the room if that succeeded. A refusal means somebody was placed here while the room was counting down and their join is on its way, so the room restarts its clock and keeps ticking. Releasing and deregistering in the other order leaves a window in which a player is placed into a room that stops a moment later.
 
 ## Client/server split
 

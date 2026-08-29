@@ -27,6 +27,13 @@ type Content struct {
 	Skills  map[string]*Skill
 	Maps    map[string]*Map
 
+	// Waypoints indexes every fast-travel destination by its global ID.
+	//
+	// Fast travel names a waypoint without naming its map -- that is the point
+	// of a world map -- so the lookup has to exist somewhere. Building it once
+	// at load beats scanning every map on every teleport.
+	Waypoints map[string]WaypointRef
+
 	// Hash identifies this exact set of content. The client sends it at the
 	// handshake and a mismatch is refused: a client that thinks a mob has 400
 	// HP when the server says 900 produces bug reports that are nearly
@@ -131,6 +138,43 @@ func (c *Content) verify() error {
 		}
 	}
 
+	// Portals must lead somewhere that exists. A portal to a renamed map is
+	// invisible until someone walks into it and goes nowhere.
+	for id, m := range c.Maps {
+		for _, p := range m.Portals {
+			target, ok := c.Maps[p.TargetMap]
+			if !ok {
+				return fmt.Errorf("content: map %q portal %q leads to unknown map %q",
+					id, p.Name, p.TargetMap)
+			}
+			if p.TargetSpawn == "" {
+				continue
+			}
+			found := false
+			for _, sp := range target.Spawns {
+				if sp.Name == p.TargetSpawn {
+					found = true
+				}
+			}
+			if !found {
+				return fmt.Errorf("content: map %q portal %q targets spawn %q, which map %q does not have",
+					id, p.Name, p.TargetSpawn, p.TargetMap)
+			}
+		}
+	}
+
+	// Waypoint ids are global, since fast travel names them across maps.
+	c.Waypoints = make(map[string]WaypointRef)
+	for id, m := range c.Maps {
+		for _, w := range m.Waypoints {
+			if other, dup := c.Waypoints[w.ID]; dup {
+				return fmt.Errorf("content: waypoint %q is defined on both %q and %q",
+					w.ID, other.MapID, id)
+			}
+			c.Waypoints[w.ID] = WaypointRef{MapID: id, Waypoint: w}
+		}
+	}
+
 	for id, m := range c.Maps {
 		for _, sp := range m.MobSpawns {
 			if _, ok := c.Mobs[sp.MobID]; !ok {
@@ -224,4 +268,10 @@ func msToTicks(ms int, tickRate int) int {
 	}
 	msPerTick := 1000 / tickRate
 	return (ms + msPerTick - 1) / msPerTick
+}
+
+// WaypointRef is a waypoint together with the map it is on.
+type WaypointRef struct {
+	MapID string
+	Waypoint
 }

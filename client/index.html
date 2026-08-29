@@ -122,6 +122,41 @@
       .rarity-rare   { color: #e0c04a; }
       .rarity-unique { color: #d08a3f; }
 
+      /* World map */
+      #worldmap {
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        z-index: 15; width: min(720px, 94vw); max-height: 88vh; overflow-y: auto;
+        background: #12151c; border: 1px solid #2f3543; border-radius: 8px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      }
+      #worldmap[hidden] { display: none; }
+
+      .map-header {
+        display: flex; justify-content: space-between; align-items: baseline;
+        padding: 12px 16px; border-bottom: 1px solid #262b36; font-weight: 600;
+      }
+      .map-hint { color: #6b7280; font-size: 11px; font-weight: 400; }
+
+      .map-body {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 14px;
+      }
+      .map-body h2 {
+        font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+        color: #6b7280; margin-bottom: 6px; font-weight: 600;
+      }
+      .map-empty { color: #4a5262; font-size: 11px; }
+
+      .map-row {
+        display: block; width: 100%; text-align: left; font: inherit;
+        border: 1px solid #262b36; border-radius: 5px; background: #0f1218;
+        padding: 6px 8px; margin-bottom: 5px; color: #e6e8ee;
+      }
+      .map-row.action { cursor: pointer; }
+      .map-row.action:hover:not(:disabled) { border-color: #4a83ff; }
+      .map-row.current { border-color: #2f3543; opacity: 0.7; cursor: default; }
+      .map-name { display: block; font-size: 12px; }
+      .map-sub { display: block; color: #6b7280; font-size: 10px; }
+
       #tooltip {
         position: fixed; z-index: 30; pointer-events: none;
         max-width: 300px; padding: 10px 12px;
@@ -155,9 +190,10 @@
     <div id="hud" hidden></div>
     <div id="overlay"></div>
     <div id="inventory" hidden></div>
+    <div id="worldmap" hidden></div>
     <div id="tooltip" hidden></div>
     <div id="keys">
-      arrows or WASD to move &middot; space to jump &middot; X or ctrl to attack &middot; Z to loot &middot; I for inventory
+      arrows or WASD to move &middot; space to jump &middot; X or ctrl to attack &middot; Z to loot &middot; I for inventory &middot; M for the world map
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

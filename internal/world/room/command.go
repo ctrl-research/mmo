@@ -31,9 +31,14 @@ type Handle interface {
 	// a fight.
 	Freeze(ctx context.Context, id EntityID)
 
-	// Thaw resumes a frozen player on a new connection, reporting whether they
-	// were still present to resume.
-	Thaw(ctx context.Context, id EntityID, sink Sink) bool
+	// Attach binds a live session to a character already in the room,
+	// reporting whether it was still there to bind to.
+	//
+	// It is how a reconnecting player picks their character back up, and how a
+	// transferred one gets a connection at all: everything in an Attachment is
+	// an in-process reference to the node the player is connected to, so none
+	// of it can travel in the transfer request that put them here.
+	Attach(ctx context.Context, id EntityID, a Attachment) bool
 
 	// SetStats pushes a recomputed stat block in. The room never computes one
 	// itself: that would mean knowing about items, and item state belongs
@@ -42,6 +47,10 @@ type Handle interface {
 
 	// ResolveLoot completes a claim once persistence has finished.
 	ResolveLoot(ctx context.Context, player, dropID EntityID, granted bool, reason string)
+
+	// AbortTransfer releases a player whose portal transfer failed, so they
+	// can walk away and try again rather than being stuck mid-transition.
+	AbortTransfer(ctx context.Context, id EntityID, reason string)
 
 	// Leave removes a player. It is safe to call for an unknown ID, which
 	// happens whenever a disconnect races a kick.
@@ -81,10 +90,10 @@ type captureResult struct {
 // freezeCmd suspends a player whose connection dropped, without removing them.
 type freezeCmd struct{ id EntityID }
 
-// thawCmd resumes a frozen player on a new connection.
-type thawCmd struct {
+// attachCmd binds a live session to a character already in the room.
+type attachCmd struct {
 	id     EntityID
-	sink   Sink
+	attach Attachment
 	result chan bool
 }
 
@@ -96,6 +105,11 @@ type setStatsCmd struct {
 }
 
 // resolveLootCmd completes a claim once persistence has finished.
+type abortTransferCmd struct {
+	id     EntityID
+	reason string
+}
+
 type resolveLootCmd struct {
 	player  EntityID
 	dropID  EntityID
@@ -141,16 +155,17 @@ const (
 	InteractLoot InteractKind = iota + 1
 )
 
-func (joinCmd) isCommand()        {}
-func (captureCmd) isCommand()     {}
-func (freezeCmd) isCommand()      {}
-func (thawCmd) isCommand()        {}
-func (setStatsCmd) isCommand()    {}
-func (resolveLootCmd) isCommand() {}
-func (leaveCmd) isCommand()       {}
-func (inputCmd) isCommand()       {}
-func (castCmd) isCommand()        {}
-func (interactCmd) isCommand()    {}
+func (joinCmd) isCommand()          {}
+func (captureCmd) isCommand()       {}
+func (freezeCmd) isCommand()        {}
+func (attachCmd) isCommand()        {}
+func (setStatsCmd) isCommand()      {}
+func (resolveLootCmd) isCommand()   {}
+func (abortTransferCmd) isCommand() {}
+func (leaveCmd) isCommand()         {}
+func (inputCmd) isCommand()         {}
+func (castCmd) isCommand()          {}
+func (interactCmd) isCommand()      {}
 
 // handle dispatches one command. It runs on the room goroutine, so it may
 // touch room state freely.
@@ -164,12 +179,14 @@ func (r *Room) handle(c command) {
 		cmd.result <- captureResult{snapshot: snap, ok: ok}
 	case freezeCmd:
 		r.freeze(cmd.id)
-	case thawCmd:
-		cmd.result <- r.thaw(cmd.id, cmd.sink)
+	case attachCmd:
+		cmd.result <- r.attach(cmd.id, cmd.attach)
 	case setStatsCmd:
 		r.setStats(cmd.id, cmd.stats, cmd.maxHP)
 	case resolveLootCmd:
 		r.resolveLoot(cmd.dropID, cmd.player, cmd.granted, cmd.reason)
+	case abortTransferCmd:
+		r.abortTransfer(cmd.id, cmd.reason)
 	case leaveCmd:
 		r.leave(cmd.id)
 	case inputCmd:
@@ -193,7 +210,16 @@ func (r *Room) join(spec JoinSpec) (EntityID, error) {
 
 	state := newPlayerState()
 	name := spec.Name
+
+	// A character can be in a room with nobody watching. That is how a
+	// transfer arrives -- the destination accepts the character, and only then
+	// does the session attach the socket, which lives on whichever node the
+	// player is connected to -- and it is also what a reconnect window is.
 	sink := spec.Sink
+	detached := sink == nil
+	if detached {
+		sink = nullSink{}
+	}
 
 	e := r.spawnEntity(&Entity{
 		Kind: KindPlayer,
@@ -222,27 +248,33 @@ func (r *Room) join(spec JoinSpec) (EntityID, error) {
 	e.HuntLayer = layer
 
 	p := &player{
-		entity:      e,
-		sink:        sink,
-		layer:       layer,
-		characterID: spec.CharacterID,
-		items:       spec.Items,
-		sent:        make(map[EntityID]view),
-		seenScratch: make(map[EntityID]struct{}),
+		entity:         e,
+		sink:           sink,
+		layer:          layer,
+		characterID:    spec.CharacterID,
+		events:         spec.Events,
+		knownWaypoints: knownSet(spec.KnownWaypoints),
+		sent:           make(map[EntityID]view),
+		seenScratch:    make(map[EntityID]struct{}),
+		// Inert until a connection attaches: no input applied, no physics, and
+		// nothing able to harm a character nobody is looking at.
+		frozen: detached,
 	}
 	r.players[e.ID] = p
 	r.playerOrder = append(r.playerOrder, e.ID)
 
-	sink.Send(&mmov1.ServerMessage{
-		Body: &mmov1.ServerMessage_Welcome{Welcome: &mmov1.Welcome{
-			EntityId:   uint32(e.ID),
-			InstanceId: uint64(r.cfg.InstanceID),
-			Tick:       r.tick,
-			TickMs:     uint32(TickPeriod.Milliseconds()),
-			MapId:      r.cfg.MapID,
-			Self:       e.state(true),
-		}},
-	})
+	if !detached {
+		sink.Send(&mmov1.ServerMessage{
+			Body: &mmov1.ServerMessage_Welcome{Welcome: &mmov1.Welcome{
+				EntityId:   uint32(e.ID),
+				InstanceId: uint64(r.cfg.InstanceID),
+				Tick:       r.tick,
+				TickMs:     uint32(TickPeriod.Milliseconds()),
+				MapId:      r.cfg.MapID,
+				Self:       e.state(true),
+			}},
+		})
+	}
 
 	r.broadcastExcept(e.ID, &mmov1.ServerMessage{
 		Body: &mmov1.ServerMessage_Event{Event: &mmov1.Event{
@@ -252,6 +284,13 @@ func (r *Room) join(spec JoinSpec) (EntityID, error) {
 			}},
 		}},
 	})
+
+	// A character arriving through a portal ignores portals briefly, or a
+	// spawn point overlapping the return portal sends them straight back and
+	// they bounce between two maps forever.
+	if spec.Arrived {
+		p.portalReadyAt = r.tick + portalCooldownTicks
+	}
 
 	r.log.Info("player joined",
 		"entity", uint32(e.ID), "name", name, "character", spec.CharacterID,
@@ -447,14 +486,29 @@ func (r *Room) freeze(id EntityID) {
 }
 
 // thaw resumes a frozen player on a new connection.
-func (r *Room) thaw(id EntityID, sink Sink) bool {
+func (r *Room) attach(id EntityID, a Attachment) bool {
 	p, ok := r.players[id]
 	if !ok {
 		return false
 	}
 
+	if a.Sink == nil {
+		// A character with no connection stays frozen. Substituting a null
+		// sink and unfreezing would put an unprotected body in the world with
+		// nobody driving it.
+		return false
+	}
+
 	p.frozen = false
-	p.sink = sink
+	p.sink = a.Sink
+
+	// The session, and what it already knows this character has unlocked.
+	// Both are in-process references, so this is the only way they can reach a
+	// room the character was handed to over the bus.
+	p.events = a.Events
+	if a.KnownWaypoints != nil {
+		p.knownWaypoints = knownSet(a.KnownWaypoints)
+	}
 
 	// Forget what the previous connection was told: the new client has no
 	// baseline, so every visible entity must be sent again in full rather than
@@ -462,7 +516,7 @@ func (r *Room) thaw(id EntityID, sink Sink) bool {
 	clear(p.sent)
 	p.ackSeq = 0
 
-	sink.Send(&mmov1.ServerMessage{
+	a.Sink.Send(&mmov1.ServerMessage{
 		Body: &mmov1.ServerMessage_Welcome{Welcome: &mmov1.Welcome{
 			EntityId:   uint32(id),
 			InstanceId: uint64(r.cfg.InstanceID),
@@ -473,7 +527,7 @@ func (r *Room) thaw(id EntityID, sink Sink) bool {
 		}},
 	})
 
-	r.log.Info("player resumed after reconnect", "entity", uint32(id), "name", p.entity.Name)
+	r.log.Info("session attached", "entity", uint32(id), "name", p.entity.Name)
 	return true
 }
 
@@ -484,10 +538,10 @@ func (h *localHandle) Freeze(ctx context.Context, id EntityID) {
 	}
 }
 
-func (h *localHandle) Thaw(ctx context.Context, id EntityID, sink Sink) bool {
+func (h *localHandle) Attach(ctx context.Context, id EntityID, a Attachment) bool {
 	result := make(chan bool, 1)
 	select {
-	case h.room.cmds <- thawCmd{id: id, sink: sink, result: result}:
+	case h.room.cmds <- attachCmd{id: id, attach: a, result: result}:
 	case <-ctx.Done():
 		return false
 	}
@@ -538,6 +592,22 @@ func (h *localHandle) SetStats(ctx context.Context, id EntityID, block *stats.Bl
 func (h *localHandle) ResolveLoot(ctx context.Context, player, dropID EntityID, granted bool, reason string) {
 	select {
 	case h.room.cmds <- resolveLootCmd{player: player, dropID: dropID, granted: granted, reason: reason}:
+	case <-ctx.Done():
+	}
+}
+
+// knownSet turns a slice of waypoint ids into a lookup.
+func knownSet(ids []string) map[string]bool {
+	m := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		m[id] = true
+	}
+	return m
+}
+
+func (h *localHandle) AbortTransfer(ctx context.Context, id EntityID, reason string) {
+	select {
+	case h.room.cmds <- abortTransferCmd{id: id, reason: reason}:
 	case <-ctx.Done():
 	}
 }

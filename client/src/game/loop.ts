@@ -1,5 +1,5 @@
 import { Connection, describeClose } from "@/net/connection";
-import type { Event, Inventory, Snapshot, Welcome } from "@/net/connection";
+import type { Event, Inventory, Snapshot, Welcome, WorldMap } from "@/net/connection";
 import { Interpolator } from "./interpolator";
 import { InventoryState } from "./inventory";
 import { Predictor } from "./predictor";
@@ -40,6 +40,12 @@ export interface LoopCallbacks {
 
   /** Called when the server sends a new inventory, so the UI can redraw. */
   onInventory?(): void;
+
+  /** Called with the world map the server sent, in answer to a request. */
+  onWorldMap?(map: WorldMap): void;
+
+  /** Called when the character arrives somewhere else. */
+  onMapChanged?(mapId: string): void;
 }
 
 export class GameLoop {
@@ -53,7 +59,17 @@ export class GameLoop {
 
   #selfId = 0;
   #name = "";
+  #mapId = "";
   #running = false;
+
+  /**
+   * Set while a map change is being loaded.
+   *
+   * Snapshots that arrive in the meantime describe the new room using geometry
+   * the client has not fetched yet, so they are dropped rather than applied.
+   * The next one after the load is a full state anyway.
+   */
+  #changingMap = false;
 
   #accumulator = 0;
   #lastFrame = 0;
@@ -130,21 +146,38 @@ export class GameLoop {
     };
   }
 
+  /**
+   * Enters a room.
+   *
+   * A second Welcome means the character has moved: the same connection, a
+   * different room. Everything the client was tracking is now wrong -- the
+   * geometry, its own entity id, and every entity it had interpolating -- so
+   * rather than reconcile any of it, all of it is discarded and rebuilt from
+   * this message and the snapshots that follow.
+   */
   async #onWelcome(w: Welcome): Promise<void> {
+    const moved = this.#running;
+
+    this.#changingMap = true;
     this.#selfId = w.entityId;
     this.#serverTick = w.tick;
+    this.#interp.clear();
+    this.#scene.clearEntities();
+    this.#predictor.suspend();
 
-    // Collision geometry comes from the server, encoded by the same function
-    // the simulation uses, so the client cannot be predicting against
-    // different geometry than the server is enforcing.
-    const collision = await fetch(`/api/map/${w.mapId}/collision`);
-    if (!collision.ok) throw new Error(`could not load collision for map ${w.mapId}`);
-    const bytes = new Uint8Array(await collision.arrayBuffer());
-
-    this.#sim.setWorld(bytes);
-    this.#scene.setMap(toGeometry(decodeWorld(bytes)));
+    try {
+      await this.#loadMap(w.mapId);
+    } finally {
+      this.#changingMap = false;
+    }
 
     if (w.self) this.#predictor.reset(w.self);
+
+    if (moved) {
+      this.#cb.onMapChanged?.(w.mapId);
+      this.#cb.onStatus(`arrived in ${w.mapId}`);
+      return;
+    }
 
     this.#input.attach();
     this.#running = true;
@@ -154,7 +187,29 @@ export class GameLoop {
     this.#cb.onStatus(`connected as ${this.#name}`);
   }
 
+  /**
+   * Fetches a map's collision geometry and hands it to both the simulation and
+   * the renderer.
+   *
+   * Geometry comes from the server, encoded by the same function the
+   * simulation uses, so the client cannot be predicting against different
+   * geometry than the server is enforcing.
+   */
+  async #loadMap(mapId: string): Promise<void> {
+    const collision = await fetch(`/api/map/${mapId}/collision`);
+    if (!collision.ok) throw new Error(`could not load collision for map ${mapId}`);
+    const bytes = new Uint8Array(await collision.arrayBuffer());
+
+    this.#sim.setWorld(bytes);
+    this.#scene.setMap(toGeometry(decodeWorld(bytes)));
+    this.#mapId = mapId;
+  }
+
   #onSnapshot(snap: Snapshot): void {
+    // Arriving mid-load: this snapshot describes a room whose geometry is not
+    // in hand yet, and the next one will describe the same thing completely.
+    if (this.#changingMap) return;
+
     this.#serverTick = snap.tick;
 
     if (snap.self) {
@@ -219,6 +274,22 @@ export class GameLoop {
         this.#expToNext = e.body.value.expToNext;
         this.#cb.onStatus(`level ${this.#level}`);
         break;
+
+      case "worldMap":
+        this.#cb.onWorldMap?.(e.body.value);
+        break;
+
+      case "waypointFound":
+        this.#cb.onStatus(`waypoint discovered: ${e.body.value.name}`);
+        break;
+
+      case "portalRefused": {
+        const r = e.body.value;
+        this.#cb.onStatus(
+          r.reason || `you need level ${r.requiredLevel} to enter ${r.targetMap}`,
+        );
+        break;
+      }
 
       case "lootTaken": {
         const l = e.body.value;
@@ -297,6 +368,11 @@ export class GameLoop {
 
   /** One simulation tick: sample input, predict, send. */
   #tick(): void {
+    // Nothing predicted or sent while the character is between rooms: the
+    // source room has already frozen them, and the destination has not
+    // accepted them yet.
+    if (this.#changingMap) return;
+
     const input = this.#input.sample();
     const seq = this.#predictor.predict(input);
     this.#conn.sendIntent(seq, input.moveX, input.jump, input.up, input.down);
@@ -316,6 +392,30 @@ export class GameLoop {
     }
 
     this.#ticksSimulated++;
+  }
+
+  /** Asks the server for the world map. */
+  openWorldMap(): void {
+    this.#conn.sendOpenWorldMap();
+  }
+
+  /** Asks to fast-travel to an unlocked waypoint. */
+  travelTo(waypointId: string): void {
+    this.#conn.sendTravel({ case: "waypointId", value: waypointId });
+  }
+
+  /** Asks to switch to a particular channel of the current map. */
+  switchChannel(instanceId: bigint): void {
+    this.#conn.sendTravel({ case: "channelInstanceId", value: instanceId });
+  }
+
+  /** Asks for any channel but this one, creating it if necessary. */
+  newChannel(): void {
+    this.#conn.sendTravel({ case: "newChannel", value: true });
+  }
+
+  get mapId(): string {
+    return this.#mapId;
   }
 
   toggleGhost(): boolean {

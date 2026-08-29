@@ -58,6 +58,8 @@ message ClientMessage {
     ChatSend     chat         = 5;
     InventoryOp  inventory    = 6;
     Ping         ping         = 7;
+    OpenWorldMap world_map    = 8;   // ask for the map screen's contents
+    Travel       travel       = 9;   // waypoint, or a channel of this map
   }
 }
 
@@ -233,6 +235,26 @@ message Event {
   }
 }
 ```
+
+## Moving between rooms
+
+A character can end up somewhere else three ways: walking into a portal, fast-travelling to an unlocked waypoint, or switching channel. All three are the same room handoff (`architecture.md` § Room handoff), and all three end the same way on the wire — **a second `Welcome`**.
+
+There is deliberately no separate "you moved" message. The `Welcome` the destination room sends already carries the new entity id, the new instance, the new map, and the full prediction state for the character; a smaller message alongside it would be a second source of the same truth, and eventually the wrong one.
+
+A client receiving a `Welcome` while already playing must treat everything it holds as stale:
+
+1. Stop predicting and sending intent — the character is frozen at both ends until the destination accepts.
+2. Discard the pending input buffer. Those inputs describe movement in a room the character has left; replaying them against the new map pushes them through geometry that does not exist there.
+3. Clear the smoothing offset, so the arrival is a hard snap rather than a visible glide across the new map from wherever they stood in the old one.
+4. Drop every interpolated entity and the collision geometry, and fetch the new map's.
+5. Seed the predictor from `Welcome.self` and resume.
+
+Snapshots that arrive while the geometry is still loading are dropped rather than applied. The next one describes the same room completely.
+
+`Travel` names exactly one destination: a waypoint id, an instance id, or `new_channel`. The server validates all three — the waypoint against the database rather than against what the room believes, the instance against the map the player is actually in — because a client that could name any destination could walk into a level-40 zone at level 3. A refusal comes back as `PortalRefused` with a reason: a travel request that silently does nothing reads as a broken button, and most of the reasons (a full channel, a waypoint not yet found) are things a player does by accident.
+
+`OpenWorldMap` is requested rather than pushed. Its contents change only when a player unlocks a waypoint or a channel's occupancy shifts, neither of which is worth a per-tick broadcast to every client in the world. It lists every zone with its level range, only the waypoints the character has actually unlocked — the world map is a record of where they have been, and listing the rest would give away what is out there — and the channels of the map they are currently in.
 
 ## Bandwidth budget
 

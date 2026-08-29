@@ -359,6 +359,8 @@ type ClientMessage struct {
 	//	*ClientMessage_Cast
 	//	*ClientMessage_Interact
 	//	*ClientMessage_ItemAction
+	//	*ClientMessage_OpenWorldMap
+	//	*ClientMessage_Travel
 	Body          isClientMessage_Body `protobuf_oneof:"body"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -455,6 +457,24 @@ func (x *ClientMessage) GetItemAction() *ItemAction {
 	return nil
 }
 
+func (x *ClientMessage) GetOpenWorldMap() *OpenWorldMap {
+	if x != nil {
+		if x, ok := x.Body.(*ClientMessage_OpenWorldMap); ok {
+			return x.OpenWorldMap
+		}
+	}
+	return nil
+}
+
+func (x *ClientMessage) GetTravel() *Travel {
+	if x != nil {
+		if x, ok := x.Body.(*ClientMessage_Travel); ok {
+			return x.Travel
+		}
+	}
+	return nil
+}
+
 type isClientMessage_Body interface {
 	isClientMessage_Body()
 }
@@ -483,6 +503,14 @@ type ClientMessage_ItemAction struct {
 	ItemAction *ItemAction `protobuf:"bytes,6,opt,name=item_action,json=itemAction,proto3,oneof"`
 }
 
+type ClientMessage_OpenWorldMap struct {
+	OpenWorldMap *OpenWorldMap `protobuf:"bytes,7,opt,name=open_world_map,json=openWorldMap,proto3,oneof"`
+}
+
+type ClientMessage_Travel struct {
+	Travel *Travel `protobuf:"bytes,8,opt,name=travel,proto3,oneof"`
+}
+
 func (*ClientMessage_Hello) isClientMessage_Body() {}
 
 func (*ClientMessage_Intent) isClientMessage_Body() {}
@@ -494,6 +522,10 @@ func (*ClientMessage_Cast) isClientMessage_Body() {}
 func (*ClientMessage_Interact) isClientMessage_Body() {}
 
 func (*ClientMessage_ItemAction) isClientMessage_Body() {}
+
+func (*ClientMessage_OpenWorldMap) isClientMessage_Body() {}
+
+func (*ClientMessage_Travel) isClientMessage_Body() {}
 
 // Cast requests a skill. The client asks; the server decides.
 //
@@ -1727,6 +1759,9 @@ type Event struct {
 	//	*Event_ExpGained
 	//	*Event_LevelUp
 	//	*Event_LootTaken
+	//	*Event_WaypointFound
+	//	*Event_PortalRefused
+	//	*Event_WorldMap
 	Body          isEvent_Body `protobuf_oneof:"body"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1841,6 +1876,33 @@ func (x *Event) GetLootTaken() *LootTaken {
 	return nil
 }
 
+func (x *Event) GetWaypointFound() *WaypointFound {
+	if x != nil {
+		if x, ok := x.Body.(*Event_WaypointFound); ok {
+			return x.WaypointFound
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetPortalRefused() *PortalRefused {
+	if x != nil {
+		if x, ok := x.Body.(*Event_PortalRefused); ok {
+			return x.PortalRefused
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetWorldMap() *WorldMap {
+	if x != nil {
+		if x, ok := x.Body.(*Event_WorldMap); ok {
+			return x.WorldMap
+		}
+	}
+	return nil
+}
+
 type isEvent_Body interface {
 	isEvent_Body()
 }
@@ -1877,6 +1939,18 @@ type Event_LootTaken struct {
 	LootTaken *LootTaken `protobuf:"bytes,8,opt,name=loot_taken,json=lootTaken,proto3,oneof"`
 }
 
+type Event_WaypointFound struct {
+	WaypointFound *WaypointFound `protobuf:"bytes,9,opt,name=waypoint_found,json=waypointFound,proto3,oneof"`
+}
+
+type Event_PortalRefused struct {
+	PortalRefused *PortalRefused `protobuf:"bytes,10,opt,name=portal_refused,json=portalRefused,proto3,oneof"`
+}
+
+type Event_WorldMap struct {
+	WorldMap *WorldMap `protobuf:"bytes,12,opt,name=world_map,json=worldMap,proto3,oneof"`
+}
+
 func (*Event_PlayerJoined) isEvent_Body() {}
 
 func (*Event_PlayerLeft) isEvent_Body() {}
@@ -1892,6 +1966,12 @@ func (*Event_ExpGained) isEvent_Body() {}
 func (*Event_LevelUp) isEvent_Body() {}
 
 func (*Event_LootTaken) isEvent_Body() {}
+
+func (*Event_WaypointFound) isEvent_Body() {}
+
+func (*Event_PortalRefused) isEvent_Body() {}
+
+func (*Event_WorldMap) isEvent_Body() {}
 
 // DamageDealt is sent rather than inferred from a falling HP number, because a
 // client deriving "took damage" from state cannot tell 200 damage from two
@@ -2188,6 +2268,580 @@ func (x *LevelUp) GetExpToNext() uint64 {
 	return 0
 }
 
+// WaypointFound announces a fast-travel destination unlocked by visiting it.
+//
+// Unlocked by visiting rather than granted, so the world map fills in as a
+// record of where someone has actually been.
+type WaypointFound struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WaypointId    string                 `protobuf:"bytes,1,opt,name=waypoint_id,json=waypointId,proto3" json:"waypoint_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	MapId         string                 `protobuf:"bytes,3,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WaypointFound) Reset() {
+	*x = WaypointFound{}
+	mi := &file_mmo_v1_game_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WaypointFound) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WaypointFound) ProtoMessage() {}
+
+func (x *WaypointFound) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WaypointFound.ProtoReflect.Descriptor instead.
+func (*WaypointFound) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *WaypointFound) GetWaypointId() string {
+	if x != nil {
+		return x.WaypointId
+	}
+	return ""
+}
+
+func (x *WaypointFound) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *WaypointFound) GetMapId() string {
+	if x != nil {
+		return x.MapId
+	}
+	return ""
+}
+
+// PortalRefused explains why a transition did not happen.
+//
+// A portal that silently does nothing reads as broken, and a level gate is
+// only meaningful if the player is told about it.
+type PortalRefused struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TargetMap     string                 `protobuf:"bytes,1,opt,name=target_map,json=targetMap,proto3" json:"target_map,omitempty"`
+	RequiredLevel uint32                 `protobuf:"varint,2,opt,name=required_level,json=requiredLevel,proto3" json:"required_level,omitempty"`
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PortalRefused) Reset() {
+	*x = PortalRefused{}
+	mi := &file_mmo_v1_game_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PortalRefused) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PortalRefused) ProtoMessage() {}
+
+func (x *PortalRefused) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PortalRefused.ProtoReflect.Descriptor instead.
+func (*PortalRefused) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *PortalRefused) GetTargetMap() string {
+	if x != nil {
+		return x.TargetMap
+	}
+	return ""
+}
+
+func (x *PortalRefused) GetRequiredLevel() uint32 {
+	if x != nil {
+		return x.RequiredLevel
+	}
+	return 0
+}
+
+func (x *PortalRefused) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// OpenWorldMap asks for everything the map screen shows.
+//
+// Requested rather than pushed: the contents change only when a player unlocks
+// a waypoint or a channel fills up, and neither is worth a per-tick broadcast
+// to every client in the world.
+type OpenWorldMap struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OpenWorldMap) Reset() {
+	*x = OpenWorldMap{}
+	mi := &file_mmo_v1_game_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OpenWorldMap) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OpenWorldMap) ProtoMessage() {}
+
+func (x *OpenWorldMap) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OpenWorldMap.ProtoReflect.Descriptor instead.
+func (*OpenWorldMap) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{23}
+}
+
+// Travel is a request to move somewhere without walking: a fast-travel
+// waypoint, or a different channel of the map the player is already in.
+//
+// Exactly one field is set. The server validates both -- an unlocked waypoint,
+// an instance that exists and has room -- because a client that could name any
+// destination could walk into a level-40 zone at level 3.
+type Travel struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Destination:
+	//
+	//	*Travel_WaypointId
+	//	*Travel_ChannelInstanceId
+	//	*Travel_NewChannel
+	Destination   isTravel_Destination `protobuf_oneof:"destination"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Travel) Reset() {
+	*x = Travel{}
+	mi := &file_mmo_v1_game_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Travel) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Travel) ProtoMessage() {}
+
+func (x *Travel) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Travel.ProtoReflect.Descriptor instead.
+func (*Travel) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *Travel) GetDestination() isTravel_Destination {
+	if x != nil {
+		return x.Destination
+	}
+	return nil
+}
+
+func (x *Travel) GetWaypointId() string {
+	if x != nil {
+		if x, ok := x.Destination.(*Travel_WaypointId); ok {
+			return x.WaypointId
+		}
+	}
+	return ""
+}
+
+func (x *Travel) GetChannelInstanceId() uint64 {
+	if x != nil {
+		if x, ok := x.Destination.(*Travel_ChannelInstanceId); ok {
+			return x.ChannelInstanceId
+		}
+	}
+	return 0
+}
+
+func (x *Travel) GetNewChannel() bool {
+	if x != nil {
+		if x, ok := x.Destination.(*Travel_NewChannel); ok {
+			return x.NewChannel
+		}
+	}
+	return false
+}
+
+type isTravel_Destination interface {
+	isTravel_Destination()
+}
+
+type Travel_WaypointId struct {
+	WaypointId string `protobuf:"bytes,1,opt,name=waypoint_id,json=waypointId,proto3,oneof"`
+}
+
+type Travel_ChannelInstanceId struct {
+	ChannelInstanceId uint64 `protobuf:"varint,2,opt,name=channel_instance_id,json=channelInstanceId,proto3,oneof"`
+}
+
+type Travel_NewChannel struct {
+	// Ask for any channel but this one, creating it if every existing channel
+	// is somewhere the player already is. This is what the button does: at
+	// hobby scale there is usually only one channel, and "leave this instance"
+	// is still a thing a player wants.
+	NewChannel bool `protobuf:"varint,3,opt,name=new_channel,json=newChannel,proto3,oneof"`
+}
+
+func (*Travel_WaypointId) isTravel_Destination() {}
+
+func (*Travel_ChannelInstanceId) isTravel_Destination() {}
+
+func (*Travel_NewChannel) isTravel_Destination() {}
+
+// WorldMap is the map screen: where the player can go, and where they are.
+type WorldMap struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Maps              []*MapSummary          `protobuf:"bytes,1,rep,name=maps,proto3" json:"maps,omitempty"`
+	Waypoints         []*WaypointSummary     `protobuf:"bytes,2,rep,name=waypoints,proto3" json:"waypoints,omitempty"`
+	Channels          []*ChannelSummary      `protobuf:"bytes,3,rep,name=channels,proto3" json:"channels,omitempty"`
+	CurrentMapId      string                 `protobuf:"bytes,4,opt,name=current_map_id,json=currentMapId,proto3" json:"current_map_id,omitempty"`
+	CurrentInstanceId uint64                 `protobuf:"varint,5,opt,name=current_instance_id,json=currentInstanceId,proto3" json:"current_instance_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *WorldMap) Reset() {
+	*x = WorldMap{}
+	mi := &file_mmo_v1_game_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorldMap) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorldMap) ProtoMessage() {}
+
+func (x *WorldMap) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorldMap.ProtoReflect.Descriptor instead.
+func (*WorldMap) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *WorldMap) GetMaps() []*MapSummary {
+	if x != nil {
+		return x.Maps
+	}
+	return nil
+}
+
+func (x *WorldMap) GetWaypoints() []*WaypointSummary {
+	if x != nil {
+		return x.Waypoints
+	}
+	return nil
+}
+
+func (x *WorldMap) GetChannels() []*ChannelSummary {
+	if x != nil {
+		return x.Channels
+	}
+	return nil
+}
+
+func (x *WorldMap) GetCurrentMapId() string {
+	if x != nil {
+		return x.CurrentMapId
+	}
+	return ""
+}
+
+func (x *WorldMap) GetCurrentInstanceId() uint64 {
+	if x != nil {
+		return x.CurrentInstanceId
+	}
+	return 0
+}
+
+type MapSummary struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	MapId    string                 `protobuf:"bytes,1,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	Name     string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	MinLevel int32                  `protobuf:"varint,3,opt,name=min_level,json=minLevel,proto3" json:"min_level,omitempty"`
+	MaxLevel int32                  `protobuf:"varint,4,opt,name=max_level,json=maxLevel,proto3" json:"max_level,omitempty"`
+	// Private maps are dungeons: a party gets its own copy, so they are shown
+	// differently from a public zone with channels.
+	Private       bool `protobuf:"varint,5,opt,name=private,proto3" json:"private,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MapSummary) Reset() {
+	*x = MapSummary{}
+	mi := &file_mmo_v1_game_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MapSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MapSummary) ProtoMessage() {}
+
+func (x *MapSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MapSummary.ProtoReflect.Descriptor instead.
+func (*MapSummary) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *MapSummary) GetMapId() string {
+	if x != nil {
+		return x.MapId
+	}
+	return ""
+}
+
+func (x *MapSummary) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *MapSummary) GetMinLevel() int32 {
+	if x != nil {
+		return x.MinLevel
+	}
+	return 0
+}
+
+func (x *MapSummary) GetMaxLevel() int32 {
+	if x != nil {
+		return x.MaxLevel
+	}
+	return 0
+}
+
+func (x *MapSummary) GetPrivate() bool {
+	if x != nil {
+		return x.Private
+	}
+	return false
+}
+
+// WaypointSummary is one fast-travel destination. Only unlocked waypoints are
+// sent: the world map is a record of where a player has been, and listing the
+// ones they have not found would give that away.
+type WaypointSummary struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WaypointId    string                 `protobuf:"bytes,1,opt,name=waypoint_id,json=waypointId,proto3" json:"waypoint_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	MapId         string                 `protobuf:"bytes,3,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WaypointSummary) Reset() {
+	*x = WaypointSummary{}
+	mi := &file_mmo_v1_game_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WaypointSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WaypointSummary) ProtoMessage() {}
+
+func (x *WaypointSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WaypointSummary.ProtoReflect.Descriptor instead.
+func (*WaypointSummary) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *WaypointSummary) GetWaypointId() string {
+	if x != nil {
+		return x.WaypointId
+	}
+	return ""
+}
+
+func (x *WaypointSummary) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *WaypointSummary) GetMapId() string {
+	if x != nil {
+		return x.MapId
+	}
+	return ""
+}
+
+// ChannelSummary is one instance of the map the player is currently in.
+type ChannelSummary struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	InstanceId uint64                 `protobuf:"varint,1,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
+	// Channel is the position in the list, which is the number a player sees.
+	// Instance IDs are never reused and grow forever, so they make a poor label.
+	Channel       uint32 `protobuf:"varint,2,opt,name=channel,proto3" json:"channel,omitempty"`
+	Players       uint32 `protobuf:"varint,3,opt,name=players,proto3" json:"players,omitempty"`
+	Capacity      uint32 `protobuf:"varint,4,opt,name=capacity,proto3" json:"capacity,omitempty"`
+	Current       bool   `protobuf:"varint,5,opt,name=current,proto3" json:"current,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChannelSummary) Reset() {
+	*x = ChannelSummary{}
+	mi := &file_mmo_v1_game_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChannelSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChannelSummary) ProtoMessage() {}
+
+func (x *ChannelSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChannelSummary.ProtoReflect.Descriptor instead.
+func (*ChannelSummary) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *ChannelSummary) GetInstanceId() uint64 {
+	if x != nil {
+		return x.InstanceId
+	}
+	return 0
+}
+
+func (x *ChannelSummary) GetChannel() uint32 {
+	if x != nil {
+		return x.Channel
+	}
+	return 0
+}
+
+func (x *ChannelSummary) GetPlayers() uint32 {
+	if x != nil {
+		return x.Players
+	}
+	return 0
+}
+
+func (x *ChannelSummary) GetCapacity() uint32 {
+	if x != nil {
+		return x.Capacity
+	}
+	return 0
+}
+
+func (x *ChannelSummary) GetCurrent() bool {
+	if x != nil {
+		return x.Current
+	}
+	return false
+}
+
 type LootTaken struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	EntityId uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
@@ -2206,7 +2860,7 @@ type LootTaken struct {
 
 func (x *LootTaken) Reset() {
 	*x = LootTaken{}
-	mi := &file_mmo_v1_game_proto_msgTypes[21]
+	mi := &file_mmo_v1_game_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2218,7 +2872,7 @@ func (x *LootTaken) String() string {
 func (*LootTaken) ProtoMessage() {}
 
 func (x *LootTaken) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[21]
+	mi := &file_mmo_v1_game_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2231,7 +2885,7 @@ func (x *LootTaken) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LootTaken.ProtoReflect.Descriptor instead.
 func (*LootTaken) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{21}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *LootTaken) GetEntityId() uint32 {
@@ -2297,7 +2951,7 @@ type Inventory struct {
 
 func (x *Inventory) Reset() {
 	*x = Inventory{}
-	mi := &file_mmo_v1_game_proto_msgTypes[22]
+	mi := &file_mmo_v1_game_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2309,7 +2963,7 @@ func (x *Inventory) String() string {
 func (*Inventory) ProtoMessage() {}
 
 func (x *Inventory) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[22]
+	mi := &file_mmo_v1_game_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2322,7 +2976,7 @@ func (x *Inventory) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Inventory.ProtoReflect.Descriptor instead.
 func (*Inventory) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{22}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *Inventory) GetCarried() []*ItemStack {
@@ -2380,7 +3034,7 @@ type ItemStack struct {
 
 func (x *ItemStack) Reset() {
 	*x = ItemStack{}
-	mi := &file_mmo_v1_game_proto_msgTypes[23]
+	mi := &file_mmo_v1_game_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2392,7 +3046,7 @@ func (x *ItemStack) String() string {
 func (*ItemStack) ProtoMessage() {}
 
 func (x *ItemStack) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[23]
+	mi := &file_mmo_v1_game_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2405,7 +3059,7 @@ func (x *ItemStack) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ItemStack.ProtoReflect.Descriptor instead.
 func (*ItemStack) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{23}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ItemStack) GetItemId() string {
@@ -2497,7 +3151,7 @@ type ItemMod struct {
 
 func (x *ItemMod) Reset() {
 	*x = ItemMod{}
-	mi := &file_mmo_v1_game_proto_msgTypes[24]
+	mi := &file_mmo_v1_game_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2509,7 +3163,7 @@ func (x *ItemMod) String() string {
 func (*ItemMod) ProtoMessage() {}
 
 func (x *ItemMod) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[24]
+	mi := &file_mmo_v1_game_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2522,7 +3176,7 @@ func (x *ItemMod) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ItemMod.ProtoReflect.Descriptor instead.
 func (*ItemMod) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{24}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *ItemMod) GetStat() string {
@@ -2570,7 +3224,7 @@ type StatValue struct {
 
 func (x *StatValue) Reset() {
 	*x = StatValue{}
-	mi := &file_mmo_v1_game_proto_msgTypes[25]
+	mi := &file_mmo_v1_game_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2582,7 +3236,7 @@ func (x *StatValue) String() string {
 func (*StatValue) ProtoMessage() {}
 
 func (x *StatValue) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[25]
+	mi := &file_mmo_v1_game_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2595,7 +3249,7 @@ func (x *StatValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatValue.ProtoReflect.Descriptor instead.
 func (*StatValue) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{25}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *StatValue) GetStat() string {
@@ -2622,7 +3276,7 @@ type PlayerJoined struct {
 
 func (x *PlayerJoined) Reset() {
 	*x = PlayerJoined{}
-	mi := &file_mmo_v1_game_proto_msgTypes[26]
+	mi := &file_mmo_v1_game_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2634,7 +3288,7 @@ func (x *PlayerJoined) String() string {
 func (*PlayerJoined) ProtoMessage() {}
 
 func (x *PlayerJoined) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[26]
+	mi := &file_mmo_v1_game_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2647,7 +3301,7 @@ func (x *PlayerJoined) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerJoined.ProtoReflect.Descriptor instead.
 func (*PlayerJoined) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{26}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *PlayerJoined) GetEntityId() uint32 {
@@ -2673,7 +3327,7 @@ type PlayerLeft struct {
 
 func (x *PlayerLeft) Reset() {
 	*x = PlayerLeft{}
-	mi := &file_mmo_v1_game_proto_msgTypes[27]
+	mi := &file_mmo_v1_game_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2685,7 +3339,7 @@ func (x *PlayerLeft) String() string {
 func (*PlayerLeft) ProtoMessage() {}
 
 func (x *PlayerLeft) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[27]
+	mi := &file_mmo_v1_game_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2698,7 +3352,7 @@ func (x *PlayerLeft) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerLeft.ProtoReflect.Descriptor instead.
 func (*PlayerLeft) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{27}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *PlayerLeft) GetEntityId() uint32 {
@@ -2715,7 +3369,7 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\x11mmo/v1/game.proto\x12\x06mmo.v1\"h\n" +
 	"\bEnvelope\x12-\n" +
 	"\x06server\x18\x01 \x03(\v2\x15.mmo.v1.ServerMessageR\x06server\x12-\n" +
-	"\x06client\x18\x02 \x03(\v2\x15.mmo.v1.ClientMessageR\x06client\"\x9d\x02\n" +
+	"\x06client\x18\x02 \x03(\v2\x15.mmo.v1.ClientMessageR\x06client\"\x85\x03\n" +
 	"\rClientMessage\x12%\n" +
 	"\x05hello\x18\x01 \x01(\v2\r.mmo.v1.HelloH\x00R\x05hello\x12(\n" +
 	"\x06intent\x18\x02 \x01(\v2\x0e.mmo.v1.IntentH\x00R\x06intent\x12\"\n" +
@@ -2723,8 +3377,10 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\x04cast\x18\x04 \x01(\v2\f.mmo.v1.CastH\x00R\x04cast\x12.\n" +
 	"\binteract\x18\x05 \x01(\v2\x10.mmo.v1.InteractH\x00R\binteract\x125\n" +
 	"\vitem_action\x18\x06 \x01(\v2\x12.mmo.v1.ItemActionH\x00R\n" +
-	"itemActionB\x06\n" +
-	"\x04bodyJ\x04\b\a\x10\n" +
+	"itemAction\x12<\n" +
+	"\x0eopen_world_map\x18\a \x01(\v2\x14.mmo.v1.OpenWorldMapH\x00R\fopenWorldMap\x12(\n" +
+	"\x06travel\x18\b \x01(\v2\x0e.mmo.v1.TravelH\x00R\x06travelB\x06\n" +
+	"\x04bodyJ\x04\b\t\x10\n" +
 	"\"T\n" +
 	"\x04Cast\x12\x10\n" +
 	"\x03seq\x18\x01 \x01(\rR\x03seq\x12\x19\n" +
@@ -2827,7 +3483,7 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\bentities\x18\x04 \x03(\v2\x13.mmo.v1.EntityDeltaR\bentities\x12-\n" +
 	"\aentered\x18\x05 \x03(\v2\x13.mmo.v1.EntityStateR\aentered\x12\x18\n" +
 	"\aremoved\x18\x06 \x03(\rR\aremoved\x12'\n" +
-	"\x04self\x18\a \x01(\v2\x13.mmo.v1.EntityStateR\x04self\"\xac\x03\n" +
+	"\x04self\x18\a \x01(\v2\x13.mmo.v1.EntityStateR\x04self\"\xe3\x04\n" +
 	"\x05Event\x12;\n" +
 	"\rplayer_joined\x18\x01 \x01(\v2\x14.mmo.v1.PlayerJoinedH\x00R\fplayerJoined\x125\n" +
 	"\vplayer_left\x18\x02 \x01(\v2\x12.mmo.v1.PlayerLeftH\x00R\n" +
@@ -2840,8 +3496,12 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"exp_gained\x18\x06 \x01(\v2\x11.mmo.v1.ExpGainedH\x00R\texpGained\x12,\n" +
 	"\blevel_up\x18\a \x01(\v2\x0f.mmo.v1.LevelUpH\x00R\alevelUp\x122\n" +
 	"\n" +
-	"loot_taken\x18\b \x01(\v2\x11.mmo.v1.LootTakenH\x00R\tlootTakenB\x06\n" +
-	"\x04bodyJ\x04\b\t\x10\x10\"\x95\x01\n" +
+	"loot_taken\x18\b \x01(\v2\x11.mmo.v1.LootTakenH\x00R\tlootTaken\x12>\n" +
+	"\x0ewaypoint_found\x18\t \x01(\v2\x15.mmo.v1.WaypointFoundH\x00R\rwaypointFound\x12>\n" +
+	"\x0eportal_refused\x18\n" +
+	" \x01(\v2\x15.mmo.v1.PortalRefusedH\x00R\rportalRefused\x12/\n" +
+	"\tworld_map\x18\f \x01(\v2\x10.mmo.v1.WorldMapH\x00R\bworldMapB\x06\n" +
+	"\x04bodyJ\x04\b\v\x10\fJ\x04\b\r\x10\x10\"\x95\x01\n" +
 	"\vDamageDealt\x12\x1b\n" +
 	"\tsource_id\x18\x01 \x01(\rR\bsourceId\x12\x1b\n" +
 	"\ttarget_id\x18\x02 \x01(\rR\btargetId\x12\x16\n" +
@@ -2862,7 +3522,50 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\x05total\x18\x02 \x01(\x04R\x05total\"?\n" +
 	"\aLevelUp\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\rR\x05level\x12\x1e\n" +
-	"\vexp_to_next\x18\x02 \x01(\x04R\texpToNext\"\x97\x01\n" +
+	"\vexp_to_next\x18\x02 \x01(\x04R\texpToNext\"[\n" +
+	"\rWaypointFound\x12\x1f\n" +
+	"\vwaypoint_id\x18\x01 \x01(\tR\n" +
+	"waypointId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x15\n" +
+	"\x06map_id\x18\x03 \x01(\tR\x05mapId\"m\n" +
+	"\rPortalRefused\x12\x1d\n" +
+	"\n" +
+	"target_map\x18\x01 \x01(\tR\ttargetMap\x12%\n" +
+	"\x0erequired_level\x18\x02 \x01(\rR\rrequiredLevel\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"\x0e\n" +
+	"\fOpenWorldMap\"\x8f\x01\n" +
+	"\x06Travel\x12!\n" +
+	"\vwaypoint_id\x18\x01 \x01(\tH\x00R\n" +
+	"waypointId\x120\n" +
+	"\x13channel_instance_id\x18\x02 \x01(\x04H\x00R\x11channelInstanceId\x12!\n" +
+	"\vnew_channel\x18\x03 \x01(\bH\x00R\n" +
+	"newChannelB\r\n" +
+	"\vdestination\"\xf3\x01\n" +
+	"\bWorldMap\x12&\n" +
+	"\x04maps\x18\x01 \x03(\v2\x12.mmo.v1.MapSummaryR\x04maps\x125\n" +
+	"\twaypoints\x18\x02 \x03(\v2\x17.mmo.v1.WaypointSummaryR\twaypoints\x122\n" +
+	"\bchannels\x18\x03 \x03(\v2\x16.mmo.v1.ChannelSummaryR\bchannels\x12$\n" +
+	"\x0ecurrent_map_id\x18\x04 \x01(\tR\fcurrentMapId\x12.\n" +
+	"\x13current_instance_id\x18\x05 \x01(\x04R\x11currentInstanceId\"\x8b\x01\n" +
+	"\n" +
+	"MapSummary\x12\x15\n" +
+	"\x06map_id\x18\x01 \x01(\tR\x05mapId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1b\n" +
+	"\tmin_level\x18\x03 \x01(\x05R\bminLevel\x12\x1b\n" +
+	"\tmax_level\x18\x04 \x01(\x05R\bmaxLevel\x12\x18\n" +
+	"\aprivate\x18\x05 \x01(\bR\aprivate\"]\n" +
+	"\x0fWaypointSummary\x12\x1f\n" +
+	"\vwaypoint_id\x18\x01 \x01(\tR\n" +
+	"waypointId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x15\n" +
+	"\x06map_id\x18\x03 \x01(\tR\x05mapId\"\x9b\x01\n" +
+	"\x0eChannelSummary\x12\x1f\n" +
+	"\vinstance_id\x18\x01 \x01(\x04R\n" +
+	"instanceId\x12\x18\n" +
+	"\achannel\x18\x02 \x01(\rR\achannel\x12\x18\n" +
+	"\aplayers\x18\x03 \x01(\rR\aplayers\x12\x1a\n" +
+	"\bcapacity\x18\x04 \x01(\rR\bcapacity\x12\x18\n" +
+	"\acurrent\x18\x05 \x01(\bR\acurrent\"\x97\x01\n" +
 	"\tLootTaken\x12\x1b\n" +
 	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12\x17\n" +
 	"\aitem_id\x18\x02 \x01(\tR\x06itemId\x12\x10\n" +
@@ -2951,41 +3654,49 @@ func file_mmo_v1_game_proto_rawDescGZIP() []byte {
 }
 
 var file_mmo_v1_game_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_mmo_v1_game_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
+var file_mmo_v1_game_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
 var file_mmo_v1_game_proto_goTypes = []any{
-	(InteractKind)(0),     // 0: mmo.v1.InteractKind
-	(ItemActionKind)(0),   // 1: mmo.v1.ItemActionKind
-	(EntityKind)(0),       // 2: mmo.v1.EntityKind
-	(EntityField)(0),      // 3: mmo.v1.EntityField
-	(EntityFlag)(0),       // 4: mmo.v1.EntityFlag
-	(*Envelope)(nil),      // 5: mmo.v1.Envelope
-	(*ClientMessage)(nil), // 6: mmo.v1.ClientMessage
-	(*Cast)(nil),          // 7: mmo.v1.Cast
-	(*Interact)(nil),      // 8: mmo.v1.Interact
-	(*ItemAction)(nil),    // 9: mmo.v1.ItemAction
-	(*ServerMessage)(nil), // 10: mmo.v1.ServerMessage
-	(*Hello)(nil),         // 11: mmo.v1.Hello
-	(*Welcome)(nil),       // 12: mmo.v1.Welcome
-	(*Kick)(nil),          // 13: mmo.v1.Kick
-	(*Intent)(nil),        // 14: mmo.v1.Intent
-	(*Ping)(nil),          // 15: mmo.v1.Ping
-	(*Pong)(nil),          // 16: mmo.v1.Pong
-	(*EntityState)(nil),   // 17: mmo.v1.EntityState
-	(*EntityDelta)(nil),   // 18: mmo.v1.EntityDelta
-	(*Snapshot)(nil),      // 19: mmo.v1.Snapshot
-	(*Event)(nil),         // 20: mmo.v1.Event
-	(*DamageDealt)(nil),   // 21: mmo.v1.DamageDealt
-	(*EntityDied)(nil),    // 22: mmo.v1.EntityDied
-	(*SkillCast)(nil),     // 23: mmo.v1.SkillCast
-	(*ExpGained)(nil),     // 24: mmo.v1.ExpGained
-	(*LevelUp)(nil),       // 25: mmo.v1.LevelUp
-	(*LootTaken)(nil),     // 26: mmo.v1.LootTaken
-	(*Inventory)(nil),     // 27: mmo.v1.Inventory
-	(*ItemStack)(nil),     // 28: mmo.v1.ItemStack
-	(*ItemMod)(nil),       // 29: mmo.v1.ItemMod
-	(*StatValue)(nil),     // 30: mmo.v1.StatValue
-	(*PlayerJoined)(nil),  // 31: mmo.v1.PlayerJoined
-	(*PlayerLeft)(nil),    // 32: mmo.v1.PlayerLeft
+	(InteractKind)(0),       // 0: mmo.v1.InteractKind
+	(ItemActionKind)(0),     // 1: mmo.v1.ItemActionKind
+	(EntityKind)(0),         // 2: mmo.v1.EntityKind
+	(EntityField)(0),        // 3: mmo.v1.EntityField
+	(EntityFlag)(0),         // 4: mmo.v1.EntityFlag
+	(*Envelope)(nil),        // 5: mmo.v1.Envelope
+	(*ClientMessage)(nil),   // 6: mmo.v1.ClientMessage
+	(*Cast)(nil),            // 7: mmo.v1.Cast
+	(*Interact)(nil),        // 8: mmo.v1.Interact
+	(*ItemAction)(nil),      // 9: mmo.v1.ItemAction
+	(*ServerMessage)(nil),   // 10: mmo.v1.ServerMessage
+	(*Hello)(nil),           // 11: mmo.v1.Hello
+	(*Welcome)(nil),         // 12: mmo.v1.Welcome
+	(*Kick)(nil),            // 13: mmo.v1.Kick
+	(*Intent)(nil),          // 14: mmo.v1.Intent
+	(*Ping)(nil),            // 15: mmo.v1.Ping
+	(*Pong)(nil),            // 16: mmo.v1.Pong
+	(*EntityState)(nil),     // 17: mmo.v1.EntityState
+	(*EntityDelta)(nil),     // 18: mmo.v1.EntityDelta
+	(*Snapshot)(nil),        // 19: mmo.v1.Snapshot
+	(*Event)(nil),           // 20: mmo.v1.Event
+	(*DamageDealt)(nil),     // 21: mmo.v1.DamageDealt
+	(*EntityDied)(nil),      // 22: mmo.v1.EntityDied
+	(*SkillCast)(nil),       // 23: mmo.v1.SkillCast
+	(*ExpGained)(nil),       // 24: mmo.v1.ExpGained
+	(*LevelUp)(nil),         // 25: mmo.v1.LevelUp
+	(*WaypointFound)(nil),   // 26: mmo.v1.WaypointFound
+	(*PortalRefused)(nil),   // 27: mmo.v1.PortalRefused
+	(*OpenWorldMap)(nil),    // 28: mmo.v1.OpenWorldMap
+	(*Travel)(nil),          // 29: mmo.v1.Travel
+	(*WorldMap)(nil),        // 30: mmo.v1.WorldMap
+	(*MapSummary)(nil),      // 31: mmo.v1.MapSummary
+	(*WaypointSummary)(nil), // 32: mmo.v1.WaypointSummary
+	(*ChannelSummary)(nil),  // 33: mmo.v1.ChannelSummary
+	(*LootTaken)(nil),       // 34: mmo.v1.LootTaken
+	(*Inventory)(nil),       // 35: mmo.v1.Inventory
+	(*ItemStack)(nil),       // 36: mmo.v1.ItemStack
+	(*ItemMod)(nil),         // 37: mmo.v1.ItemMod
+	(*StatValue)(nil),       // 38: mmo.v1.StatValue
+	(*PlayerJoined)(nil),    // 39: mmo.v1.PlayerJoined
+	(*PlayerLeft)(nil),      // 40: mmo.v1.PlayerLeft
 }
 var file_mmo_v1_game_proto_depIdxs = []int32{
 	10, // 0: mmo.v1.Envelope.server:type_name -> mmo.v1.ServerMessage
@@ -2996,36 +3707,44 @@ var file_mmo_v1_game_proto_depIdxs = []int32{
 	7,  // 5: mmo.v1.ClientMessage.cast:type_name -> mmo.v1.Cast
 	8,  // 6: mmo.v1.ClientMessage.interact:type_name -> mmo.v1.Interact
 	9,  // 7: mmo.v1.ClientMessage.item_action:type_name -> mmo.v1.ItemAction
-	0,  // 8: mmo.v1.Interact.kind:type_name -> mmo.v1.InteractKind
-	1,  // 9: mmo.v1.ItemAction.kind:type_name -> mmo.v1.ItemActionKind
-	12, // 10: mmo.v1.ServerMessage.welcome:type_name -> mmo.v1.Welcome
-	19, // 11: mmo.v1.ServerMessage.snapshot:type_name -> mmo.v1.Snapshot
-	20, // 12: mmo.v1.ServerMessage.event:type_name -> mmo.v1.Event
-	16, // 13: mmo.v1.ServerMessage.pong:type_name -> mmo.v1.Pong
-	13, // 14: mmo.v1.ServerMessage.kick:type_name -> mmo.v1.Kick
-	27, // 15: mmo.v1.ServerMessage.inventory:type_name -> mmo.v1.Inventory
-	17, // 16: mmo.v1.Welcome.self:type_name -> mmo.v1.EntityState
-	2,  // 17: mmo.v1.EntityState.kind:type_name -> mmo.v1.EntityKind
-	18, // 18: mmo.v1.Snapshot.entities:type_name -> mmo.v1.EntityDelta
-	17, // 19: mmo.v1.Snapshot.entered:type_name -> mmo.v1.EntityState
-	17, // 20: mmo.v1.Snapshot.self:type_name -> mmo.v1.EntityState
-	31, // 21: mmo.v1.Event.player_joined:type_name -> mmo.v1.PlayerJoined
-	32, // 22: mmo.v1.Event.player_left:type_name -> mmo.v1.PlayerLeft
-	21, // 23: mmo.v1.Event.damage:type_name -> mmo.v1.DamageDealt
-	22, // 24: mmo.v1.Event.died:type_name -> mmo.v1.EntityDied
-	23, // 25: mmo.v1.Event.skill_cast:type_name -> mmo.v1.SkillCast
-	24, // 26: mmo.v1.Event.exp_gained:type_name -> mmo.v1.ExpGained
-	25, // 27: mmo.v1.Event.level_up:type_name -> mmo.v1.LevelUp
-	26, // 28: mmo.v1.Event.loot_taken:type_name -> mmo.v1.LootTaken
-	28, // 29: mmo.v1.Inventory.carried:type_name -> mmo.v1.ItemStack
-	28, // 30: mmo.v1.Inventory.equipped:type_name -> mmo.v1.ItemStack
-	30, // 31: mmo.v1.Inventory.stats:type_name -> mmo.v1.StatValue
-	29, // 32: mmo.v1.ItemStack.mods:type_name -> mmo.v1.ItemMod
-	33, // [33:33] is the sub-list for method output_type
-	33, // [33:33] is the sub-list for method input_type
-	33, // [33:33] is the sub-list for extension type_name
-	33, // [33:33] is the sub-list for extension extendee
-	0,  // [0:33] is the sub-list for field type_name
+	28, // 8: mmo.v1.ClientMessage.open_world_map:type_name -> mmo.v1.OpenWorldMap
+	29, // 9: mmo.v1.ClientMessage.travel:type_name -> mmo.v1.Travel
+	0,  // 10: mmo.v1.Interact.kind:type_name -> mmo.v1.InteractKind
+	1,  // 11: mmo.v1.ItemAction.kind:type_name -> mmo.v1.ItemActionKind
+	12, // 12: mmo.v1.ServerMessage.welcome:type_name -> mmo.v1.Welcome
+	19, // 13: mmo.v1.ServerMessage.snapshot:type_name -> mmo.v1.Snapshot
+	20, // 14: mmo.v1.ServerMessage.event:type_name -> mmo.v1.Event
+	16, // 15: mmo.v1.ServerMessage.pong:type_name -> mmo.v1.Pong
+	13, // 16: mmo.v1.ServerMessage.kick:type_name -> mmo.v1.Kick
+	35, // 17: mmo.v1.ServerMessage.inventory:type_name -> mmo.v1.Inventory
+	17, // 18: mmo.v1.Welcome.self:type_name -> mmo.v1.EntityState
+	2,  // 19: mmo.v1.EntityState.kind:type_name -> mmo.v1.EntityKind
+	18, // 20: mmo.v1.Snapshot.entities:type_name -> mmo.v1.EntityDelta
+	17, // 21: mmo.v1.Snapshot.entered:type_name -> mmo.v1.EntityState
+	17, // 22: mmo.v1.Snapshot.self:type_name -> mmo.v1.EntityState
+	39, // 23: mmo.v1.Event.player_joined:type_name -> mmo.v1.PlayerJoined
+	40, // 24: mmo.v1.Event.player_left:type_name -> mmo.v1.PlayerLeft
+	21, // 25: mmo.v1.Event.damage:type_name -> mmo.v1.DamageDealt
+	22, // 26: mmo.v1.Event.died:type_name -> mmo.v1.EntityDied
+	23, // 27: mmo.v1.Event.skill_cast:type_name -> mmo.v1.SkillCast
+	24, // 28: mmo.v1.Event.exp_gained:type_name -> mmo.v1.ExpGained
+	25, // 29: mmo.v1.Event.level_up:type_name -> mmo.v1.LevelUp
+	34, // 30: mmo.v1.Event.loot_taken:type_name -> mmo.v1.LootTaken
+	26, // 31: mmo.v1.Event.waypoint_found:type_name -> mmo.v1.WaypointFound
+	27, // 32: mmo.v1.Event.portal_refused:type_name -> mmo.v1.PortalRefused
+	30, // 33: mmo.v1.Event.world_map:type_name -> mmo.v1.WorldMap
+	31, // 34: mmo.v1.WorldMap.maps:type_name -> mmo.v1.MapSummary
+	32, // 35: mmo.v1.WorldMap.waypoints:type_name -> mmo.v1.WaypointSummary
+	33, // 36: mmo.v1.WorldMap.channels:type_name -> mmo.v1.ChannelSummary
+	36, // 37: mmo.v1.Inventory.carried:type_name -> mmo.v1.ItemStack
+	36, // 38: mmo.v1.Inventory.equipped:type_name -> mmo.v1.ItemStack
+	38, // 39: mmo.v1.Inventory.stats:type_name -> mmo.v1.StatValue
+	37, // 40: mmo.v1.ItemStack.mods:type_name -> mmo.v1.ItemMod
+	41, // [41:41] is the sub-list for method output_type
+	41, // [41:41] is the sub-list for method input_type
+	41, // [41:41] is the sub-list for extension type_name
+	41, // [41:41] is the sub-list for extension extendee
+	0,  // [0:41] is the sub-list for field type_name
 }
 
 func init() { file_mmo_v1_game_proto_init() }
@@ -3040,6 +3759,8 @@ func file_mmo_v1_game_proto_init() {
 		(*ClientMessage_Cast)(nil),
 		(*ClientMessage_Interact)(nil),
 		(*ClientMessage_ItemAction)(nil),
+		(*ClientMessage_OpenWorldMap)(nil),
+		(*ClientMessage_Travel)(nil),
 	}
 	file_mmo_v1_game_proto_msgTypes[5].OneofWrappers = []any{
 		(*ServerMessage_Welcome)(nil),
@@ -3058,6 +3779,14 @@ func file_mmo_v1_game_proto_init() {
 		(*Event_ExpGained)(nil),
 		(*Event_LevelUp)(nil),
 		(*Event_LootTaken)(nil),
+		(*Event_WaypointFound)(nil),
+		(*Event_PortalRefused)(nil),
+		(*Event_WorldMap)(nil),
+	}
+	file_mmo_v1_game_proto_msgTypes[24].OneofWrappers = []any{
+		(*Travel_WaypointId)(nil),
+		(*Travel_ChannelInstanceId)(nil),
+		(*Travel_NewChannel)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -3065,7 +3794,7 @@ func file_mmo_v1_game_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mmo_v1_game_proto_rawDesc), len(file_mmo_v1_game_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   28,
+			NumMessages:   36,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

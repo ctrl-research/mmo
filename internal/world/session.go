@@ -11,6 +11,7 @@ import (
 	"github.com/ctrl-research/mmo/internal/content"
 	"github.com/ctrl-research/mmo/internal/directory"
 	"github.com/ctrl-research/mmo/internal/store"
+	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
 	"github.com/ctrl-research/mmo/internal/world/room"
 	"github.com/ctrl-research/mmo/internal/world/stats"
 	"github.com/google/uuid"
@@ -56,6 +57,12 @@ var (
 type PlayerSession interface {
 	Handle() room.Handle
 	EntityID() room.EntityID
+
+	// Where returns both at once, which is what a caller addressing the
+	// character actually needs: reading them separately can straddle a
+	// transfer and produce a handle to one room with an entity from another.
+	Where() (room.Handle, room.EntityID)
+
 	Name() string
 
 	// OnOwnershipLost registers a callback for losing the character's lease,
@@ -74,6 +81,13 @@ type PlayerSession interface {
 	// before the result reaches the room, so the two cannot disagree about
 	// where an item is.
 	ApplyItemAction(ctx context.Context, action ItemAction) error
+
+	// Travel moves the character without walking: to an unlocked waypoint, or
+	// to another channel of the map they are in.
+	Travel(ctx context.Context, req TravelRequest) error
+
+	// WorldMap describes where the character can go and where they are.
+	WorldMap(ctx context.Context) *mmov1.WorldMap
 }
 
 // Session is one character in the world.
@@ -99,9 +113,31 @@ type Session struct {
 	// must be durable the moment they happen and the room must never block.
 	inventory *Inventory
 
-	// claims carries loot requests from the tick loop to this session's
-	// goroutine, where the database can be reached.
-	claims chan room.LootClaim
+	// claims, portals, and waypoints carry work from the tick loop to this
+	// session's goroutine, where the database and the bus can be reached.
+	claims    chan room.LootClaim
+	portals   chan room.PortalRequest
+	waypoints chan string
+	travels   chan TravelRequest
+
+	// finished is closed when the session's own goroutine has returned.
+	//
+	// Close waits on it before checkpointing and leaving the room: a transfer
+	// running on that goroutine is in the middle of replacing the handle, the
+	// entity, and the instance, and tearing down against the values it started
+	// with would leave the character in the destination room forever with a
+	// directory slot nobody will ever release.
+	finished chan struct{}
+
+	// mapID is the map the character is currently in, which changes on a
+	// transfer.
+	mapID string
+
+	// knownWaypoints is what this character has already unlocked. Held here
+	// as well as in the room because a transfer hands the character to a room
+	// that has never heard of them, and without it every arrival would rewrite
+	// every unlock the character already has.
+	knownWaypoints []string
 
 	// sink delivers inventory updates to the connected client.
 	sink room.Sink
@@ -117,10 +153,45 @@ type Session struct {
 }
 
 // Handle returns the room this session is in.
-func (s *Session) Handle() room.Handle { return s.handle }
+// Both are read under the lock because a transfer replaces them: the character
+// is in a different room, with a different entity, and a caller holding the
+// old pair would be sending input into the map they just left.
+func (s *Session) Handle() room.Handle {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.handle
+}
 
 // EntityID returns the entity the character was given.
-func (s *Session) EntityID() room.EntityID { return s.entityID }
+func (s *Session) EntityID() room.EntityID {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.entityID
+}
+
+// attachTo binds this session to the character in whichever room it is in.
+//
+// Every field is an in-process reference to this node, which is why it is
+// handed over separately rather than travelling with the character: a transfer
+// carries state across the bus, and none of this can go with it.
+func (s *Session) attachTo(ctx context.Context, sink room.Sink) bool {
+	s.mu.Lock()
+	handle, entityID, known := s.handle, s.entityID, s.knownWaypoints
+	s.mu.Unlock()
+
+	return handle.Attach(ctx, entityID, room.Attachment{
+		Sink:           sink,
+		Events:         s,
+		KnownWaypoints: known,
+	})
+}
+
+// Where returns the room and entity the character is in right now.
+func (s *Session) Where() (room.Handle, room.EntityID) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.handle, s.entityID
+}
 
 // Name returns the character's name.
 func (s *Session) Name() string { return s.name }
@@ -187,12 +258,6 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 		mapID = n.defaultMap
 	}
 
-	handle, instance, err := n.placeIn(ctx, mapID)
-	if err != nil {
-		release()
-		return nil, err
-	}
-
 	state := room.UnmarshalState(character.State)
 	spec := room.JoinSpec{
 		CharacterID: characterID.String(),
@@ -210,9 +275,14 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 		Sink:  sink,
 	}
 
+	knownWaypoints, err := n.store.CharacterWaypoints(ctx, characterID)
+	if err != nil {
+		release()
+		return nil, fmt.Errorf("world: loading waypoints: %w", err)
+	}
+
 	inventory, err := LoadInventory(ctx, n.store, n.content, characterID)
 	if err != nil {
-		n.dir.Leave(ctx, instance)
 		release()
 		return nil, fmt.Errorf("world: loading inventory: %w", err)
 	}
@@ -222,27 +292,36 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 		accountID:   accountID,
 		characterID: characterID,
 		name:        character.Name,
-		handle:      handle,
-		instance:    instance,
 		lease:       lease,
 		inventory:   inventory,
 		sink:        sink,
-		// Buffered so the tick loop never blocks handing a claim over; a
-		// player cannot legitimately claim faster than this.
-		claims: make(chan room.LootClaim, 16),
-		done:   make(chan struct{}),
+		mapID:       mapID,
+		// Buffered so the tick loop never blocks handing work over; a player
+		// cannot legitimately produce these faster than this.
+		claims:    make(chan room.LootClaim, 16),
+		portals:   make(chan room.PortalRequest, 4),
+		waypoints: make(chan string, 8),
+		// Depth one: a second travel request while one is in flight is a
+		// double-click, not an instruction to move twice.
+		travels:  make(chan TravelRequest, 1),
+		finished: make(chan struct{}),
+		done:     make(chan struct{}),
 		log: n.log.With(
 			"character", characterID.String(), "name", character.Name, "account", accountID.String()),
 	}
-	spec.Items = s
+	spec.Events = s
+	spec.KnownWaypoints = knownWaypoints
 
-	entityID, err := handle.Join(ctx, spec)
+	// Placement and the join are one step: the directory decides which
+	// instance and which node, and the room is started there if it is not
+	// already running -- which may be a node other than this one.
+	handle, instance, entityID, err := n.placeAndJoin(ctx,
+		roomKey(n.content.Maps[mapID], characterID.String()), spec)
 	if err != nil {
-		n.dir.Leave(ctx, instance)
 		release()
 		return nil, err
 	}
-	s.entityID = entityID
+	s.handle, s.instance, s.entityID = handle, instance, entityID
 
 	// The stat block and the client's first inventory view, before anything
 	// else observes the character.
@@ -260,6 +339,8 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 // Both run on one goroutine so a checkpoint can never overlap the loss of the
 // lease that authorises it.
 func (s *Session) maintain() {
+	defer close(s.finished)
+
 	renew := time.NewTicker(directory.LeaseRenewInterval)
 	defer renew.Stop()
 
@@ -273,6 +354,15 @@ func (s *Session) maintain() {
 
 		case claim := <-s.claims:
 			s.handleClaim(claim)
+
+		case req := <-s.portals:
+			s.handlePortal(req)
+
+		case waypointID := <-s.waypoints:
+			s.recordWaypoint(waypointID)
+
+		case req := <-s.travels:
+			s.handleTravel(req)
 
 		case <-renew.C:
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -311,7 +401,8 @@ func (s *Session) maintain() {
 
 // checkpoint captures live state and writes it back, fenced by the lease.
 func (s *Session) checkpoint(ctx context.Context) error {
-	snap, ok := s.handle.Capture(ctx, s.entityID)
+	handle, entityID := s.Where()
+	snap, ok := handle.Capture(ctx, entityID)
 	if !ok {
 		// The player has already left the room; nothing to write.
 		return nil
@@ -366,7 +457,8 @@ func (s *Session) Disconnect(ctx context.Context) {
 		return
 	}
 
-	s.handle.Freeze(ctx, s.entityID)
+	handle, entityID := s.Where()
+	handle.Freeze(ctx, entityID)
 
 	// Checkpoint now rather than waiting for the grace period to end. If the
 	// process dies during the window, the character is recoverable from here
@@ -408,7 +500,7 @@ func (s *Session) Resume(ctx context.Context, sink room.Sink) bool {
 	s.disconnected = false
 	s.mu.Unlock()
 
-	if !s.handle.Thaw(ctx, s.entityID, sink) {
+	if !s.attachTo(ctx, sink) {
 		return false
 	}
 
@@ -459,6 +551,18 @@ func (s *Session) Close(ctx context.Context) {
 
 	s.closeOnce.Do(func() { close(s.done) })
 
+	// Wait for the session's own goroutine, so nothing below races a transfer
+	// that is halfway through moving this character to another room.
+	select {
+	case <-s.finished:
+	case <-time.After(TransferTimeout + time.Second):
+		// A transfer that has not finished by now is not going to. Proceeding
+		// risks leaving a slot reserved; not proceeding leaks the whole
+		// session, so this is the lesser failure -- and it is logged, because
+		// it should never happen.
+		s.log.Error("session goroutine did not finish; closing anyway")
+	}
+
 	// The node stops holding this character for reconnection.
 	s.node.forget(s.characterID)
 
@@ -484,8 +588,12 @@ func (s *Session) detach() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	s.handle.Leave(ctx, s.entityID)
-	s.node.dir.Leave(ctx, s.instance)
+	s.mu.Lock()
+	handle, entityID, instance := s.handle, s.entityID, s.instance
+	s.mu.Unlock()
+
+	handle.Leave(ctx, entityID)
+	s.node.dir.Leave(ctx, instance)
 }
 
 var _ PlayerSession = (*Session)(nil)
@@ -501,7 +609,8 @@ func (s *Session) ClaimLoot(claim room.LootClaim) {
 		// The queue is full, which means persistence is badly backed up.
 		// Refusing returns the drop to the ground rather than losing it.
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		s.handle.ResolveLoot(ctx, claim.Player, claim.DropID, false, "the server is busy; try again")
+		handle, _ := s.Where()
+		handle.ResolveLoot(ctx, claim.Player, claim.DropID, false, "the server is busy; try again")
 		cancel()
 	}
 }
@@ -511,20 +620,22 @@ func (s *Session) handleClaim(claim room.LootClaim) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	handle, _ := s.Where()
+
 	_, err := s.inventory.Grant(ctx, claim.Instance, claim.Tick)
 	switch {
 	case errors.Is(err, ErrInventoryFull):
 		// Returned to the ground, so the player can make room and come back
 		// for it rather than losing it.
-		s.handle.ResolveLoot(ctx, claim.Player, claim.DropID, false, "your inventory is full")
+		handle.ResolveLoot(ctx, claim.Player, claim.DropID, false, "your inventory is full")
 		return
 	case err != nil:
 		s.log.Error("granting loot", "err", err)
-		s.handle.ResolveLoot(ctx, claim.Player, claim.DropID, false, "could not pick that up")
+		handle.ResolveLoot(ctx, claim.Player, claim.DropID, false, "could not pick that up")
 		return
 	}
 
-	s.handle.ResolveLoot(ctx, claim.Player, claim.DropID, true, "")
+	handle.ResolveLoot(ctx, claim.Player, claim.DropID, true, "")
 	s.pushInventory(ctx)
 }
 
@@ -541,7 +652,8 @@ func (s *Session) refreshStats(ctx context.Context, level int) {
 		maxLife = 1
 	}
 
-	s.handle.SetStats(ctx, s.entityID, block, uint32(maxLife))
+	handle, entityID := s.Where()
+	handle.SetStats(ctx, entityID, block, uint32(maxLife))
 	s.pushInventoryWithStats(ctx, block)
 }
 
@@ -576,7 +688,8 @@ func (s *Session) ApplyItemAction(ctx context.Context, action ItemAction) error 
 
 // characterLevel reads the level the room currently has for this character.
 func (s *Session) characterLevel(ctx context.Context) int {
-	if snap, ok := s.handle.Capture(ctx, s.entityID); ok && snap.Progress.Level > 0 {
+	handle, entityID := s.Where()
+	if snap, ok := handle.Capture(ctx, entityID); ok && snap.Progress.Level > 0 {
 		return snap.Progress.Level
 	}
 	return 1
@@ -598,4 +711,32 @@ type ItemAction struct {
 	ItemID    uuid.UUID
 	Slot      int
 	EquipSlot content.EquipSlot
+}
+
+// recordWaypoint persists a waypoint unlock.
+//
+// Off the tick loop, because it is a database write. Losing one to a crash
+// costs a player a fast-travel destination they can unlock again by walking
+// back, which is not worth a write-through on the hot path.
+func (s *Session) recordWaypoint(waypointID string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := s.node.store.UnlockWaypoint(ctx, s.characterID, waypointID); err != nil {
+		s.log.Error("recording a waypoint unlock", "waypoint", waypointID, "err", err)
+		return
+	}
+
+	s.mu.Lock()
+	s.knownWaypoints = append(s.knownWaypoints, waypointID)
+	s.mu.Unlock()
+
+	s.log.Info("waypoint unlocked", "waypoint", waypointID)
+}
+
+// MapID returns the map the character is currently in.
+func (s *Session) MapID() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.mapID
 }

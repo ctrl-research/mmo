@@ -37,6 +37,8 @@ const (
 	classLadder     = "ladder"
 	classSpawnPoint = "spawn_point"
 	classMobSpawn   = "mob_spawn"
+	classPortal     = "portal"
+	classWaypoint   = "waypoint"
 )
 
 // SpawnLayer decides who fights a mob.
@@ -174,6 +176,42 @@ type MobSpawn struct {
 	Radius fixed.F
 }
 
+// Portal moves a character to another map.
+//
+// Stepping into one is the only way between maps, so a portal's target is
+// content rather than code -- adding a zone means editing a map file, not
+// writing a transition.
+type Portal struct {
+	Name string
+
+	// Bounds is the area a character must be standing in, not a point: a
+	// single point would be almost impossible to step on at 20 Hz.
+	Bounds sim.Rect
+
+	// TargetMap and TargetSpawn name where it leads. The spawn point is by
+	// name so the destination can be rearranged without editing every portal
+	// that points at it.
+	TargetMap   string
+	TargetSpawn string
+
+	// RequiredLevel gates a portal, so a zone can be closed to characters who
+	// would only die in it.
+	RequiredLevel int
+}
+
+// Waypoint is a fast-travel destination, unlocked by visiting it.
+//
+// Unlocked by visiting rather than granted, so the world map fills in as a
+// record of where someone has actually been.
+type Waypoint struct {
+	ID   string
+	Name string
+	At   sim.Vec
+
+	// Bounds is the area that unlocks it on contact.
+	Bounds sim.Rect
+}
+
 // Map is one loaded, validated, immutable map.
 type Map struct {
 	ID          string
@@ -189,6 +227,18 @@ type Map struct {
 
 	// MobSpawns are the map's mob spawn points.
 	MobSpawns []MobSpawn
+
+	// Portals lead to other maps.
+	Portals []Portal
+
+	// Waypoints are fast-travel destinations on this map.
+	Waypoints []Waypoint
+
+	// MinLevel and MaxLevel describe who the map is for. Advisory: shown on
+	// the world map so a player can tell where they are meant to go next,
+	// rather than enforced, since a portal's own requirement does that.
+	MinLevel int
+	MaxLevel int
 
 	// Source is the original Tiled file, retained so the client renders the
 	// very same document the collision geometry was derived from.
@@ -240,6 +290,12 @@ func LoadMap(fsys fs.FS, name string) (*Map, error) {
 	}
 	if v, ok := intProp(mp, "capacity"); ok && v > 0 {
 		m.Capacity = v
+	}
+	if v, ok := intProp(mp, "minLevel"); ok {
+		m.MinLevel = v
+	}
+	if v, ok := intProp(mp, "maxLevel"); ok {
+		m.MaxLevel = v
 	}
 
 	for _, layer := range doc.Layers {
@@ -312,6 +368,46 @@ func (m *Map) addObject(mapName string, obj tmjObject) error {
 			Radius:       radius,
 		})
 
+	case classPortal:
+		props := props(obj.Properties)
+
+		target, _ := props["target_map"].(string)
+		if target == "" {
+			return fmt.Errorf("content: %s: portal %d (%q) names no target_map",
+				mapName, obj.ID, obj.Name)
+		}
+		spawn, _ := props["target_spawn"].(string)
+
+		level := 0
+		if v, ok := intProp(props, "required_level"); ok {
+			level = v
+		}
+
+		m.Portals = append(m.Portals, Portal{
+			Name:          obj.Name,
+			Bounds:        rect(obj),
+			TargetMap:     target,
+			TargetSpawn:   spawn,
+			RequiredLevel: level,
+		})
+
+	case classWaypoint:
+		props := props(obj.Properties)
+
+		id, _ := props["waypoint_id"].(string)
+		if id == "" {
+			return fmt.Errorf("content: %s: waypoint %d (%q) has no waypoint_id",
+				mapName, obj.ID, obj.Name)
+		}
+
+		bounds := rect(obj)
+		m.Waypoints = append(m.Waypoints, Waypoint{
+			ID:     id,
+			Name:   obj.Name,
+			At:     sim.Vec{X: bounds.CenterX(), Y: bounds.Bottom()},
+			Bounds: bounds,
+		})
+
 	case classSpawnPoint:
 		sp := SpawnPoint{
 			Name: obj.Name,
@@ -345,6 +441,19 @@ func (m *Map) validate(name string) error {
 	case "shared", "private":
 	default:
 		return fmt.Errorf("content: %s has unknown placement %q, want shared or private", name, m.Placement)
+	}
+
+	// Spawn point names must be unique, because portals target them by name.
+	seenSpawns := make(map[string]bool, len(m.Spawns))
+	for _, sp := range m.Spawns {
+		if sp.Name == "" {
+			continue
+		}
+		if seenSpawns[sp.Name] {
+			return fmt.Errorf("content: %s has two spawn points named %q; "+
+				"portals target them by name, so it would be ambiguous", name, sp.Name)
+		}
+		seenSpawns[sp.Name] = true
 	}
 
 	defaults := 0
@@ -411,4 +520,40 @@ func (c *Content) loadMaps(fsys fs.FS, rec *hashRecorder) error {
 		return fmt.Errorf("content: no maps found")
 	}
 	return nil
+}
+
+// SpawnNamed returns a spawn point by name, falling back to the default.
+//
+// A portal naming a spawn that no longer exists puts the character at the
+// map's entrance rather than refusing the transition, because being somewhere
+// slightly wrong beats being stuck.
+func (m *Map) SpawnNamed(name string) SpawnPoint {
+	if name != "" {
+		for _, s := range m.Spawns {
+			if s.Name == name {
+				return s
+			}
+		}
+	}
+	return m.DefaultSpawn()
+}
+
+// PortalAt returns the portal a body is standing in, if any.
+func (m *Map) PortalAt(body sim.Rect) (Portal, bool) {
+	for _, p := range m.Portals {
+		if p.Bounds.Overlaps(body) {
+			return p, true
+		}
+	}
+	return Portal{}, false
+}
+
+// WaypointAt returns the waypoint a body is touching, if any.
+func (m *Map) WaypointAt(body sim.Rect) (Waypoint, bool) {
+	for _, w := range m.Waypoints {
+		if w.Bounds.Overlaps(body) {
+			return w, true
+		}
+	}
+	return Waypoint{}, false
 }

@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package mmo.v1;
+
+option go_package = "github.com/ctrl-research/mmo/internal/wire/mmo/v1;mmov1";
+
+// Messages between server components.
+//
+// Kept separate from game.proto because these are a different contract with a
+// different audience: the client never sees them, and the client's generated
+// TypeScript should not grow every time a server-internal message is added.
+
+// BusEnvelope wraps a payload with the addressing a request needs.
+//
+// The bus is publish/subscribe, which has no notion of a reply. Request and
+// response is built on top: the requester subscribes to a private inbox
+// subject, names it here, and the responder publishes there.
+message BusEnvelope {
+  // ReplyTo is the subject a response should be published to. Empty for a
+  // one-way publish.
+  string reply_to = 1;
+
+  // CorrelationId matches a response to its request. Necessary even with a
+  // private inbox, because a late reply to a timed-out request would
+  // otherwise be mistaken for the answer to the next one.
+  string correlation_id = 2;
+
+  bytes payload = 3;
+
+  // Error carries a failure back to the requester, so a responder can refuse
+  // without the requester waiting out its timeout.
+  string error = 4;
+}
+
+// TransferRequest hands a character from one world node to another.
+//
+// The protocol is the same whether the destination is on this node or another
+// one. A local fast path would mean the distributed path is never exercised
+// until the day it has to work (docs/architecture.md, AGENTS.md invariant 2).
+message TransferRequest {
+  string character_id = 1;
+  string account_id = 2;
+  string name = 3;
+
+  // Where the character is going.
+  //
+  // spawn_point names an entrance; waypoint_id names a fast-travel
+  // destination, which the destination resolves from its own copy of the
+  // content rather than trusting coordinates off the wire. Both empty means
+  // the character keeps the position in state, which is what a channel switch
+  // wants: the same map, the same spot, a different instance.
+  string map_id = 4;
+  string spawn_point = 5;
+  uint64 instance_id = 6;
+  string waypoint_id = 12;
+
+  // Progression, which has its own database columns.
+  uint32 level = 7;
+  int64 exp = 8;
+  int64 gold = 9;
+
+  // The simulation state -- position, velocity, vitals -- as stored.
+  bytes state = 10;
+
+  // The fencing token the source holds. The destination refuses a token that
+  // is not at least as high as one it has already seen, which is what stops a
+  // replayed or delayed transfer resurrecting a character somewhere it has
+  // already left.
+  int64 lease_token = 11;
+}
+
+message TransferReply {
+  bool accepted = 1;
+
+  // The entity the character was given in its new room.
+  uint32 entity_id = 2;
+
+  // Which node accepted it, for logging and for routing afterwards.
+  string node_id = 3;
+
+  string error = 4;
+}
+
+// RoomClosed announces that an instance has been torn down, so the directory
+// and anything holding a handle can stop referring to it.
+message RoomClosed {
+  uint64 instance_id = 1;
+  string map_id = 2;
+  string node_id = 3;
+}
+
+// HostRequest asks a node to start hosting a room instance.
+//
+// Needed because the directory, not the caller, decides which node hosts a
+// room. A gateway placing a player into a map may be told the instance belongs
+// to a node other than its own, and that node has to be running the room
+// before anyone can join it.
+message HostRequest {
+  uint64 instance_id = 1;
+  string map_id = 2;
+}
+
+message HostReply {
+  bool hosting = 1;
+  string node_id = 2;
+  string error = 3;
+}

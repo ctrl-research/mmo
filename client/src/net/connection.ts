@@ -11,11 +11,15 @@ import {
   InteractKind,
   ItemActionSchema,
   ItemActionKind,
+  OpenWorldMapSchema,
+  TravelSchema,
   type Inventory,
   type Snapshot,
   type Welcome,
   type Event,
   type EntityState,
+  type Travel,
+  type WorldMap,
 } from "@/gen/mmo/v1/game_pb";
 
 /** Bumped on any incompatible wire change; must match gateway.ProtocolVersion. */
@@ -176,6 +180,22 @@ export class Connection {
     });
   }
 
+  /** Asks for the world map: where the player can go, and where they are. */
+  sendOpenWorldMap(): void {
+    this.send({ case: "openWorldMap", value: create(OpenWorldMapSchema, {}) });
+  }
+
+  /**
+   * Asks to move without walking.
+   *
+   * The server validates every one of these -- that the waypoint is unlocked,
+   * that the channel exists and is on this map -- because a client that could
+   * name any destination could walk into a level-40 zone at level 3.
+   */
+  sendTravel(dest: Travel["destination"]): void {
+    this.send({ case: "travel", value: create(TravelSchema, { destination: dest }) });
+  }
+
   send(body: ClientMessage["body"]): void {
     if (!this.connected) return;
     const msg = create(ClientMessageSchema, { body });
@@ -274,4 +294,4 @@ export function isRetryable(code: number): boolean {
   );
 }
 
-export type { Snapshot, Welcome, Event, EntityState, Inventory };
+export type { Snapshot, Welcome, Event, EntityState, Inventory, WorldMap };
