@@ -1,0 +1,14 @@
+# 171M of node_modules would otherwise be sent to the daemon on every build and
+# then shadow the `npm ci` layer inside the image.
+client/node_modules
+client/dist
+node_modules
+bin
+.git
+.github
+docs
+
+# Generated into client/public by `make wasm`. The image builds its own copy
+# from source so a stale local artefact cannot end up shipped.
+client/public/sim.wasm
+client/public/wasm_exec.js

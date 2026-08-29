@@ -1,0 +1,35 @@
+# The client alone: the Vite bundle plus the WASM simulation, served by nginx.
+#
+# The WASM is built from the same tree as the server binary in the same CI run,
+# which is what keeps prediction and authority in step -- a client predicting
+# with a different build of internal/world/sim than the server simulates with
+# is exactly the drift the conformance test exists to catch.
+
+FROM golang:1.26-alpine AS wasm
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN mkdir -p /out \
+ && GOOS=js GOARCH=wasm go build -o /out/sim.wasm ./cmd/simwasm \
+ && cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" /out/wasm_exec.js
+
+
+FROM node:24-alpine AS build
+WORKDIR /src
+
+# Dependencies first, so a source-only change does not reinstall them.
+COPY client/package.json client/package-lock.json* ./client/
+RUN cd client && npm ci
+
+COPY client ./client
+COPY --from=wasm /out/sim.wasm /out/wasm_exec.js ./client/public/
+RUN cd client && npm run build
+
+
+FROM nginxinc/nginx-unprivileged:1-alpine
+# Runs as uid 101 and listens on 8080 unprivileged, so no securityContext
+# gymnastics are needed to satisfy runAsNonRoot in the cluster.
+COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /src/client/dist /usr/share/nginx/html
+EXPOSE 8080

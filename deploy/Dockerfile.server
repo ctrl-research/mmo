@@ -1,0 +1,28 @@
+# The server alone: a static Go binary on distroless, no client assets.
+#
+# The combined image in deploy/Dockerfile still exists for `docker compose up`,
+# where one process serving both halves is the point. This split image is for
+# Kubernetes, where the client is served by deploy/Dockerfile.client and the
+# two are routed to a single origin at the gateway.
+
+FROM golang:1.26-alpine AS build
+WORKDIR /src
+
+# Dependencies first, so a source-only change does not re-download them.
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+# CGO off keeps the binary static so it runs on a distroless base.
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/mmo ./cmd/mmo
+
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /out/mmo /usr/local/bin/mmo
+# No content copy: `--content-dir` overrides an embedded copy that is already
+# compiled into the binary, so shipping the tree again would be dead weight
+# that can silently drift from what the binary actually loads.
+USER nonroot:nonroot
+# 8080 game HTTP + WebSocket, 9090 admin/metrics.
+EXPOSE 8080 9090
+ENTRYPOINT ["/usr/local/bin/mmo"]
