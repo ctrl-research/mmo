@@ -158,31 +158,7 @@ func TestFullCombatLoopOverTheWire(t *testing.T) {
 	c.hello(ts.ticket(t, "alice"), ProtocolVersion)
 	c.awaitWelcome()
 
-	// Drive input at the simulation's own rate rather than once per collect
-	// window. A client that sends five intents a second walks at a fifth speed
-	// and swings far below its cooldown, which under parallel test load is the
-	// difference between reaching a kill and timing out.
-	stop := make(chan struct{})
-	defer close(stop)
-	go func() {
-		ticker := time.NewTicker(room.TickPeriod)
-		defer ticker.Stop()
-		seq := uint32(0)
-		for {
-			select {
-			case <-stop:
-				return
-			case <-ticker.C:
-				seq++
-				// The owner-layer spawn sits to the right of the player spawn,
-				// so running right walks into the fight.
-				c.intent(seq, 1000, false)
-				if seq%5 == 0 {
-					c.cast("slash", false)
-				}
-			}
-		}
-	}()
+	defer c.driveIntoTheFight()()
 
 	var snaps []*mmov1.Snapshot
 	sawDamage, sawDeath, sawExp := false, false, false
@@ -262,25 +238,7 @@ func TestProgressionEventsAreNotBroadcast(t *testing.T) {
 	b.awaitWelcome()
 
 	// Alice fights; bob stands still.
-	stop := make(chan struct{})
-	defer close(stop)
-	go func() {
-		ticker := time.NewTicker(room.TickPeriod)
-		defer ticker.Stop()
-		seq := uint32(0)
-		for {
-			select {
-			case <-stop:
-				return
-			case <-ticker.C:
-				seq++
-				a.intent(seq, 1000, false)
-				if seq%5 == 0 {
-					a.cast("slash", false)
-				}
-			}
-		}
-	}()
+	defer a.driveIntoTheFight()()
 
 	aliceGained := false
 	deadline := time.Now().Add(20 * time.Second)
@@ -396,5 +354,60 @@ func TestEventEncodingRoundTrips(t *testing.T) {
 	if d.GetSourceId() != 7 || d.GetTargetId() != 42 || d.GetAmount() != 1234 ||
 		!d.GetCritical() || d.GetElement() != "fire" {
 		t.Errorf("round trip changed the event: %+v", d)
+	}
+}
+
+// driveIntoTheFight runs right and swings at the simulation's own rate, and
+// returns the function that stops it.
+//
+// At the simulation's rate rather than once per collect window: a client that
+// sends five intents a second walks at a fifth speed and swings far below its
+// cooldown, which under parallel test load is the difference between reaching
+// a kill and timing out.
+//
+// Write errors are swallowed rather than failing the test. This runs on its
+// own goroutine, where t.Fatal only stops that goroutine, and t.Cleanup closes
+// the connection once the test returns -- so a driver still mid-write at that
+// moment would fail a test that had already passed. Stopping waits for it to
+// exit, which closes that window rather than narrowing it.
+func (c *client) driveIntoTheFight() (stop func()) {
+	done := make(chan struct{})
+	quit := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		ticker := time.NewTicker(room.TickPeriod)
+		defer ticker.Stop()
+
+		seq := uint32(0)
+		for {
+			select {
+			case <-quit:
+				return
+			case <-ticker.C:
+				seq++
+				// The owner-layer spawn sits to the right of the player spawn,
+				// so running right walks into the fight.
+				if c.trySend(&mmov1.ClientMessage{Body: &mmov1.ClientMessage_Intent{
+					Intent: &mmov1.Intent{Seq: seq, MoveX: 1000},
+				}}) != nil {
+					return
+				}
+				if seq%5 != 0 {
+					continue
+				}
+				if c.trySend(&mmov1.ClientMessage{Body: &mmov1.ClientMessage_Cast{
+					Cast: &mmov1.Cast{SkillId: "slash"},
+				}}) != nil {
+					return
+				}
+			}
+		}
+	}()
+
+	return func() {
+		close(quit)
+		<-done
 	}
 }
