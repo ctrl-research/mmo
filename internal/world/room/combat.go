@@ -196,10 +196,16 @@ func (r *Room) rollDamage(caster, target *Entity, eff *content.Effect, source *r
 	attack := attackStat(caster)
 	total := fixed.FromInt(base) + fixed.FromInt(attack).Mul(eff.ScaleAttack)
 
-	// Critical hits are not implemented for mobs, and players have no crit
-	// chance until gear provides one in M3. The multiplier is threaded through
-	// now so the event carries the flag the client already renders.
+	// Critical hits, now that equipment can grant the chance. Rolled from the
+	// room's stream like everything else, so a replay reproduces the hit.
 	critical := false
+	if caster.Player != nil {
+		chance := caster.Player.CritChance()
+		if chance > 0 && source.PPM(int(chance)) {
+			critical = true
+			total = total.Mul(caster.Player.CritMultiplier().Fixed())
+		}
+	}
 
 	// Armour: reduction = armour / (armour + divisor * incoming). Strong
 	// against many small hits, weak against one large one, which is what gives

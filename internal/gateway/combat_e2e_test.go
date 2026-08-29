@@ -35,23 +35,22 @@ func (c *client) loot(entityID uint32) {
 // collect drains messages for a while, returning every event and snapshot.
 func (c *client) collect(d time.Duration) ([]*mmov1.Event, []*mmov1.Snapshot) {
 	deadline := time.Now().Add(d)
+	for time.Now().Before(deadline) {
+		c.drain(300 * time.Millisecond)
+	}
+
+	// Everything read so far, including what other helpers left behind.
 	var events []*mmov1.Event
 	var snaps []*mmov1.Snapshot
-
-	for time.Now().Before(deadline) {
-		msgs, err := c.recv(500 * time.Millisecond)
-		if err != nil {
-			break
+	for _, m := range c.inbox {
+		if e := m.GetEvent(); e != nil {
+			events = append(events, e)
 		}
-		for _, m := range msgs {
-			if e := m.GetEvent(); e != nil {
-				events = append(events, e)
-			}
-			if s := m.GetSnapshot(); s != nil {
-				snaps = append(snaps, s)
-			}
+		if s := m.GetSnapshot(); s != nil {
+			snaps = append(snaps, s)
 		}
 	}
+	c.inbox = c.inbox[:0]
 	return events, snaps
 }
 

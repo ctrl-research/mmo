@@ -23,6 +23,7 @@ import (
 	"github.com/ctrl-research/mmo/internal/directory"
 	"github.com/ctrl-research/mmo/internal/rng"
 	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
+	"github.com/ctrl-research/mmo/internal/world/items"
 	"github.com/ctrl-research/mmo/internal/world/sim"
 )
 
@@ -100,6 +101,10 @@ type player struct {
 	// allocating a map per player per tick.
 	seenScratch map[EntityID]struct{}
 
+	// items receives this player's loot claims. Per player rather than per
+	// room, because each player has their own session and their own inventory.
+	items ItemSink
+
 	// casts queued since the last tick, drained in the cast phase.
 	casts []castRequest
 
@@ -153,6 +158,24 @@ type Observer interface {
 	ObserveTick(mapID string, d time.Duration, entities, players int)
 }
 
+// ItemSink receives loot claims from the tick loop.
+//
+// Implementations must not block: this is called mid-tick, and a database
+// round trip here would stall the simulation for everyone in the room. The
+// session's implementation enqueues and answers later through ResolveLoot.
+type ItemSink interface {
+	ClaimLoot(claim LootClaim)
+}
+
+// LootClaim is a player's request for an item, pending persistence.
+type LootClaim struct {
+	Player      EntityID
+	CharacterID string
+	DropID      EntityID
+	Instance    *items.Instance
+	Tick        uint64
+}
+
 // Room is one live instance of one map.
 type Room struct {
 	cfg Config
@@ -176,6 +199,9 @@ type Room struct {
 	// content and mapDef are the loaded game data this room simulates.
 	content *content.Content
 	mapDef  *content.Map
+
+	// items generates the modifiers a drop rolls, from the room's own stream.
+	items *items.Generator
 
 	// rand is the room's own generator, advanced only inside the tick loop.
 	// Shared-layer content rolls from here; each layer has its own stream.
@@ -228,6 +254,7 @@ func New(cfg Config) *Room {
 		players: make(map[EntityID]*player),
 		content: cfg.Content,
 		mapDef:  cfg.Map,
+		items:   items.NewGenerator(cfg.Content),
 		rand:    rng.New(cfg.Seed),
 		layers:  make(map[LayerID]*layerState),
 		// Buffered so a burst of input from many clients never blocks a
@@ -452,4 +479,12 @@ func (r *Room) spawnBody() sim.Body {
 
 func (r *Room) String() string {
 	return fmt.Sprintf("room(%d, %s, %d players)", r.cfg.InstanceID, r.cfg.MapID, len(r.players))
+}
+
+// rarityWeights returns the drop rarity distribution.
+//
+// Read from content so it is tunable without a deploy, with a fallback that
+// keeps a room working if the section is absent.
+func (r *Room) rarityWeights() items.RarityWeights {
+	return items.DefaultRarityWeights
 }

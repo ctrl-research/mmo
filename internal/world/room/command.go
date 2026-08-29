@@ -6,6 +6,7 @@ import (
 
 	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
 	"github.com/ctrl-research/mmo/internal/world/sim"
+	"github.com/ctrl-research/mmo/internal/world/stats"
 )
 
 // ErrRoomClosed is returned when a command is sent to a room that has stopped.
@@ -33,6 +34,14 @@ type Handle interface {
 	// Thaw resumes a frozen player on a new connection, reporting whether they
 	// were still present to resume.
 	Thaw(ctx context.Context, id EntityID, sink Sink) bool
+
+	// SetStats pushes a recomputed stat block in. The room never computes one
+	// itself: that would mean knowing about items, and item state belongs
+	// where it can be written durably.
+	SetStats(ctx context.Context, id EntityID, block *stats.Block, maxHP uint32)
+
+	// ResolveLoot completes a claim once persistence has finished.
+	ResolveLoot(ctx context.Context, player, dropID EntityID, granted bool, reason string)
 
 	// Leave removes a player. It is safe to call for an unknown ID, which
 	// happens whenever a disconnect races a kick.
@@ -79,6 +88,21 @@ type thawCmd struct {
 	result chan bool
 }
 
+// setStatsCmd pushes a recomputed stat block in from the session.
+type setStatsCmd struct {
+	id    EntityID
+	stats *stats.Block
+	maxHP uint32
+}
+
+// resolveLootCmd completes a claim once persistence has finished.
+type resolveLootCmd struct {
+	player  EntityID
+	dropID  EntityID
+	granted bool
+	reason  string
+}
+
 type joinResult struct {
 	id  EntityID
 	err error
@@ -117,14 +141,16 @@ const (
 	InteractLoot InteractKind = iota + 1
 )
 
-func (joinCmd) isCommand()     {}
-func (captureCmd) isCommand()  {}
-func (freezeCmd) isCommand()   {}
-func (thawCmd) isCommand()     {}
-func (leaveCmd) isCommand()    {}
-func (inputCmd) isCommand()    {}
-func (castCmd) isCommand()     {}
-func (interactCmd) isCommand() {}
+func (joinCmd) isCommand()        {}
+func (captureCmd) isCommand()     {}
+func (freezeCmd) isCommand()      {}
+func (thawCmd) isCommand()        {}
+func (setStatsCmd) isCommand()    {}
+func (resolveLootCmd) isCommand() {}
+func (leaveCmd) isCommand()       {}
+func (inputCmd) isCommand()       {}
+func (castCmd) isCommand()        {}
+func (interactCmd) isCommand()    {}
 
 // handle dispatches one command. It runs on the room goroutine, so it may
 // touch room state freely.
@@ -140,6 +166,10 @@ func (r *Room) handle(c command) {
 		r.freeze(cmd.id)
 	case thawCmd:
 		cmd.result <- r.thaw(cmd.id, cmd.sink)
+	case setStatsCmd:
+		r.setStats(cmd.id, cmd.stats, cmd.maxHP)
+	case resolveLootCmd:
+		r.resolveLoot(cmd.dropID, cmd.player, cmd.granted, cmd.reason)
 	case leaveCmd:
 		r.leave(cmd.id)
 	case inputCmd:
@@ -196,6 +226,7 @@ func (r *Room) join(spec JoinSpec) (EntityID, error) {
 		sink:        sink,
 		layer:       layer,
 		characterID: spec.CharacterID,
+		items:       spec.Items,
 		sent:        make(map[EntityID]view),
 		seenScratch: make(map[EntityID]struct{}),
 	}
@@ -466,5 +497,47 @@ func (h *localHandle) Thaw(ctx context.Context, id EntityID, sink Sink) bool {
 		return ok
 	case <-ctx.Done():
 		return false
+	}
+}
+
+// setStats installs a recomputed stat block.
+func (r *Room) setStats(id EntityID, block *stats.Block, maxHP uint32) {
+	p, ok := r.players[id]
+	if !ok || p.entity.Player == nil {
+		return
+	}
+
+	p.entity.Player.Stats = block
+
+	if maxHP > 0 {
+		previous := p.entity.MaxHP
+		p.entity.MaxHP = maxHP
+
+		// Current health scales with the maximum rather than staying put.
+		// Unequipping a life item at full health should not leave someone
+		// above their new maximum, and equipping one should not leave them
+		// looking wounded.
+		switch {
+		case previous == 0:
+			p.entity.HP = maxHP
+		case p.entity.HP > maxHP:
+			p.entity.HP = maxHP
+		case maxHP > previous && p.entity.HP == previous:
+			p.entity.HP = maxHP
+		}
+	}
+}
+
+func (h *localHandle) SetStats(ctx context.Context, id EntityID, block *stats.Block, maxHP uint32) {
+	select {
+	case h.room.cmds <- setStatsCmd{id: id, stats: block, maxHP: maxHP}:
+	case <-ctx.Done():
+	}
+}
+
+func (h *localHandle) ResolveLoot(ctx context.Context, player, dropID EntityID, granted bool, reason string) {
+	select {
+	case h.room.cmds <- resolveLootCmd{player: player, dropID: dropID, granted: granted, reason: reason}:
+	case <-ctx.Done():
 	}
 }

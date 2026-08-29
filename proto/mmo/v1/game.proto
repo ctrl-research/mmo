@@ -36,10 +36,11 @@ message ClientMessage {
     Ping   ping   = 3;
     Cast   cast   = 4;
     Interact interact = 5;
+    ItemAction item_action = 6;
   }
-  // Reserved for messages arriving in later milestones -- chat, inventory,
-  // party, trade -- so adding them never renumbers what is already deployed.
-  reserved 6 to 9;
+  // Reserved for messages arriving in later milestones -- chat, party, trade
+  // -- so adding them never renumbers what is already deployed.
+  reserved 7 to 9;
 }
 
 // Cast requests a skill. The client asks; the server decides.
@@ -68,6 +69,32 @@ enum InteractKind {
   INTERACT_KIND_LOOT = 1;
 }
 
+// ItemAction asks the server to move, equip, or destroy an item.
+//
+// The client names the item by its durable id and says what it wants done. It
+// never says where the item ends up in the database, and never asserts what
+// the resulting stats are -- the server decides both.
+message ItemAction {
+  ItemActionKind kind = 1;
+
+  // The item instance to act on, for move, equip, and destroy.
+  string item_id = 2;
+
+  // Destination slot, for a move within the inventory.
+  uint32 slot = 3;
+
+  // Which equipment slot to clear, for unequip.
+  string equip_slot = 4;
+}
+
+enum ItemActionKind {
+  ITEM_ACTION_KIND_UNSPECIFIED = 0;
+  ITEM_ACTION_KIND_MOVE = 1;
+  ITEM_ACTION_KIND_EQUIP = 2;
+  ITEM_ACTION_KIND_UNEQUIP = 3;
+  ITEM_ACTION_KIND_DESTROY = 4;
+}
+
 message ServerMessage {
   oneof body {
     Welcome  welcome  = 1;
@@ -75,8 +102,9 @@ message ServerMessage {
     Event    event    = 3;
     Pong     pong     = 4;
     Kick     kick     = 5;
+    Inventory inventory = 6;
   }
-  reserved 6 to 9;
+  reserved 7 to 9;
 }
 
 // ---------------------------------------------------------------------------
@@ -333,6 +361,69 @@ message LootTaken {
   string item_id = 2;
   uint32 qty = 3;
   uint32 gold = 4;
+
+  // A claim that could not be completed -- a full inventory, or a database
+  // error. The drop is returned to the ground rather than destroyed, so the
+  // player can try again; saying why is what stops that reading as the game
+  // ignoring the keypress.
+  bool failed = 5;
+  string reason = 6;
+}
+
+// Inventory is the player's items, sent in full whenever they change.
+//
+// Not delta-compressed: inventories change rarely compared to positions, they
+// are small, and a delta bug here means an item that appears to exist twice --
+// which is the one class of bug this system is built to make impossible.
+message Inventory {
+  repeated ItemStack carried = 1;
+  repeated ItemStack equipped = 2;
+  uint32 capacity = 3;
+  uint64 gold = 4;
+
+  // The character's derived statistics, so a tooltip can show what equipping
+  // something would change without the client reimplementing the stat
+  // pipeline.
+  repeated StatValue stats = 5;
+}
+
+message ItemStack {
+  string item_id = 1;   // the instance's durable identity
+  string base_id = 2;
+  string name = 3;      // generated: "Heavy Iron Sword of Force"
+  string rarity = 4;
+  uint32 slot = 5;
+  uint32 stack = 6;
+  uint32 item_level = 7;
+
+  // The slot this is worn in, for equipped items.
+  string equip_slot = 8;
+
+  // Level required to equip it.
+  uint32 required_level = 9;
+
+  repeated ItemMod mods = 10;
+}
+
+// ItemMod is one rolled modifier, carrying enough to render a tooltip line
+// without the client holding a copy of the affix tables.
+message ItemMod {
+  string stat = 1;
+  string kind = 2;
+
+  // The rolled value, in stat millionths, so the client shows exactly the
+  // number the server computed with.
+  sint64 value = 3;
+
+  // Tier and whether it is implicit, so a tooltip can show how good a roll is
+  // rather than only what it does.
+  uint32 tier = 4;
+  bool implicit = 5;
+}
+
+message StatValue {
+  string stat = 1;
+  sint64 value = 2;
 }
 
 message PlayerJoined {

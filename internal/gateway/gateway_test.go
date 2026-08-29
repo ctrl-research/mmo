@@ -222,9 +222,41 @@ func (j *jar) Cookies(_ *url.URL) []*http.Cookie {
 }
 
 // client is a minimal protocol client for tests.
+//
+// It keeps every message it has read in an inbox. Without one, a helper
+// looking for a Welcome discards the Inventory that arrived in the same frame,
+// and the next helper waits for a message that has already been thrown away --
+// producing failures that depend on frame batching rather than on behaviour.
 type client struct {
-	conn *websocket.Conn
-	t    *testing.T
+	conn  *websocket.Conn
+	t     *testing.T
+	inbox []*mmov1.ServerMessage
+}
+
+// drain reads whatever has arrived and appends it to the inbox.
+func (c *client) drain(timeout time.Duration) {
+	msgs, err := c.recv(timeout)
+	if err != nil {
+		return
+	}
+	c.inbox = append(c.inbox, msgs...)
+}
+
+// findInInbox returns the first message matching a predicate, reading more
+// until the deadline if nothing matches yet.
+func (c *client) findInInbox(within time.Duration, match func(*mmov1.ServerMessage) bool) *mmov1.ServerMessage {
+	deadline := time.Now().Add(within)
+	for {
+		for _, m := range c.inbox {
+			if match(m) {
+				return m
+			}
+		}
+		if time.Now().After(deadline) {
+			return nil
+		}
+		c.drain(200 * time.Millisecond)
+	}
 }
 
 func (ts *testServer) dial(t *testing.T) *client {
@@ -279,45 +311,39 @@ func (c *client) recv(timeout time.Duration) ([]*mmov1.ServerMessage, error) {
 	return env.GetServer(), nil
 }
 
-// awaitWelcome reads until the Welcome arrives.
+// awaitWelcome reads until the Welcome arrives, keeping everything else.
 func (c *client) awaitWelcome() *mmov1.Welcome {
 	c.t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		msgs, err := c.recv(2 * time.Second)
-		if err != nil {
-			c.t.Fatalf("awaiting welcome: %v", err)
-		}
-		for _, m := range msgs {
-			if w := m.GetWelcome(); w != nil {
-				return w
-			}
-		}
+
+	m := c.findInInbox(5*time.Second, func(m *mmov1.ServerMessage) bool {
+		return m.GetWelcome() != nil
+	})
+	if m == nil {
+		c.t.Fatal("no Welcome received")
 	}
-	c.t.Fatal("no Welcome received")
-	return nil
+	return m.GetWelcome()
 }
 
 // awaitSnapshots collects at least n snapshots.
 func (c *client) awaitSnapshots(n int) []*mmov1.Snapshot {
 	c.t.Helper()
-	var out []*mmov1.Snapshot
+
 	deadline := time.Now().Add(10 * time.Second)
-	for len(out) < n && time.Now().Before(deadline) {
-		msgs, err := c.recv(3 * time.Second)
-		if err != nil {
-			c.t.Fatalf("awaiting snapshots: %v", err)
-		}
-		for _, m := range msgs {
+	for {
+		var out []*mmov1.Snapshot
+		for _, m := range c.inbox {
 			if s := m.GetSnapshot(); s != nil {
 				out = append(out, s)
 			}
 		}
+		if len(out) >= n {
+			return out
+		}
+		if time.Now().After(deadline) {
+			c.t.Fatalf("got %d snapshots, want %d", len(out), n)
+		}
+		c.drain(300 * time.Millisecond)
 	}
-	if len(out) < n {
-		c.t.Fatalf("got %d snapshots, want %d", len(out), n)
-	}
-	return out
 }
 
 func TestFullHandshakeAndSnapshots(t *testing.T) {
