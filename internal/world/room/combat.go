@@ -47,6 +47,7 @@ func (r *Room) resolveCastRequest(caster *Entity, req castRequest) {
 	}
 
 	caster.Body.FacingLeft = req.facingLeft
+	r.dropProtection(caster)
 	r.beginCast(caster, linked)
 	r.castLinked(caster, linked)
 }
@@ -400,6 +401,9 @@ func (r *Room) damage(source, target *Entity, amount int, critical bool, element
 	if amount <= 0 || !isAlive(target) {
 		return
 	}
+	if r.isProtected(target) {
+		return
+	}
 
 	// A shield absorbs before health does, and reports what it soaked -- a
 	// hit that vanishes into a pool the player cannot see reads as the attack
@@ -479,13 +483,7 @@ func (r *Room) kill(killer, victim *Entity) {
 		r.rollDrops(killer, victim)
 
 	case victim.Player != nil:
-		// Death handling for players -- respawn, penalty -- lands with
-		// persistence in M2. Until then a downed player is restored in place
-		// rather than left at zero HP with nothing to do.
-		victim.HP = victim.MaxHP
-		if p := r.players[victim.ID]; p != nil {
-			victim.Body = r.spawnBody()
-		}
+		r.downPlayer(victim)
 	}
 }
 

@@ -26,6 +26,31 @@ min_damage = 1
 hit_flash_ms = 150
 corpse_ms = 600
 
+# How long a character lies at zero health before they may return.
+#
+# A delay rather than an instant respawn: a fight you can rejoin the moment you
+# lose it is a fight with no stakes. Eight seconds is long enough to feel like
+# a loss and short enough not to be a punishment for its own sake -- and in a
+# party it is the window someone else has to finish what you started.
+downed_ms = 8000
+
+# How long a character who has just come back cannot be harmed.
+#
+# A spawn point is a fixed place, and something is usually standing on it.
+# Without this, coming back next to whatever killed you means dying again
+# before you can move, and paying the penalty each time -- a loop with no way
+# out. It ends the moment they attack, so it buys a chance to leave rather than
+# a free opening.
+revive_grace_ms = 2500
+
+# The share of progress toward the current level lost on death.
+#
+# Of progress *within* the level, not of total experience. A death therefore
+# never costs a level, and never costs a level 90 character forty times what it
+# costs a level 10 one -- which is what a flat percentage of total experience
+# would do, and is how a death penalty turns into a reason to stop playing.
+death_exp_penalty = 0.10
+
 [drops]
 ground_ms = 120000
 pickup_range = 48.0

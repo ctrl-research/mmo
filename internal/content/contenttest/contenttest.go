@@ -50,6 +50,9 @@ armour_divisor = 10
 min_damage = 1
 hit_flash_ms = 150
 corpse_ms = 500
+downed_ms = 3000
+revive_grace_ms = 1000
+death_exp_penalty = 0.10
 [drops]
 ground_ms = 30000
 pickup_range = 48.0

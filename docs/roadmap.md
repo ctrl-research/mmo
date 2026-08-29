@@ -390,7 +390,8 @@ work on a path a player waits on is extra work on a path a player waits on.
 - [ ] Instanced dungeon flow: entry requirements, lockouts, progression, completion
 - [ ] Enhanced mobs: champion and rare tiers rolling elite modifiers
 - [ ] Zone events: interactive triggers, timed spawns, mini-bosses
-- [ ] Wipe and recovery flow
+- [x] Death and recovery: a downed state, a revive clock, a penalty, and spawn protection
+- [ ] Wipe flow (a whole party down at once inside an instance)
 
 **Exit:** a six-player party clears a dungeon and kills a boss whose mechanics genuinely require coordination.
 
@@ -416,6 +417,13 @@ the encounter stays authorable.
 | A split hit is genuinely divided | `TestSplitDamageIsDividedAmongEveryoneItHits` — four shares add up to the solo hit |
 | A boss does not commit to what it cannot reach | `TestABossDoesNotWindUpAnAttackThatCannotReach`, found in play: it rooted itself telegraphing at a player on a ledge |
 | A boss out of reach closes the gap | `TestABossKeepsClosingOnATargetItCannotReach` — horizontal distance alone is half an answer in a platformer |
+| Dying costs something and is over | `TestADownedCharacterStaysDownForTheClock`, `TestDeathCostsProgressTowardTheCurrentLevel` — of progress *within* the level, so a death never costs a level |
+| A body is not a character | `TestADownedCharacterDoesNotWalk`, `…DoesNotTakeAPortal`, `…CannotLoot`, `TestMobsIgnoreADownedCharacter` |
+| Coming back is not a death loop | `TestComingBackIsBrieflySafe`, `TestAttackingEndsTheReviveGrace` — found in play: reviving next to the slime that killed me killed me again |
+
+Player death had been a stub since M2 (*"restored in place, lands with
+persistence"*). It is a prerequisite rather than a nicety: a party cannot wipe
+in a dungeon if nothing in the game can die.
 
 ---
 

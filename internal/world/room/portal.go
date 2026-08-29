@@ -28,6 +28,12 @@ func (r *Room) phasePortals() {
 		if p == nil || p.frozen || p.transferring {
 			continue
 		}
+		// A body lying where it fell is not a character travelling. Without
+		// this, dying on top of a portal sends the corpse through it and the
+		// character comes back somewhere they never walked to.
+		if isDowned(p.entity) {
+			continue
+		}
 
 		body := p.entity.Body.Bounds()
 
