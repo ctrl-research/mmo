@@ -81,18 +81,37 @@ restores in place; a real death penalty needs persistence (M2).
 
 ---
 
-## M2 — Identity and persistence
+## M2 — Identity and persistence — **done**
 
-- OIDC relying party: Authorization Code + PKCE, providers from config
-- Allowlist enforcement on account creation *and* login
-- Session JWT + refresh cookie; single-use 30 s WebSocket tickets
-- Postgres schema and forward-only migrations
-- Character create / select / delete
-- Character lease with fencing tokens, end to end
-- Checkpoint on interval, on logout, on handoff; write-through for the things that must never be lost
-- 60-second reconnect grace period
+- [x] OIDC relying party: Authorization Code + PKCE, providers from config
+- [x] Allowlist enforcement on account creation *and* login
+- [x] Session JWT + rotating refresh cookie; single-use 30 s WebSocket tickets
+- [x] Postgres schema and forward-only migrations, under an advisory lock
+- [x] Character create / select / delete, with a per-account limit
+- [x] Character lease with fencing tokens, end to end
+- [x] Checkpoint on interval, on disconnect, and on logout
+- [x] 60-second reconnect grace period
 
-**Exit:** log in with a real identity provider, create a character, kill things, log out, log back in, everything is where you left it. A second process cannot load the same character.
+**Exit criteria, and how each was verified:**
+
+| Criterion | Status |
+|---|---|
+| Play, log out, log back in, everything is where you left it | Verified over a real socket and a real database |
+| A second process cannot load the same character | Verified — a second session is refused with a typed close code |
+| Sign in with a real identity provider | **Flow verified with development login only.** The OIDC path is implemented and unit-tested, but has not been run against a live provider. |
+
+**Not yet exercised against a real IdP.** Discovery, PKCE, and ID-token
+verification are implemented and tested in isolation; nobody has yet pointed
+this at Google or Keycloak and signed in. `deploy/providers.example.toml` has
+the shape. Expect the first real attempt to turn up a redirect-URI mismatch,
+which is the usual way this goes wrong.
+
+**Deferred deliberately.** Write-through for high-value events (a boss drop, a
+trade) is documented but not yet split out from the periodic checkpoint,
+because there is nothing valuable enough to lose until inventories exist in M3.
+Character deletion is soft, freeing the name, and nothing purges old rows yet.
+
+---
 
 ---
 

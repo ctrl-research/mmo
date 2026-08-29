@@ -1,0 +1,32 @@
+# OIDC provider configuration.
+#
+# Pass with --providers, or set PROVIDERS_FILE. Every provider is discovered at
+# startup, so a wrong issuer fails the boot rather than the first sign-in.
+#
+# Client secrets are read from the environment rather than written here, so
+# this file can be committed while the secrets are not: "env:NAME" is looked up
+# at load and fails loudly if unset.
+#
+# The redirect URI registered with each provider must be exactly
+# <--public-url>/auth/callback.
+
+[provider.google]
+display_name = "Google"
+issuer = "https://accounts.google.com"
+client_id = "your-client-id.apps.googleusercontent.com"
+client_secret = "env:GOOGLE_CLIENT_SECRET"
+
+[provider.github]
+display_name = "GitHub"
+# GitHub is not an OIDC provider in its own right; this points at a compatible
+# gateway. Providers that publish an OIDC discovery document work unchanged.
+issuer = "https://token.actions.githubusercontent.com"
+client_id = "your-client-id"
+client_secret = "env:GITHUB_CLIENT_SECRET"
+
+[provider.keycloak]
+display_name = "Keycloak"
+issuer = "https://keycloak.example.com/realms/mmo"
+client_id = "mmo"
+client_secret = "env:KEYCLOAK_CLIENT_SECRET"
+scopes = ["openid", "profile", "email"]

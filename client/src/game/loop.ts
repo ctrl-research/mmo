@@ -84,79 +84,16 @@ export class GameLoop {
     });
   }
 
-  async connect(name: string): Promise<void> {
+  /**
+   * Connects with a ticket already obtained by the shell.
+   *
+   * Identity and character selection are settled over authenticated HTTP
+   * before this point, so the socket carries only a single-use ticket and the
+   * game protocol never has to know who anyone is.
+   */
+  async connect(name: string, ticket: string, contentHash: string): Promise<void> {
     this.#name = name;
-
-    // Health first, for two reasons.
-    //
-    // It supplies the content hash for the handshake. And it confirms that
-    // whatever is answering on this origin is actually the game server: in
-    // development the requests go through the Vite proxy, and if its target
-    // port is wrong or occupied by something else, that something else
-    // happily answers with its own page. Checking here turns "unexpected
-    // token '<'" into a message that names the problem.
-    const info = await this.#checkServer();
-
-    const ticket = await this.#requestTicket(name);
-    await this.#conn.connect(ticket, info.content ?? "");
-  }
-
-  /** Confirms the origin is really the game server, and returns its info. */
-  async #checkServer(): Promise<{ protocol?: number; content?: string }> {
-    let res: Response;
-    try {
-      res = await fetch("/healthz");
-    } catch {
-      throw new Error(
-        "Could not reach a server on this address. Is the game server running?",
-      );
-    }
-
-    if (!res.ok) {
-      throw new Error(`Server health check failed: ${res.status}`);
-    }
-
-    const body = await res.text();
-    let info: { protocol?: number; content?: string };
-    try {
-      info = JSON.parse(body) as { protocol?: number; content?: string };
-    } catch {
-      throw new Error(wrongServerMessage(body));
-    }
-
-    // Our /healthz always reports a protocol version. Something else serving
-    // JSON on this port would not.
-    if (typeof info.protocol !== "number") {
-      throw new Error(wrongServerMessage(body));
-    }
-    return info;
-  }
-
-  async #requestTicket(name: string): Promise<string> {
-    const res = await fetch("/api/dev/ticket", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-
-    if (res.status === 404 || res.status === 405) {
-      throw new Error(
-        "The server is running without development authentication. " +
-          "Restart it with --dev-auth.",
-      );
-    }
-    if (!res.ok) {
-      throw new Error(`Could not get a ticket: ${res.status} ${await res.text()}`);
-    }
-
-    const body = await res.text();
-    try {
-      const parsed = JSON.parse(body) as { ticket?: string };
-      if (!parsed.ticket) throw new Error("no ticket in response");
-      return parsed.ticket;
-    } catch {
-      throw new Error(wrongServerMessage(body));
-    }
+    await this.#conn.connect(ticket, contentHash);
   }
 
   stop(): void {
@@ -367,24 +304,4 @@ function toGeometry(w: ReturnType<typeof decodeWorld>): MapGeometry {
     platforms: rects(w.platforms),
     climbables: rects(w.climbables),
   };
-}
-
-/**
- * Explains a response that came from something other than the game server.
- *
- * The common cause in development is the Vite proxy: its target defaults to
- * port 8080, which is one of the most commonly occupied ports on a developer
- * machine. Whatever else is listening there answers with its own page, and the
- * only symptom is a JSON parse error mentioning "<!doctype", which says
- * nothing about the actual problem.
- */
-function wrongServerMessage(body: string): string {
-  const looksLikeHTML = body.trimStart().startsWith("<");
-  return (
-    "This address is not the game server" +
-    (looksLikeHTML ? " -- it returned an HTML page" : "") +
-    ". If you are using the Vite dev server, check that the game server is " +
-    "running and that MMO_SERVER points at its port, for example: " +
-    "MMO_SERVER=http://localhost:8088 npm run dev"
-  );
 }

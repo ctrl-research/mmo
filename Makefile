@@ -16,8 +16,10 @@ build: ## Build the server binary
 	$(GO) build -o bin/mmo ./cmd/mmo
 
 .PHONY: test
-test: ## Run all Go tests
-	$(GO) test ./...
+test: ## Run all Go tests (database tests skip without --services)
+	MMO_TEST_DATABASE_URL="$(DATABASE_URL)" \
+	MMO_TEST_REDIS_ADDR="localhost:$(REDIS_PORT)" \
+		$(GO) test ./...
 
 .PHONY: test-conformance
 test-conformance: wasm ## Verify the WASM build matches the Go build exactly
@@ -28,7 +30,9 @@ test-all: test test-conformance ## Run every test, Go and cross-build
 
 .PHONY: test-race
 test-race: ## Run all Go tests under the race detector
-	$(GO) test -race ./...
+	MMO_TEST_DATABASE_URL="$(DATABASE_URL)" \
+	MMO_TEST_REDIS_ADDR="localhost:$(REDIS_PORT)" \
+		$(GO) test -race ./...
 
 .PHONY: lint
 lint: ## Vet Go code, lint protobuf, typecheck the client
@@ -65,12 +69,28 @@ wasm: ## Build the simulation as WebAssembly for client-side prediction
 # and similar, so it is easy to override: make run PORT=8088
 PORT ?= 8080
 
+# Local Postgres and Redis. Host ports are overridable because the standard
+# ones are often already taken.
+POSTGRES_PORT ?= 5433
+REDIS_PORT ?= 6379
+DATABASE_URL ?= postgres://mmo:devpassword@localhost:$(POSTGRES_PORT)/mmo?sslmode=disable
+
+.PHONY: services
+services: ## Start Postgres and Redis
+	POSTGRES_PORT=$(POSTGRES_PORT) REDIS_PORT=$(REDIS_PORT) \
+		docker compose -f deploy/docker-compose.yml up -d postgres redis
+
+.PHONY: services-down
+services-down: ## Stop Postgres and Redis
+	docker compose -f deploy/docker-compose.yml down
+
 .PHONY: run
 run: build client-build ## Build everything and serve the whole game from one port
 	@echo
 	@echo "  Open http://localhost:$(PORT)"
 	@echo
-	./bin/mmo --dev-auth --addr=:$(PORT) --client-dir=client/dist
+	DATABASE_URL="$(DATABASE_URL)" \
+		./bin/mmo --dev-auth --addr=:$(PORT) --client-dir=client/dist
 
 .PHONY: client-install
 client-install: ## Install client dependencies
