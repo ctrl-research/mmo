@@ -314,7 +314,11 @@ Live character state resides in memory on the owning world node and is checkpoin
 
 - The client is untrusted. Every action is validated server-side against cooldowns, costs, ranges, line of sight, and inventory contents.
 - Client asset and code exposure is irrelevant to game integrity by design — knowing the damage formula does not let you deal more damage.
-- OIDC Authorization Code + PKCE; the game server is a relying party, not an identity provider. Allowlist gates both account creation and login.
+- Two ways in, both gated by the same allowlist at account creation **and** at every login, so revoking access actually revokes it.
+  - **OIDC** Authorization Code + PKCE, with the game server as a relying party. No password ever reaches this system.
+  - **Local accounts**, where this server holds an Argon2id hash. Requiring an external identity provider is a real barrier for a self-hosted game, so this exists — but it means custodying password hashes, which is a genuine obligation and not a free convenience. Prefer OIDC where it is available.
+- An empty allowlist admits nobody. "Empty means open" fails toward a server anyone can join, discovered after the fact.
+- Local sign-in is throttled per account and per source address, and an unknown username costs the same time as a wrong password — otherwise the endpoint is a username oracle.
 - The WebSocket handshake redeems a **single-use, 30-second ticket** obtained over authenticated HTTP, so long-lived credentials never appear in a WebSocket URL or query string.
 - Per-connection and per-channel rate limits on input and chat.
 

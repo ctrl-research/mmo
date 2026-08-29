@@ -67,8 +67,33 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body ? (JSON.parse(body) as T) : ({} as T);
 }
 
-export async function loadProviders(): Promise<{ providers: Provider[]; devAuth: boolean }> {
+export async function loadProviders(): Promise<{
+  providers: Provider[];
+  devAuth: boolean;
+  localAuth: boolean;
+}> {
   return request("/auth/providers");
+}
+
+export async function localLogin(username: string, password: string): Promise<void> {
+  await request("/auth/local/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function localRegister(username: string, password: string): Promise<void> {
+  await request("/auth/local/register", {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await request("/api/password", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
 }
 
 /** Reports whether a session is already established. */

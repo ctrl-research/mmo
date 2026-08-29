@@ -1,9 +1,17 @@
 // Package auth handles identity: who a player is, and proving it to the game.
 //
-// The game server is an OIDC *relying party*, never an identity provider. It
-// never sees a password, never stores one, and never has to be trusted with
-// one. Accounts are keyed by the provider's subject, and an allowlist decides
-// who may play.
+// Two ways in, and they make different trades:
+//
+//   - As an OIDC *relying party*, where no password ever reaches this system.
+//     Preferable wherever a provider is available.
+//   - With local accounts, where this server holds an Argon2id hash. Requiring
+//     an external identity provider is a real barrier for a self-hosted game,
+//     so this exists -- but custodying password hashes is an obligation rather
+//     than a free convenience, which is why internal/auth/password.go is as
+//     careful as it is.
+//
+// Either way, accounts are keyed by the provider's subject and an allowlist
+// decides who may play, checked at registration and again at every sign-in.
 package auth
 
 import (
