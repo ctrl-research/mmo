@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ctrl-research/mmo/internal/store"
+	"github.com/ctrl-research/mmo/internal/store/storetest"
 	"github.com/google/uuid"
 )
 
@@ -345,23 +346,10 @@ func TestSafeReturnToRefusesOffsiteDestinations(t *testing.T) {
 func testService(t *testing.T) (*Service, *store.Store, *httptest.Server) {
 	t.Helper()
 
-	url := os.Getenv("MMO_TEST_DATABASE_URL")
-	if url == "" {
-		t.Skip("MMO_TEST_DATABASE_URL is not set; skipping service tests")
-	}
-
-	ctx := context.Background()
+	// A schema private to this test, so packages testing in parallel cannot
+	// delete each other's rows.
+	st := storetest.New(t)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-
-	st, err := store.Open(ctx, store.Config{URL: url, Logger: log})
-	if err != nil {
-		t.Fatalf("open store: %v", err)
-	}
-	t.Cleanup(st.Close)
-
-	if _, err := st.Pool().Exec(ctx, `TRUNCATE accounts, allowlist CASCADE`); err != nil {
-		t.Fatalf("truncate: %v", err)
-	}
 
 	svc, err := NewService(ServiceConfig{
 		Store:      st,

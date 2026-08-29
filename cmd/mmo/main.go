@@ -66,9 +66,21 @@ type config struct {
 	publicURL     string
 	secureCookies bool
 	providersFile string
+	localAuth     bool
 }
 
 func main() {
+	// Administration subcommands run and exit rather than starting a server.
+	// Checked before flag parsing so "mmo allow jonathan" is not read as a
+	// malformed server invocation.
+	if handled, err := runAdmin(os.Args[1:]); handled {
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	if err := run(); err != nil && !errors.Is(err, context.Canceled) {
 		fmt.Fprintf(os.Stderr, "fatal: %v\n", err)
 		os.Exit(1)
@@ -123,8 +135,8 @@ func run() error {
 	if allowed == 0 && !cfg.devAuth {
 		// An empty allowlist admits nobody, which is the safe default but
 		// looks exactly like a broken server to whoever tries to sign in.
-		log.Warn("the allowlist is empty, so nobody can sign in; " +
-			"add an entry or start with --dev-auth for local play")
+		log.Warn("the allowlist is empty, so nobody can sign in. " +
+			"Add someone with 'mmo allow USERNAME', or start with --dev-auth for local play")
 	}
 
 	dir := directory.NewMemory(directory.NodeID(cfg.nodeID))
@@ -208,6 +220,7 @@ func run() error {
 			Providers:  providers,
 			Logger:     log,
 			DevAuth:    cfg.devAuth,
+			LocalAuth:  cfg.localAuth,
 			DefaultMap: cfg.defaultMap,
 		})
 		if err != nil {
@@ -229,7 +242,8 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		log.Info("identity ready", "providers", providers.Len(), "dev_auth", cfg.devAuth)
+		log.Info("identity ready",
+			"providers", providers.Len(), "local_auth", cfg.localAuth, "dev_auth", cfg.devAuth)
 		defer func() {
 			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
@@ -319,6 +333,8 @@ func parseFlags() config {
 		"serve the built client from this directory; empty disables static serving")
 	flag.StringVar(&cfg.origins, "origins", "",
 		"comma-separated allowed WebSocket origins; empty means same-origin only")
+	flag.BoolVar(&cfg.localAuth, "local-auth", true,
+		"allow username and password accounts held by this server")
 	flag.BoolVar(&cfg.devAuth, "dev-auth", false,
 		"issue game tickets with no identity check (development only)")
 	flag.StringVar(&cfg.databaseURL, "database-url",

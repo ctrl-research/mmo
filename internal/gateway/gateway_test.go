@@ -9,13 +9,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/ctrl-research/mmo/internal/auth"
 	"github.com/ctrl-research/mmo/internal/store"
+	"github.com/ctrl-research/mmo/internal/store/storetest"
 
 	"github.com/coder/websocket"
 	"github.com/ctrl-research/mmo/internal/content/contenttest"
@@ -54,10 +54,11 @@ func newTestServer(t *testing.T) *testServer {
 func newTestServerWithGrace(t *testing.T, grace time.Duration) *testServer {
 	t.Helper()
 
-	dbURL := os.Getenv("MMO_TEST_DATABASE_URL")
-	if dbURL == "" {
-		t.Skip("MMO_TEST_DATABASE_URL is not set; skipping gateway integration tests")
-	}
+	// A schema private to this test. Several packages test against Postgres
+	// and `go test ./...` runs them in parallel, so a shared schema means
+	// tests deleting each other's rows -- which passes in isolation and fails
+	// in the suite.
+	st := storetest.New(t)
 
 	game, err := contenttest.Load()
 	if err != nil {
@@ -67,16 +68,6 @@ func newTestServerWithGrace(t *testing.T, grace time.Duration) *testServer {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mx := metrics.New(prometheus.NewRegistry())
 	ctx, cancel := context.WithCancel(context.Background())
-
-	st, err := store.Open(ctx, store.Config{URL: dbURL, Logger: log})
-	if err != nil {
-		cancel()
-		t.Fatalf("open store: %v", err)
-	}
-	if _, err := st.Pool().Exec(ctx, `TRUNCATE accounts, allowlist CASCADE`); err != nil {
-		cancel()
-		t.Fatalf("truncate: %v", err)
-	}
 
 	dir := directory.NewMemory("test-node")
 	leases := directory.NewMemoryLeases()
@@ -138,7 +129,6 @@ func newTestServerWithGrace(t *testing.T, grace time.Duration) *testServer {
 		srv.Close()
 		cancel()
 		node.Stop()
-		st.Close()
 	})
 
 	return &testServer{url: srv.URL, gw: gw, node: node, store: st, leases: leases}

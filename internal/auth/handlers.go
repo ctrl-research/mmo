@@ -34,6 +34,13 @@ type Service struct {
 
 	// defaultMap is where a newly created character starts.
 	defaultMap string
+
+	// localAuth enables username and password accounts held by this server.
+	localAuth bool
+
+	// loginLimiter throttles sign-in attempts by source address, alongside the
+	// per-account lockout in the database.
+	loginLimiter *attemptLimiter
 }
 
 // ServiceConfig configures the Service.
@@ -44,6 +51,13 @@ type ServiceConfig struct {
 	Logger     *slog.Logger
 	DevAuth    bool
 	DefaultMap string
+
+	// LocalAuth enables username and password accounts held by this server.
+	//
+	// It makes this server the custodian of password hashes, which the OIDC
+	// path deliberately avoids -- but requiring an external identity provider
+	// is a real barrier for a self-hosted game.
+	LocalAuth bool
 }
 
 // NewService builds the identity service.
@@ -62,8 +76,8 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 	if cfg.Providers == nil {
 		cfg.Providers = &Registry{byID: map[string]*Provider{}}
 	}
-	if cfg.Providers.Len() == 0 && !cfg.DevAuth {
-		return nil, errors.New("auth: no identity providers are configured and development authentication is off; nobody could sign in")
+	if cfg.Providers.Len() == 0 && !cfg.DevAuth && !cfg.LocalAuth {
+		return nil, errors.New("auth: no way to sign in is configured; enable local accounts, configure an OIDC provider, or use development authentication")
 	}
 
 	return &Service{
@@ -73,6 +87,9 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 		log:        cfg.Logger,
 		devAuth:    cfg.DevAuth,
 		defaultMap: cfg.DefaultMap,
+		localAuth:  cfg.LocalAuth,
+
+		loginLimiter: newAttemptLimiter(loginAttemptLimit, loginAttemptWindow),
 	}, nil
 }
 
@@ -89,6 +106,12 @@ func (s *Service) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/characters", s.requireSession(s.handleCreateCharacter))
 	mux.HandleFunc("DELETE /api/characters/{id}", s.requireSession(s.handleDeleteCharacter))
 	mux.HandleFunc("POST /api/ticket", s.requireSession(s.handleTicket))
+
+	if s.localAuth {
+		mux.HandleFunc("POST /auth/local/register", s.handleLocalRegister)
+		mux.HandleFunc("POST /auth/local/login", s.handleLocalLogin)
+		mux.HandleFunc("POST /api/password", s.requireSession(s.handleChangePassword))
+	}
 
 	if s.devAuth {
 		mux.HandleFunc("POST /auth/dev/login", s.handleDevLogin)
@@ -123,7 +146,8 @@ func (s *Service) handleProviders(w http.ResponseWriter, _ *http.Request) {
 	out := struct {
 		Providers []providerView `json:"providers"`
 		DevAuth   bool           `json:"devAuth"`
-	}{Providers: []providerView{}, DevAuth: s.devAuth}
+		LocalAuth bool           `json:"localAuth"`
+	}{Providers: []providerView{}, DevAuth: s.devAuth, LocalAuth: s.localAuth}
 
 	for _, p := range s.providers.List() {
 		out.Providers = append(out.Providers, providerView{ID: p.ID, DisplayName: p.DisplayName})

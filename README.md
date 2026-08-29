@@ -65,11 +65,35 @@ on many machines — pass a different one:
 make run PORT=8088
 ```
 
-`--dev-auth`, which `make run` passes for you, signs players in with no
-identity check and adds them to the allowlist. Never enable it on anything
-reachable by someone you do not trust.
+`make run` passes `--dev-auth`, which signs players in with no identity check
+at all. See below for the alternatives.
 
-### Signing in with a real provider
+### Signing in
+
+Three ways, in order of preference.
+
+**Local accounts** (username and password, held by this server) are on by
+default. The allowlist admits nobody until you add someone:
+
+```
+mmo allow jonathan          # allow a local username to register
+mmo allowlist               # list every rule
+mmo revoke jonathan         # remove one
+mmo passwd jonathan         # set a password from the terminal
+```
+
+They can then register at the login screen with that username. Passwords are
+Argon2id, sign-in attempts are throttled per account and per address, and an
+unknown username is indistinguishable from a wrong password.
+
+Turn it off with `--local-auth=false` if you would rather not have this server
+holding password hashes at all.
+
+**Development sign-in** (`--dev-auth`) has no identity check whatsoever and
+allowlists whoever asks. It exists so the game is playable in one command.
+Never enable it on anything reachable by someone you do not trust.
+
+### Signing in with an OIDC provider
 
 The server is an OIDC relying party, so any provider publishing a discovery
 document works. Copy `deploy/providers.example.toml`, fill in the client IDs,
@@ -84,15 +108,14 @@ the file can be committed while the secrets are not. The redirect URI
 registered with each provider must be exactly `<public-url>/auth/callback`.
 
 **The allowlist admits nobody until you add an entry.** That is deliberate —
-"empty means open" fails toward a server anyone can join. Add one with SQL for
-now:
+"empty means open" fails toward a server anyone can join:
 
-```sql
-INSERT INTO allowlist (provider, match_kind, match_value)
-VALUES ('', 'email', 'you@example.com');
+```
+mmo allow --provider='' --kind=email you@example.com
+mmo allow --provider='' --kind=email_domain your-company.com
 ```
 
-`match_kind` is `subject`, `email`, or `email_domain`; an empty `provider`
+`--kind` is `subject`, `email`, or `email_domain`; an empty `--provider`
 matches any. Removing an entry takes effect at that player's next sign-in,
 because the allowlist is re-checked every time rather than only at signup.
 

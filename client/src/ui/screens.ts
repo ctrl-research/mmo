@@ -2,6 +2,8 @@ import {
   ApiError,
   type Character,
   createCharacter,
+  localLogin,
+  localRegister,
   deleteCharacter,
   devLogin,
   listCharacters,
@@ -87,9 +89,9 @@ export class Shell {
   // --- login ----------------------------------------------------------------
 
   async #showLogin(notice = ""): Promise<void> {
-    let providers: { providers: { id: string; displayName: string }[]; devAuth: boolean };
+    let config: { providers: { id: string; displayName: string }[]; devAuth: boolean; localAuth: boolean };
     try {
-      providers = await loadProviders();
+      config = await loadProviders();
     } catch (err) {
       this.#show("login", "", message(err));
       return;
@@ -97,55 +99,115 @@ export class Shell {
 
     const parts: string[] = [`<h1>MMO</h1><p>Sign in to play</p>`];
 
-    for (const p of providers.providers) {
+    for (const p of config.providers) {
       parts.push(
         `<a class="btn provider" href="/auth/login?provider=${encodeURIComponent(p.id)}">` +
           `Continue with ${escapeHTML(p.displayName)}</a>`,
       );
     }
 
-    if (providers.devAuth) {
-      if (providers.providers.length > 0) parts.push(`<div class="divider">or</div>`);
+    if (config.localAuth) {
+      if (config.providers.length > 0) parts.push(`<div class="divider">or</div>`);
+      parts.push(
+        `<input id="username" placeholder="username" maxlength="32" autocomplete="username" />`,
+        `<input id="password" type="password" placeholder="password" maxlength="256"
+                autocomplete="current-password" />`,
+        `<button class="btn" id="local-login">Sign in</button>`,
+        `<button class="btn ghost" id="local-register">Create an account</button>`,
+      );
+    }
+
+    if (config.devAuth) {
+      if (config.localAuth || config.providers.length > 0) {
+        parts.push(`<div class="divider">or</div>`);
+      }
       parts.push(
         `<input id="dev-subject" placeholder="development sign-in name" maxlength="64" autocomplete="off" />`,
-        `<button class="btn" id="dev-login">Sign in</button>`,
+        `<button class="btn ghost" id="dev-login">Development sign-in</button>`,
         `<div class="hint">Development sign-in has no identity check. It is enabled by --dev-auth.</div>`,
       );
     }
 
-    if (providers.providers.length === 0 && !providers.devAuth) {
+    if (config.providers.length === 0 && !config.devAuth && !config.localAuth) {
       parts.push(
         `<div class="error">No way to sign in is configured. ` +
-          `Start the server with --dev-auth, or configure an OIDC provider.</div>`,
+          `Start the server with --local-auth or --dev-auth, or configure an OIDC provider.</div>`,
       );
     }
 
     this.#render(parts.join(""), notice);
+    this.#wireLogin(config.localAuth, config.devAuth);
+  }
 
-    const input = this.#root.querySelector<HTMLInputElement>("#dev-subject");
-    const button = this.#root.querySelector<HTMLButtonElement>("#dev-login");
+  #wireLogin(localAuth: boolean, devAuth: boolean): void {
+    const username = this.#root.querySelector<HTMLInputElement>("#username");
+    const password = this.#root.querySelector<HTMLInputElement>("#password");
 
-    const submit = async () => {
-      const subject = input?.value.trim() ?? "";
-      if (!subject) {
-        this.#notice("Enter a name to sign in with.", true);
-        return;
+    if (localAuth) {
+      const submit = async (register: boolean) => {
+        const u = username?.value.trim() ?? "";
+        const p = password?.value ?? "";
+        if (!u || !p) {
+          this.#notice("Enter a username and password.", true);
+          return;
+        }
+        await this.#guard(async () => {
+          if (register) {
+            await localRegister(u, p);
+          } else {
+            await localLogin(u, p);
+          }
+          localStorage.setItem("mmo.username", u);
+          // Never persisted, never logged, and cleared as soon as it is used.
+          if (password) password.value = "";
+          await this.#showCharacters();
+        }, false);
+      };
+
+      this.#root
+        .querySelector("#local-login")
+        ?.addEventListener("click", () => void submit(false));
+      this.#root
+        .querySelector("#local-register")
+        ?.addEventListener("click", () => void submit(true));
+
+      // Enter submits from either field, since a two-field form where only one
+      // of them responds to Enter is quietly annoying.
+      for (const el of [username, password]) {
+        el?.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") void submit(false);
+        });
       }
-      await this.#guard(async () => {
-        await devLogin(subject);
-        localStorage.setItem("mmo.subject", subject);
-        await this.#showCharacters();
+
+      if (username) {
+        username.value = localStorage.getItem("mmo.username") ?? "";
+        if (username.value) password?.focus();
+        else username.focus();
+      }
+    }
+
+    if (devAuth) {
+      const subject = this.#root.querySelector<HTMLInputElement>("#dev-subject");
+      const devSubmit = async () => {
+        const value = subject?.value.trim() ?? "";
+        if (!value) {
+          this.#notice("Enter a name to sign in with.", true);
+          return;
+        }
+        await this.#guard(async () => {
+          await devLogin(value);
+          localStorage.setItem("mmo.subject", value);
+          await this.#showCharacters();
+        }, false);
+      };
+
+      this.#root.querySelector("#dev-login")?.addEventListener("click", () => void devSubmit());
+      subject?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") void devSubmit();
       });
-    };
+      if (subject) subject.value = localStorage.getItem("mmo.subject") ?? "";
 
-    button?.addEventListener("click", () => void submit());
-    input?.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") void submit();
-    });
-
-    if (input) {
-      input.value = localStorage.getItem("mmo.subject") ?? "";
-      input.focus();
+      if (!localAuth) subject?.focus();
     }
   }
 
@@ -257,8 +319,13 @@ export class Shell {
    *
    * Without this a double-click creates two characters, and a failure leaves
    * the panel looking like nothing happened.
+   *
+   * `signedIn` says whether a 401 means the session lapsed. It does for calls
+   * that require a session -- but a sign-in attempt returns 401 for a wrong
+   * password, and treating that as an expiry replaces the real message with
+   * "your session expired" and re-renders the form, wiping what was typed.
    */
-  async #guard(fn: () => Promise<void>): Promise<void> {
+  async #guard(fn: () => Promise<void>, signedIn = true): Promise<void> {
     if (this.#busy) return;
     this.#busy = true;
     this.#setDisabled(true);
@@ -266,7 +333,7 @@ export class Shell {
     try {
       await fn();
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
+      if (signedIn && err instanceof ApiError && err.status === 401) {
         await this.#showLogin("Your session expired. Sign in again.");
       } else {
         this.#notice(message(err), true);

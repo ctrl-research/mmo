@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // These tests run against a real Postgres rather than a fake.
@@ -28,14 +29,42 @@ import (
 func testStore(t *testing.T) *Store {
 	t.Helper()
 
+	// Each test gets its own schema rather than truncating a shared one.
+	// Several packages test against Postgres and `go test ./...` runs them in
+	// parallel, so a shared schema means tests deleting each other's rows --
+	// which passes in isolation and fails in the suite.
 	url := os.Getenv("MMO_TEST_DATABASE_URL")
 	if url == "" {
 		t.Skip("MMO_TEST_DATABASE_URL is not set; skipping database tests")
 	}
-
 	ctx := context.Background()
+
+	schema := "t" + strings.ReplaceAll(uuid.NewString(), "-", "")
+	admin, err := pgxpool.New(ctx, url)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	if _, err := admin.Exec(ctx, fmt.Sprintf(`CREATE SCHEMA %q`, schema)); err != nil {
+		admin.Close()
+		t.Fatalf("create schema: %v", err)
+	}
+	admin.Close()
+
+	t.Cleanup(func() {
+		pool, err := pgxpool.New(context.Background(), url)
+		if err != nil {
+			return
+		}
+		defer pool.Close()
+		pool.Exec(context.Background(), fmt.Sprintf(`DROP SCHEMA %q CASCADE`, schema))
+	})
+
+	sep := "&"
+	if !strings.Contains(url, "?") {
+		sep = "?"
+	}
 	s, err := Open(ctx, Config{
-		URL:    url,
+		URL:    url + sep + "search_path=" + schema,
 		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	})
 	if err != nil {
@@ -43,10 +72,6 @@ func testStore(t *testing.T) *Store {
 	}
 	t.Cleanup(s.Close)
 
-	// Each test starts from a clean slate. Cascades handle the rest.
-	if _, err := s.pool.Exec(ctx, `TRUNCATE accounts, allowlist CASCADE`); err != nil {
-		t.Fatalf("truncate: %v", err)
-	}
 	return s
 }
 
