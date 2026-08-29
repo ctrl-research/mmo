@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mmo/v1/game.proto.
  */
 export const file_mmo_v1_game: GenFile = /*@__PURE__*/
-  fileDesc("ChFtbW8vdjEvZ2FtZS5wcm90bxIGbW1vLnYxIlgKCEVudmVsb3BlEiUKBnNlcnZlchgBIAMoCzIVLm1tby52MS5TZXJ2ZXJNZXNzYWdlEiUKBmNsaWVudBgCIAMoCzIVLm1tby52MS5DbGllbnRNZXNzYWdlIqQECg1DbGllbnRNZXNzYWdlEh4KBWhlbGxvGAEgASgLMg0ubW1vLnYxLkhlbGxvSAASIAoGaW50ZW50GAIgASgLMg4ubW1vLnYxLkludGVudEgAEhwKBHBpbmcYAyABKAsyDC5tbW8udjEuUGluZ0gAEhwKBGNhc3QYBCABKAsyDC5tbW8udjEuQ2FzdEgAEiQKCGludGVyYWN0GAUgASgLMhAubW1vLnYxLkludGVyYWN0SAASKQoLaXRlbV9hY3Rpb24YBiABKAsyEi5tbW8udjEuSXRlbUFjdGlvbkgAEi4KDm9wZW5fd29ybGRfbWFwGAcgASgLMhQubW1vLnYxLk9wZW5Xb3JsZE1hcEgAEiAKBnRyYXZlbBgIIAEoCzIOLm1tby52MS5UcmF2ZWxIABIgCgRjaGF0GAkgASgLMhAubW1vLnYxLkNoYXRTZW5kSAASJAoFcGFydHkYCiABKAsyEy5tbW8udjEuUGFydHlBY3Rpb25IABIkCgVndWlsZBgLIAEoCzITLm1tby52MS5HdWlsZEFjdGlvbkgAEiYKBnNvY2lhbBgMIAEoCzIULm1tby52MS5Tb2NpYWxBY3Rpb25IABIqCgpza2lsbF9zbG90GA0gASgLMhQubW1vLnYxLlNldFNraWxsU2xvdEgAEigKB3Bhc3NpdmUYDiABKAsyFS5tbW8udjEuUGFzc2l2ZUFjdGlvbkgAQgYKBGJvZHkiOgoEQ2FzdBILCgNzZXEYASABKA0SEAoIc2tpbGxfaWQYAiABKAkSEwoLZmFjaW5nX2xlZnQYAyABKAgiQQoISW50ZXJhY3QSEQoJZW50aXR5X2lkGAEgASgNEiIKBGtpbmQYAiABKA4yFC5tbW8udjEuSW50ZXJhY3RLaW5kImUKCkl0ZW1BY3Rpb24SJAoEa2luZBgBIAEoDjIWLm1tby52MS5JdGVtQWN0aW9uS2luZBIPCgdpdGVtX2lkGAIgASgJEgwKBHNsb3QYAyABKA0SEgoKZXF1aXBfc2xvdBgEIAEoCSLrAQoNU2VydmVyTWVzc2FnZRIiCgd3ZWxjb21lGAEgASgLMg8ubW1vLnYxLldlbGNvbWVIABIkCghzbmFwc2hvdBgCIAEoCzIQLm1tby52MS5TbmFwc2hvdEgAEh4KBWV2ZW50GAMgASgLMg0ubW1vLnYxLkV2ZW50SAASHAoEcG9uZxgEIAEoCzIMLm1tby52MS5Qb25nSAASHAoEa2ljaxgFIAEoCzIMLm1tby52MS5LaWNrSAASJgoJaW52ZW50b3J5GAYgASgLMhEubW1vLnYxLkludmVudG9yeUgAQgYKBGJvZHlKBAgHEAoiRwoFSGVsbG8SDgoGdGlja2V0GAEgASgJEhgKEHByb3RvY29sX3ZlcnNpb24YAiABKA0SFAoMY29udGVudF9oYXNoGAMgASgJIoMBCgdXZWxjb21lEhEKCWVudGl0eV9pZBgBIAEoDRITCgtpbnN0YW5jZV9pZBgCIAEoBBIMCgR0aWNrGAMgASgEEg8KB3RpY2tfbXMYBCABKA0SDgoGbWFwX2lkGAUgASgJEiEKBHNlbGYYBiABKAsyEy5tbW8udjEuRW50aXR5U3RhdGUiJAoES2ljaxIMCgRjb2RlGAEgASgNEg4KBnJlYXNvbhgCIAEoCSJjCgZJbnRlbnQSCwoDc2VxGAEgASgNEhQKDGFja19zbmFwc2hvdBgCIAEoBBIOCgZtb3ZlX3gYAyABKBESDAoEanVtcBgEIAEoCBIKCgJ1cBgFIAEoCBIMCgRkb3duGAYgASgIIh4KBFBpbmcSFgoOY2xpZW50X3RpbWVfbXMYASABKAQiMwoEUG9uZxIWCg5jbGllbnRfdGltZV9tcxgBIAEoBBITCgtzZXJ2ZXJfdGljaxgCIAEoBCKlAwoLRW50aXR5U3RhdGUSCgoCaWQYASABKA0SIAoEa2luZBgCIAEoDjISLm1tby52MS5FbnRpdHlLaW5kEg0KBWxheWVyGAMgASgNEgkKAXgYBCABKBESCQoBeRgFIAEoERIKCgJ2eBgGIAEoERIKCgJ2eRgHIAEoERIJCgF3GAggASgREgkKAWgYCSABKBESDQoFZmxhZ3MYCiABKA0SDAoEYW5pbRgLIAEoDRIKCgJocBgMIAEoDRIOCgZocF9tYXgYDSABKA0SDAoEbmFtZRgOIAEoCRIOCgZjb3lvdGUYDyABKA0SEwoLanVtcF9idWZmZXIYECABKA0SFAoMZHJvcF90aHJvdWdoGBEgASgNEg0KBWxldmVsGBIgASgNEgsKA2V4cBgTIAEoBBITCgtleHBfdG9fbmV4dBgUIAEoBBIKCgJtcBgVIAEoDRIOCgZtcF9tYXgYFiABKA0SEQoJZHJvcF9pdGVtGBcgASgJEhAKCGRyb3BfcXR5GBggASgNEhEKCWRyb3BfZ29sZBgZIAEoDRIOCgZtb2JfaWQYGiABKAkilAEKC0VudGl0eURlbHRhEgoKAmlkGAEgASgNEhIKCmZpZWxkX21hc2sYAiABKA0SCQoBeBgDIAEoERIJCgF5GAQgASgREgoKAnZ4GAUgASgREgoKAnZ5GAYgASgREg0KBWZsYWdzGAcgASgNEgwKBGFuaW0YCCABKA0SCgoCaHAYCSABKA0SDgoGaHBfbWF4GAogASgNIsEBCghTbmFwc2hvdBIMCgR0aWNrGAEgASgEEhUKDWJhc2VsaW5lX3RpY2sYAiABKAQSDwoHYWNrX3NlcRgDIAEoDRIlCghlbnRpdGllcxgEIAMoCzITLm1tby52MS5FbnRpdHlEZWx0YRIkCgdlbnRlcmVkGAUgAygLMhMubW1vLnYxLkVudGl0eVN0YXRlEg8KB3JlbW92ZWQYBiADKA0SIQoEc2VsZhgHIAEoCzITLm1tby52MS5FbnRpdHlTdGF0ZSLcBwoFRXZlbnQSLQoNcGxheWVyX2pvaW5lZBgBIAEoCzIULm1tby52MS5QbGF5ZXJKb2luZWRIABIpCgtwbGF5ZXJfbGVmdBgCIAEoCzISLm1tby52MS5QbGF5ZXJMZWZ0SAASJQoGZGFtYWdlGAMgASgLMhMubW1vLnYxLkRhbWFnZURlYWx0SAASIgoEZGllZBgEIAEoCzISLm1tby52MS5FbnRpdHlEaWVkSAASJwoKc2tpbGxfY2FzdBgFIAEoCzIRLm1tby52MS5Ta2lsbENhc3RIABInCgpleHBfZ2FpbmVkGAYgASgLMhEubW1vLnYxLkV4cEdhaW5lZEgAEiMKCGxldmVsX3VwGAcgASgLMg8ubW1vLnYxLkxldmVsVXBIABInCgpsb290X3Rha2VuGAggASgLMhEubW1vLnYxLkxvb3RUYWtlbkgAEi8KDndheXBvaW50X2ZvdW5kGAkgASgLMhUubW1vLnYxLldheXBvaW50Rm91bmRIABIvCg5wb3J0YWxfcmVmdXNlZBgKIAEoCzIVLm1tby52MS5Qb3J0YWxSZWZ1c2VkSAASJQoJd29ybGRfbWFwGAwgASgLMhAubW1vLnYxLldvcmxkTWFwSAASIAoEY2hhdBgNIAEoCzIQLm1tby52MS5DaGF0TGluZUgAEicKBnN5c3RlbRgOIAEoCzIVLm1tby52MS5TeXN0ZW1NZXNzYWdlSAASIwoFcGFydHkYECABKAsyEi5tbW8udjEuUGFydHlTdGF0ZUgAEisKDHBhcnR5X2ludml0ZRgRIAEoCzITLm1tby52MS5QYXJ0eUludml0ZUgAEiMKBWd1aWxkGBIgASgLMhIubW1vLnYxLkd1aWxkU3RhdGVIABIrCgxndWlsZF9pbnZpdGUYEyABKAsyEy5tbW8udjEuR3VpbGRJbnZpdGVIABIlCgdmcmllbmRzGBQgASgLMhIubW1vLnYxLkZyaWVuZExpc3RIABIiCgVidWZmcxgPIAEoCzIRLm1tby52MS5CdWZmU3RhdGVIABIgCgZoZWFsZWQYFSABKAsyDi5tbW8udjEuSGVhbGVkSAASJAoIc2hpZWxkZWQYFiABKAsyEC5tbW8udjEuU2hpZWxkZWRIABIkCghhYnNvcmJlZBgXIAEoCzIQLm1tby52MS5BYnNvcmJlZEgAEiUKCXNraWxsX2JhchgYIAEoCzIQLm1tby52MS5Ta2lsbEJhckgAEigKCHBhc3NpdmVzGBkgASgLMhQubW1vLnYxLlBhc3NpdmVTdGF0ZUgAQgYKBGJvZHlKBAgLEAwiZgoLRGFtYWdlRGVhbHQSEQoJc291cmNlX2lkGAEgASgNEhEKCXRhcmdldF9pZBgCIAEoDRIOCgZhbW91bnQYAyABKA0SEAoIY3JpdGljYWwYBCABKAgSDwoHZWxlbWVudBgFIAEoCSIyCgpFbnRpdHlEaWVkEhEKCWVudGl0eV9pZBgBIAEoDRIRCglraWxsZXJfaWQYAiABKA0iRQoJU2tpbGxDYXN0EhEKCWNhc3Rlcl9pZBgBIAEoDRIQCghza2lsbF9pZBgCIAEoCRITCgtmYWNpbmdfbGVmdBgDIAEoCCI6CglFeHBHYWluZWQSDgoGYW1vdW50GAEgASgEEg0KBXRvdGFsGAIgASgEEg4KBnNoYXJlZBgDIAEoCCItCgdMZXZlbFVwEg0KBWxldmVsGAEgASgNEhMKC2V4cF90b19uZXh0GAIgASgEIkIKDVdheXBvaW50Rm91bmQSEwoLd2F5cG9pbnRfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIOCgZtYXBfaWQYAyABKAkiSwoNUG9ydGFsUmVmdXNlZBISCgp0YXJnZXRfbWFwGAEgASgJEhYKDnJlcXVpcmVkX2xldmVsGAIgASgNEg4KBnJlYXNvbhgDIAEoCSIOCgxPcGVuV29ybGRNYXAiZAoGVHJhdmVsEhUKC3dheXBvaW50X2lkGAEgASgJSAASHQoTY2hhbm5lbF9pbnN0YW5jZV9pZBgCIAEoBEgAEhUKC25ld19jaGFubmVsGAMgASgISABCDQoLZGVzdGluYXRpb24itwEKCFdvcmxkTWFwEiAKBG1hcHMYASADKAsyEi5tbW8udjEuTWFwU3VtbWFyeRIqCgl3YXlwb2ludHMYAiADKAsyFy5tbW8udjEuV2F5cG9pbnRTdW1tYXJ5EigKCGNoYW5uZWxzGAMgAygLMhYubW1vLnYxLkNoYW5uZWxTdW1tYXJ5EhYKDmN1cnJlbnRfbWFwX2lkGAQgASgJEhsKE2N1cnJlbnRfaW5zdGFuY2VfaWQYBSABKAQiYQoKTWFwU3VtbWFyeRIOCgZtYXBfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIRCgltaW5fbGV2ZWwYAyABKAUSEQoJbWF4X2xldmVsGAQgASgFEg8KB3ByaXZhdGUYBSABKAgiRAoPV2F5cG9pbnRTdW1tYXJ5EhMKC3dheXBvaW50X2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDgoGbWFwX2lkGAMgASgJImoKDkNoYW5uZWxTdW1tYXJ5EhMKC2luc3RhbmNlX2lkGAEgASgEEg8KB2NoYW5uZWwYAiABKA0SDwoHcGxheWVycxgDIAEoDRIQCghjYXBhY2l0eRgEIAEoDRIPCgdjdXJyZW50GAUgASgIIk4KCENoYXRTZW5kEiQKB2NoYW5uZWwYASABKA4yEy5tbW8udjEuQ2hhdENoYW5uZWwSDAoEYm9keRgCIAEoCRIOCgZ0YXJnZXQYAyABKAkidgoIQ2hhdExpbmUSJAoHY2hhbm5lbBgBIAEoDjITLm1tby52MS5DaGF0Q2hhbm5lbBIMCgRmcm9tGAIgASgJEgwKBGJvZHkYAyABKAkSEAoIb3V0Z29pbmcYBCABKAgSFgoOc2VydmVyX3RpbWVfbXMYBSABKAMiQwoNU3lzdGVtTWVzc2FnZRIMCgRib2R5GAEgASgJEiQKB2NoYW5uZWwYAiABKA4yEy5tbW8udjEuQ2hhdENoYW5uZWwi3AEKC1BhcnR5QWN0aW9uEiYKBGtpbmQYASABKA4yGC5tbW8udjEuUGFydHlBY3Rpb24uS2luZBIOCgZ0YXJnZXQYAiABKAkilAEKBEtpbmQSFAoQS0lORF9VTlNQRUNJRklFRBAAEg8KC0tJTkRfSU5WSVRFEAESDwoLS0lORF9BQ0NFUFQQAhIQCgxLSU5EX0RFQ0xJTkUQAxIOCgpLSU5EX0xFQVZFEAQSDQoJS0lORF9LSUNLEAUSEAoMS0lORF9QUk9NT1RFEAYSEQoNS0lORF9TRVRfTE9PVBAHIooBCgpQYXJ0eVN0YXRlEhAKCHBhcnR5X2lkGAEgASgJEhsKE2xlYWRlcl9jaGFyYWN0ZXJfaWQYAiABKAkSJAoHbWVtYmVycxgDIAMoCzITLm1tby52MS5QYXJ0eU1lbWJlchIZChFzZWxmX2NoYXJhY3Rlcl9pZBgEIAEoCRIMCgRsb290GAUgASgJInwKC1BhcnR5TWVtYmVyEhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBWxldmVsGAMgASgNEgoKAmhwGAQgASgNEg4KBmhwX21heBgFIAEoDRIOCgZtYXBfaWQYBiABKAkSDgoGb25saW5lGAcgASgIIjcKC1BhcnR5SW52aXRlEhEKCWZyb21fbmFtZRgBIAEoCRIVCg1leHBpcmVzX2luX21zGAIgASgDIv4BCgtHdWlsZEFjdGlvbhImCgRraW5kGAEgASgOMhgubW1vLnYxLkd1aWxkQWN0aW9uLktpbmQSDgoGdGFyZ2V0GAIgASgJIrYBCgRLaW5kEhQKEEtJTkRfVU5TUEVDSUZJRUQQABIPCgtLSU5EX0NSRUFURRABEg8KC0tJTkRfSU5WSVRFEAISDwoLS0lORF9BQ0NFUFQQAxIQCgxLSU5EX0RFQ0xJTkUQBBIOCgpLSU5EX0xFQVZFEAUSDQoJS0lORF9LSUNLEAYSEAoMS0lORF9QUk9NT1RFEAcSDwoLS0lORF9ERU1PVEUQCBIRCg1LSU5EX1NFVF9NT1REEAkibgoKR3VpbGRTdGF0ZRIQCghndWlsZF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBG1vdGQYAyABKAkSJAoHbWVtYmVycxgEIAMoCzITLm1tby52MS5HdWlsZE1lbWJlchIMCgRyYW5rGAUgASgNIl4KC0d1aWxkTWVtYmVyEhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJhbmsYAyABKA0SDQoFbGV2ZWwYBCABKA0SDgoGb25saW5lGAUgASgIIksKC0d1aWxkSW52aXRlEhIKCmd1aWxkX25hbWUYASABKAkSEQoJZnJvbV9uYW1lGAIgASgJEhUKDWV4cGlyZXNfaW5fbXMYAyABKAMiqQEKDFNvY2lhbEFjdGlvbhInCgRraW5kGAEgASgOMhkubW1vLnYxLlNvY2lhbEFjdGlvbi5LaW5kEg4KBnRhcmdldBgCIAEoCSJgCgRLaW5kEhQKEEtJTkRfVU5TUEVDSUZJRUQQABITCg9LSU5EX0FERF9GUklFTkQQARIWChJLSU5EX1JFTU9WRV9GUklFTkQQAhIVChFLSU5EX0xJU1RfRlJJRU5EUxADIjIKCkZyaWVuZExpc3QSJAoHZnJpZW5kcxgBIAMoCzITLm1tby52MS5GcmllbmRFbnRyeSJgCgtGcmllbmRFbnRyeRIUCgxjaGFyYWN0ZXJfaWQYASABKAkSDAoEbmFtZRgCIAEoCRINCgVsZXZlbBgDIAEoDRIOCgZvbmxpbmUYBCABKAgSDgoGbWFwX2lkGAUgASgJIkMKCUJ1ZmZTdGF0ZRIRCgllbnRpdHlfaWQYASABKA0SIwoFYnVmZnMYAiADKAsyFC5tbW8udjEuQnVmZkluc3RhbmNlImQKDEJ1ZmZJbnN0YW5jZRIPCgdidWZmX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDgoGc3RhY2tzGAMgASgNEhQKDHJlbWFpbmluZ19tcxgEIAEoDRIPCgdoYXJtZnVsGAUgASgIIisKBkhlYWxlZBIRCgllbnRpdHlfaWQYASABKA0SDgoGYW1vdW50GAIgASgNIi0KCFNoaWVsZGVkEhEKCWVudGl0eV9pZBgBIAEoDRIOCgZhbW91bnQYAiABKA0iQAoIQWJzb3JiZWQSEQoJZW50aXR5X2lkGAEgASgNEg4KBmFtb3VudBgCIAEoDRIRCglyZW1haW5pbmcYAyABKA0iQAoMU2V0U2tpbGxTbG90EgwKBHNsb3QYASABKA0SEAoIc2tpbGxfaWQYAiABKAkSEAoIc3VwcG9ydHMYAyADKAkidgoIU2tpbGxCYXISIAoFc2xvdHMYASADKAsyES5tbW8udjEuU2tpbGxTbG90EiEKBWtub3duGAIgAygLMhIubW1vLnYxLktub3duU2tpbGwSJQoIc3VwcG9ydHMYAyADKAsyEy5tbW8udjEuU3VwcG9ydEluZm8icQoJU2tpbGxTbG90EhAKCHNraWxsX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEcmFuaxgDIAEoDRITCgtjb29sZG93bl9tcxgEIAEoDRIPCgdjb3N0X21wGAUgASgNEhAKCHN1cHBvcnRzGAYgAygJIloKCktub3duU2tpbGwSEAoIc2tpbGxfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIMCgRyYW5rGAMgASgNEhAKCG1heF9yYW5rGAQgASgNEgwKBHRhZ3MYBSADKAkiPQoLU3VwcG9ydEluZm8SEgoKc3VwcG9ydF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHRhZ3MYAyADKAkiVQoNUGFzc2l2ZUFjdGlvbhISCghhbGxvY2F0ZRgBIAEoDUgAEhAKBnJlZnVuZBgCIAEoDUgAEhQKCnJlc3BlY19hbGwYAyABKAhIAEIICgZhY3Rpb24iYQoMUGFzc2l2ZVN0YXRlEhEKCWFsbG9jYXRlZBgBIAMoDRISCgpzdGFydF9ub2RlGAIgASgNEhQKDHNwZW50X3BvaW50cxgDIAEoDRIUCgx0b3RhbF9wb2ludHMYBCABKA0iagoJTG9vdFRha2VuEhEKCWVudGl0eV9pZBgBIAEoDRIPCgdpdGVtX2lkGAIgASgJEgsKA3F0eRgDIAEoDRIMCgRnb2xkGAQgASgNEg4KBmZhaWxlZBgFIAEoCBIOCgZyZWFzb24YBiABKAkilgEKCUludmVudG9yeRIiCgdjYXJyaWVkGAEgAygLMhEubW1vLnYxLkl0ZW1TdGFjaxIjCghlcXVpcHBlZBgCIAMoCzIRLm1tby52MS5JdGVtU3RhY2sSEAoIY2FwYWNpdHkYAyABKA0SDAoEZ29sZBgEIAEoBBIgCgVzdGF0cxgFIAMoCzIRLm1tby52MS5TdGF0VmFsdWUixwEKCUl0ZW1TdGFjaxIPCgdpdGVtX2lkGAEgASgJEg8KB2Jhc2VfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRIOCgZyYXJpdHkYBCABKAkSDAoEc2xvdBgFIAEoDRINCgVzdGFjaxgGIAEoDRISCgppdGVtX2xldmVsGAcgASgNEhIKCmVxdWlwX3Nsb3QYCCABKAkSFgoOcmVxdWlyZWRfbGV2ZWwYCSABKA0SHQoEbW9kcxgKIAMoCzIPLm1tby52MS5JdGVtTW9kIlQKB0l0ZW1Nb2QSDAoEc3RhdBgBIAEoCRIMCgRraW5kGAIgASgJEg0KBXZhbHVlGAMgASgSEgwKBHRpZXIYBCABKA0SEAoIaW1wbGljaXQYBSABKAgiKAoJU3RhdFZhbHVlEgwKBHN0YXQYASABKAkSDQoFdmFsdWUYAiABKBIiLwoMUGxheWVySm9pbmVkEhEKCWVudGl0eV9pZBgBIAEoDRIMCgRuYW1lGAIgASgJIh8KClBsYXllckxlZnQSEQoJZW50aXR5X2lkGAEgASgNKkUKDEludGVyYWN0S2luZBIdChlJTlRFUkFDVF9LSU5EX1VOU1BFQ0lGSUVEEAASFgoSSU5URVJBQ1RfS0lORF9MT09UEAEqpQEKDkl0ZW1BY3Rpb25LaW5kEiAKHElURU1fQUNUSU9OX0tJTkRfVU5TUEVDSUZJRUQQABIZChVJVEVNX0FDVElPTl9LSU5EX01PVkUQARIaChZJVEVNX0FDVElPTl9LSU5EX0VRVUlQEAISHAoYSVRFTV9BQ1RJT05fS0lORF9VTkVRVUlQEAMSHAoYSVRFTV9BQ1RJT05fS0lORF9ERVNUUk9ZEAQqswEKCkVudGl0eUtpbmQSGwoXRU5USVRZX0tJTkRfVU5TUEVDSUZJRUQQABIWChJFTlRJVFlfS0lORF9QTEFZRVIQARITCg9FTlRJVFlfS0lORF9NT0IQAhIUChBFTlRJVFlfS0lORF9EUk9QEAMSEwoPRU5USVRZX0tJTkRfTlBDEAQSGgoWRU5USVRZX0tJTkRfUFJPSkVDVElMRRAFEhQKEEVOVElUWV9LSU5EX0FSRUEQBiqbAQoLRW50aXR5RmllbGQSHAoYRU5USVRZX0ZJRUxEX1VOU1BFQ0lGSUVEEAASFAoQRU5USVRZX0ZJRUxEX1BPUxABEhQKEEVOVElUWV9GSUVMRF9WRUwQAhIWChJFTlRJVFlfRklFTERfRkxBR1MQAxIVChFFTlRJVFlfRklFTERfQU5JTRAEEhMKD0VOVElUWV9GSUVMRF9IUBAFKpUBCgpFbnRpdHlGbGFnEhsKF0VOVElUWV9GTEFHX1VOU1BFQ0lGSUVEEAASGAoURU5USVRZX0ZMQUdfR1JPVU5ERUQQARIYChRFTlRJVFlfRkxBR19DTElNQklORxACEhsKF0VOVElUWV9GTEFHX0ZBQ0lOR19MRUZUEAMSGQoVRU5USVRZX0ZMQUdfSlVNUF9IRUxEEAQqpgEKC0NoYXRDaGFubmVsEhwKGENIQVRfQ0hBTk5FTF9VTlNQRUNJRklFRBAAEhYKEkNIQVRfQ0hBTk5FTF9MT0NBTBABEhcKE0NIQVRfQ0hBTk5FTF9HTE9CQUwQAhIYChRDSEFUX0NIQU5ORUxfV0hJU1BFUhADEhYKEkNIQVRfQ0hBTk5FTF9QQVJUWRAEEhYKEkNIQVRfQ0hBTk5FTF9HVUlMRBAFQjlaN2dpdGh1Yi5jb20vY3RybC1yZXNlYXJjaC9tbW8vaW50ZXJuYWwvd2lyZS9tbW8vdjE7bW1vdjFiBnByb3RvMw");
+  fileDesc("ChFtbW8vdjEvZ2FtZS5wcm90bxIGbW1vLnYxIlgKCEVudmVsb3BlEiUKBnNlcnZlchgBIAMoCzIVLm1tby52MS5TZXJ2ZXJNZXNzYWdlEiUKBmNsaWVudBgCIAMoCzIVLm1tby52MS5DbGllbnRNZXNzYWdlIqQECg1DbGllbnRNZXNzYWdlEh4KBWhlbGxvGAEgASgLMg0ubW1vLnYxLkhlbGxvSAASIAoGaW50ZW50GAIgASgLMg4ubW1vLnYxLkludGVudEgAEhwKBHBpbmcYAyABKAsyDC5tbW8udjEuUGluZ0gAEhwKBGNhc3QYBCABKAsyDC5tbW8udjEuQ2FzdEgAEiQKCGludGVyYWN0GAUgASgLMhAubW1vLnYxLkludGVyYWN0SAASKQoLaXRlbV9hY3Rpb24YBiABKAsyEi5tbW8udjEuSXRlbUFjdGlvbkgAEi4KDm9wZW5fd29ybGRfbWFwGAcgASgLMhQubW1vLnYxLk9wZW5Xb3JsZE1hcEgAEiAKBnRyYXZlbBgIIAEoCzIOLm1tby52MS5UcmF2ZWxIABIgCgRjaGF0GAkgASgLMhAubW1vLnYxLkNoYXRTZW5kSAASJAoFcGFydHkYCiABKAsyEy5tbW8udjEuUGFydHlBY3Rpb25IABIkCgVndWlsZBgLIAEoCzITLm1tby52MS5HdWlsZEFjdGlvbkgAEiYKBnNvY2lhbBgMIAEoCzIULm1tby52MS5Tb2NpYWxBY3Rpb25IABIqCgpza2lsbF9zbG90GA0gASgLMhQubW1vLnYxLlNldFNraWxsU2xvdEgAEigKB3Bhc3NpdmUYDiABKAsyFS5tbW8udjEuUGFzc2l2ZUFjdGlvbkgAQgYKBGJvZHkiOgoEQ2FzdBILCgNzZXEYASABKA0SEAoIc2tpbGxfaWQYAiABKAkSEwoLZmFjaW5nX2xlZnQYAyABKAgiQQoISW50ZXJhY3QSEQoJZW50aXR5X2lkGAEgASgNEiIKBGtpbmQYAiABKA4yFC5tbW8udjEuSW50ZXJhY3RLaW5kImUKCkl0ZW1BY3Rpb24SJAoEa2luZBgBIAEoDjIWLm1tby52MS5JdGVtQWN0aW9uS2luZBIPCgdpdGVtX2lkGAIgASgJEgwKBHNsb3QYAyABKA0SEgoKZXF1aXBfc2xvdBgEIAEoCSLrAQoNU2VydmVyTWVzc2FnZRIiCgd3ZWxjb21lGAEgASgLMg8ubW1vLnYxLldlbGNvbWVIABIkCghzbmFwc2hvdBgCIAEoCzIQLm1tby52MS5TbmFwc2hvdEgAEh4KBWV2ZW50GAMgASgLMg0ubW1vLnYxLkV2ZW50SAASHAoEcG9uZxgEIAEoCzIMLm1tby52MS5Qb25nSAASHAoEa2ljaxgFIAEoCzIMLm1tby52MS5LaWNrSAASJgoJaW52ZW50b3J5GAYgASgLMhEubW1vLnYxLkludmVudG9yeUgAQgYKBGJvZHlKBAgHEAoiRwoFSGVsbG8SDgoGdGlja2V0GAEgASgJEhgKEHByb3RvY29sX3ZlcnNpb24YAiABKA0SFAoMY29udGVudF9oYXNoGAMgASgJIoMBCgdXZWxjb21lEhEKCWVudGl0eV9pZBgBIAEoDRITCgtpbnN0YW5jZV9pZBgCIAEoBBIMCgR0aWNrGAMgASgEEg8KB3RpY2tfbXMYBCABKA0SDgoGbWFwX2lkGAUgASgJEiEKBHNlbGYYBiABKAsyEy5tbW8udjEuRW50aXR5U3RhdGUiJAoES2ljaxIMCgRjb2RlGAEgASgNEg4KBnJlYXNvbhgCIAEoCSJjCgZJbnRlbnQSCwoDc2VxGAEgASgNEhQKDGFja19zbmFwc2hvdBgCIAEoBBIOCgZtb3ZlX3gYAyABKBESDAoEanVtcBgEIAEoCBIKCgJ1cBgFIAEoCBIMCgRkb3duGAYgASgIIh4KBFBpbmcSFgoOY2xpZW50X3RpbWVfbXMYASABKAQiMwoEUG9uZxIWCg5jbGllbnRfdGltZV9tcxgBIAEoBBITCgtzZXJ2ZXJfdGljaxgCIAEoBCKlAwoLRW50aXR5U3RhdGUSCgoCaWQYASABKA0SIAoEa2luZBgCIAEoDjISLm1tby52MS5FbnRpdHlLaW5kEg0KBWxheWVyGAMgASgNEgkKAXgYBCABKBESCQoBeRgFIAEoERIKCgJ2eBgGIAEoERIKCgJ2eRgHIAEoERIJCgF3GAggASgREgkKAWgYCSABKBESDQoFZmxhZ3MYCiABKA0SDAoEYW5pbRgLIAEoDRIKCgJocBgMIAEoDRIOCgZocF9tYXgYDSABKA0SDAoEbmFtZRgOIAEoCRIOCgZjb3lvdGUYDyABKA0SEwoLanVtcF9idWZmZXIYECABKA0SFAoMZHJvcF90aHJvdWdoGBEgASgNEg0KBWxldmVsGBIgASgNEgsKA2V4cBgTIAEoBBITCgtleHBfdG9fbmV4dBgUIAEoBBIKCgJtcBgVIAEoDRIOCgZtcF9tYXgYFiABKA0SEQoJZHJvcF9pdGVtGBcgASgJEhAKCGRyb3BfcXR5GBggASgNEhEKCWRyb3BfZ29sZBgZIAEoDRIOCgZtb2JfaWQYGiABKAkilAEKC0VudGl0eURlbHRhEgoKAmlkGAEgASgNEhIKCmZpZWxkX21hc2sYAiABKA0SCQoBeBgDIAEoERIJCgF5GAQgASgREgoKAnZ4GAUgASgREgoKAnZ5GAYgASgREg0KBWZsYWdzGAcgASgNEgwKBGFuaW0YCCABKA0SCgoCaHAYCSABKA0SDgoGaHBfbWF4GAogASgNIsEBCghTbmFwc2hvdBIMCgR0aWNrGAEgASgEEhUKDWJhc2VsaW5lX3RpY2sYAiABKAQSDwoHYWNrX3NlcRgDIAEoDRIlCghlbnRpdGllcxgEIAMoCzITLm1tby52MS5FbnRpdHlEZWx0YRIkCgdlbnRlcmVkGAUgAygLMhMubW1vLnYxLkVudGl0eVN0YXRlEg8KB3JlbW92ZWQYBiADKA0SIQoEc2VsZhgHIAEoCzITLm1tby52MS5FbnRpdHlTdGF0ZSKFCAoFRXZlbnQSLQoNcGxheWVyX2pvaW5lZBgBIAEoCzIULm1tby52MS5QbGF5ZXJKb2luZWRIABIpCgtwbGF5ZXJfbGVmdBgCIAEoCzISLm1tby52MS5QbGF5ZXJMZWZ0SAASJQoGZGFtYWdlGAMgASgLMhMubW1vLnYxLkRhbWFnZURlYWx0SAASIgoEZGllZBgEIAEoCzISLm1tby52MS5FbnRpdHlEaWVkSAASJwoKc2tpbGxfY2FzdBgFIAEoCzIRLm1tby52MS5Ta2lsbENhc3RIABInCgpleHBfZ2FpbmVkGAYgASgLMhEubW1vLnYxLkV4cEdhaW5lZEgAEiMKCGxldmVsX3VwGAcgASgLMg8ubW1vLnYxLkxldmVsVXBIABInCgpsb290X3Rha2VuGAggASgLMhEubW1vLnYxLkxvb3RUYWtlbkgAEi8KDndheXBvaW50X2ZvdW5kGAkgASgLMhUubW1vLnYxLldheXBvaW50Rm91bmRIABIvCg5wb3J0YWxfcmVmdXNlZBgKIAEoCzIVLm1tby52MS5Qb3J0YWxSZWZ1c2VkSAASJQoJd29ybGRfbWFwGAwgASgLMhAubW1vLnYxLldvcmxkTWFwSAASIAoEY2hhdBgNIAEoCzIQLm1tby52MS5DaGF0TGluZUgAEicKBnN5c3RlbRgOIAEoCzIVLm1tby52MS5TeXN0ZW1NZXNzYWdlSAASIwoFcGFydHkYECABKAsyEi5tbW8udjEuUGFydHlTdGF0ZUgAEisKDHBhcnR5X2ludml0ZRgRIAEoCzITLm1tby52MS5QYXJ0eUludml0ZUgAEiMKBWd1aWxkGBIgASgLMhIubW1vLnYxLkd1aWxkU3RhdGVIABIrCgxndWlsZF9pbnZpdGUYEyABKAsyEy5tbW8udjEuR3VpbGRJbnZpdGVIABIlCgdmcmllbmRzGBQgASgLMhIubW1vLnYxLkZyaWVuZExpc3RIABIiCgVidWZmcxgPIAEoCzIRLm1tby52MS5CdWZmU3RhdGVIABIgCgZoZWFsZWQYFSABKAsyDi5tbW8udjEuSGVhbGVkSAASJAoIc2hpZWxkZWQYFiABKAsyEC5tbW8udjEuU2hpZWxkZWRIABIkCghhYnNvcmJlZBgXIAEoCzIQLm1tby52MS5BYnNvcmJlZEgAEiUKCXNraWxsX2JhchgYIAEoCzIQLm1tby52MS5Ta2lsbEJhckgAEigKCHBhc3NpdmVzGBkgASgLMhQubW1vLnYxLlBhc3NpdmVTdGF0ZUgAEicKCmJvc3NfcGhhc2UYGiABKAsyES5tbW8udjEuQm9zc1BoYXNlSABCBgoEYm9keUoECAsQDCJmCgtEYW1hZ2VEZWFsdBIRCglzb3VyY2VfaWQYASABKA0SEQoJdGFyZ2V0X2lkGAIgASgNEg4KBmFtb3VudBgDIAEoDRIQCghjcml0aWNhbBgEIAEoCBIPCgdlbGVtZW50GAUgASgJIjIKCkVudGl0eURpZWQSEQoJZW50aXR5X2lkGAEgASgNEhEKCWtpbGxlcl9pZBgCIAEoDSJFCglTa2lsbENhc3QSEQoJY2FzdGVyX2lkGAEgASgNEhAKCHNraWxsX2lkGAIgASgJEhMKC2ZhY2luZ19sZWZ0GAMgASgIIlcKCUJvc3NQaGFzZRIRCgllbnRpdHlfaWQYASABKA0SDAoEbmFtZRgCIAEoCRINCgVwaGFzZRgDIAEoCRIKCgJocBgEIAEoDRIOCgZocF9tYXgYBSABKA0iOgoJRXhwR2FpbmVkEg4KBmFtb3VudBgBIAEoBBINCgV0b3RhbBgCIAEoBBIOCgZzaGFyZWQYAyABKAgiLQoHTGV2ZWxVcBINCgVsZXZlbBgBIAEoDRITCgtleHBfdG9fbmV4dBgCIAEoBCJCCg1XYXlwb2ludEZvdW5kEhMKC3dheXBvaW50X2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDgoGbWFwX2lkGAMgASgJIksKDVBvcnRhbFJlZnVzZWQSEgoKdGFyZ2V0X21hcBgBIAEoCRIWCg5yZXF1aXJlZF9sZXZlbBgCIAEoDRIOCgZyZWFzb24YAyABKAkiDgoMT3BlbldvcmxkTWFwImQKBlRyYXZlbBIVCgt3YXlwb2ludF9pZBgBIAEoCUgAEh0KE2NoYW5uZWxfaW5zdGFuY2VfaWQYAiABKARIABIVCgtuZXdfY2hhbm5lbBgDIAEoCEgAQg0KC2Rlc3RpbmF0aW9uIrcBCghXb3JsZE1hcBIgCgRtYXBzGAEgAygLMhIubW1vLnYxLk1hcFN1bW1hcnkSKgoJd2F5cG9pbnRzGAIgAygLMhcubW1vLnYxLldheXBvaW50U3VtbWFyeRIoCghjaGFubmVscxgDIAMoCzIWLm1tby52MS5DaGFubmVsU3VtbWFyeRIWCg5jdXJyZW50X21hcF9pZBgEIAEoCRIbChNjdXJyZW50X2luc3RhbmNlX2lkGAUgASgEImEKCk1hcFN1bW1hcnkSDgoGbWFwX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSEQoJbWluX2xldmVsGAMgASgFEhEKCW1heF9sZXZlbBgEIAEoBRIPCgdwcml2YXRlGAUgASgIIkQKD1dheXBvaW50U3VtbWFyeRITCgt3YXlwb2ludF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBm1hcF9pZBgDIAEoCSJqCg5DaGFubmVsU3VtbWFyeRITCgtpbnN0YW5jZV9pZBgBIAEoBBIPCgdjaGFubmVsGAIgASgNEg8KB3BsYXllcnMYAyABKA0SEAoIY2FwYWNpdHkYBCABKA0SDwoHY3VycmVudBgFIAEoCCJOCghDaGF0U2VuZBIkCgdjaGFubmVsGAEgASgOMhMubW1vLnYxLkNoYXRDaGFubmVsEgwKBGJvZHkYAiABKAkSDgoGdGFyZ2V0GAMgASgJInYKCENoYXRMaW5lEiQKB2NoYW5uZWwYASABKA4yEy5tbW8udjEuQ2hhdENoYW5uZWwSDAoEZnJvbRgCIAEoCRIMCgRib2R5GAMgASgJEhAKCG91dGdvaW5nGAQgASgIEhYKDnNlcnZlcl90aW1lX21zGAUgASgDIkMKDVN5c3RlbU1lc3NhZ2USDAoEYm9keRgBIAEoCRIkCgdjaGFubmVsGAIgASgOMhMubW1vLnYxLkNoYXRDaGFubmVsItwBCgtQYXJ0eUFjdGlvbhImCgRraW5kGAEgASgOMhgubW1vLnYxLlBhcnR5QWN0aW9uLktpbmQSDgoGdGFyZ2V0GAIgASgJIpQBCgRLaW5kEhQKEEtJTkRfVU5TUEVDSUZJRUQQABIPCgtLSU5EX0lOVklURRABEg8KC0tJTkRfQUNDRVBUEAISEAoMS0lORF9ERUNMSU5FEAMSDgoKS0lORF9MRUFWRRAEEg0KCUtJTkRfS0lDSxAFEhAKDEtJTkRfUFJPTU9URRAGEhEKDUtJTkRfU0VUX0xPT1QQByKKAQoKUGFydHlTdGF0ZRIQCghwYXJ0eV9pZBgBIAEoCRIbChNsZWFkZXJfY2hhcmFjdGVyX2lkGAIgASgJEiQKB21lbWJlcnMYAyADKAsyEy5tbW8udjEuUGFydHlNZW1iZXISGQoRc2VsZl9jaGFyYWN0ZXJfaWQYBCABKAkSDAoEbG9vdBgFIAEoCSJ8CgtQYXJ0eU1lbWJlchIUCgxjaGFyYWN0ZXJfaWQYASABKAkSDAoEbmFtZRgCIAEoCRINCgVsZXZlbBgDIAEoDRIKCgJocBgEIAEoDRIOCgZocF9tYXgYBSABKA0SDgoGbWFwX2lkGAYgASgJEg4KBm9ubGluZRgHIAEoCCI3CgtQYXJ0eUludml0ZRIRCglmcm9tX25hbWUYASABKAkSFQoNZXhwaXJlc19pbl9tcxgCIAEoAyL+AQoLR3VpbGRBY3Rpb24SJgoEa2luZBgBIAEoDjIYLm1tby52MS5HdWlsZEFjdGlvbi5LaW5kEg4KBnRhcmdldBgCIAEoCSK2AQoES2luZBIUChBLSU5EX1VOU1BFQ0lGSUVEEAASDwoLS0lORF9DUkVBVEUQARIPCgtLSU5EX0lOVklURRACEg8KC0tJTkRfQUNDRVBUEAMSEAoMS0lORF9ERUNMSU5FEAQSDgoKS0lORF9MRUFWRRAFEg0KCUtJTkRfS0lDSxAGEhAKDEtJTkRfUFJPTU9URRAHEg8KC0tJTkRfREVNT1RFEAgSEQoNS0lORF9TRVRfTU9URBAJIm4KCkd1aWxkU3RhdGUSEAoIZ3VpbGRfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIMCgRtb3RkGAMgASgJEiQKB21lbWJlcnMYBCADKAsyEy5tbW8udjEuR3VpbGRNZW1iZXISDAoEcmFuaxgFIAEoDSJeCgtHdWlsZE1lbWJlchIUCgxjaGFyYWN0ZXJfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIMCgRyYW5rGAMgASgNEg0KBWxldmVsGAQgASgNEg4KBm9ubGluZRgFIAEoCCJLCgtHdWlsZEludml0ZRISCgpndWlsZF9uYW1lGAEgASgJEhEKCWZyb21fbmFtZRgCIAEoCRIVCg1leHBpcmVzX2luX21zGAMgASgDIqkBCgxTb2NpYWxBY3Rpb24SJwoEa2luZBgBIAEoDjIZLm1tby52MS5Tb2NpYWxBY3Rpb24uS2luZBIOCgZ0YXJnZXQYAiABKAkiYAoES2luZBIUChBLSU5EX1VOU1BFQ0lGSUVEEAASEwoPS0lORF9BRERfRlJJRU5EEAESFgoSS0lORF9SRU1PVkVfRlJJRU5EEAISFQoRS0lORF9MSVNUX0ZSSUVORFMQAyIyCgpGcmllbmRMaXN0EiQKB2ZyaWVuZHMYASADKAsyEy5tbW8udjEuRnJpZW5kRW50cnkiYAoLRnJpZW5kRW50cnkSFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFbGV2ZWwYAyABKA0SDgoGb25saW5lGAQgASgIEg4KBm1hcF9pZBgFIAEoCSJDCglCdWZmU3RhdGUSEQoJZW50aXR5X2lkGAEgASgNEiMKBWJ1ZmZzGAIgAygLMhQubW1vLnYxLkJ1ZmZJbnN0YW5jZSJkCgxCdWZmSW5zdGFuY2USDwoHYnVmZl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBnN0YWNrcxgDIAEoDRIUCgxyZW1haW5pbmdfbXMYBCABKA0SDwoHaGFybWZ1bBgFIAEoCCIrCgZIZWFsZWQSEQoJZW50aXR5X2lkGAEgASgNEg4KBmFtb3VudBgCIAEoDSItCghTaGllbGRlZBIRCgllbnRpdHlfaWQYASABKA0SDgoGYW1vdW50GAIgASgNIkAKCEFic29yYmVkEhEKCWVudGl0eV9pZBgBIAEoDRIOCgZhbW91bnQYAiABKA0SEQoJcmVtYWluaW5nGAMgASgNIkAKDFNldFNraWxsU2xvdBIMCgRzbG90GAEgASgNEhAKCHNraWxsX2lkGAIgASgJEhAKCHN1cHBvcnRzGAMgAygJInYKCFNraWxsQmFyEiAKBXNsb3RzGAEgAygLMhEubW1vLnYxLlNraWxsU2xvdBIhCgVrbm93bhgCIAMoCzISLm1tby52MS5Lbm93blNraWxsEiUKCHN1cHBvcnRzGAMgAygLMhMubW1vLnYxLlN1cHBvcnRJbmZvInEKCVNraWxsU2xvdBIQCghza2lsbF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJhbmsYAyABKA0SEwoLY29vbGRvd25fbXMYBCABKA0SDwoHY29zdF9tcBgFIAEoDRIQCghzdXBwb3J0cxgGIAMoCSJaCgpLbm93blNraWxsEhAKCHNraWxsX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEcmFuaxgDIAEoDRIQCghtYXhfcmFuaxgEIAEoDRIMCgR0YWdzGAUgAygJIj0KC1N1cHBvcnRJbmZvEhIKCnN1cHBvcnRfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIMCgR0YWdzGAMgAygJIlUKDVBhc3NpdmVBY3Rpb24SEgoIYWxsb2NhdGUYASABKA1IABIQCgZyZWZ1bmQYAiABKA1IABIUCgpyZXNwZWNfYWxsGAMgASgISABCCAoGYWN0aW9uImEKDFBhc3NpdmVTdGF0ZRIRCglhbGxvY2F0ZWQYASADKA0SEgoKc3RhcnRfbm9kZRgCIAEoDRIUCgxzcGVudF9wb2ludHMYAyABKA0SFAoMdG90YWxfcG9pbnRzGAQgASgNImoKCUxvb3RUYWtlbhIRCgllbnRpdHlfaWQYASABKA0SDwoHaXRlbV9pZBgCIAEoCRILCgNxdHkYAyABKA0SDAoEZ29sZBgEIAEoDRIOCgZmYWlsZWQYBSABKAgSDgoGcmVhc29uGAYgASgJIpYBCglJbnZlbnRvcnkSIgoHY2FycmllZBgBIAMoCzIRLm1tby52MS5JdGVtU3RhY2sSIwoIZXF1aXBwZWQYAiADKAsyES5tbW8udjEuSXRlbVN0YWNrEhAKCGNhcGFjaXR5GAMgASgNEgwKBGdvbGQYBCABKAQSIAoFc3RhdHMYBSADKAsyES5tbW8udjEuU3RhdFZhbHVlIscBCglJdGVtU3RhY2sSDwoHaXRlbV9pZBgBIAEoCRIPCgdiYXNlX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSDgoGcmFyaXR5GAQgASgJEgwKBHNsb3QYBSABKA0SDQoFc3RhY2sYBiABKA0SEgoKaXRlbV9sZXZlbBgHIAEoDRISCgplcXVpcF9zbG90GAggASgJEhYKDnJlcXVpcmVkX2xldmVsGAkgASgNEh0KBG1vZHMYCiADKAsyDy5tbW8udjEuSXRlbU1vZCJUCgdJdGVtTW9kEgwKBHN0YXQYASABKAkSDAoEa2luZBgCIAEoCRINCgV2YWx1ZRgDIAEoEhIMCgR0aWVyGAQgASgNEhAKCGltcGxpY2l0GAUgASgIIigKCVN0YXRWYWx1ZRIMCgRzdGF0GAEgASgJEg0KBXZhbHVlGAIgASgSIi8KDFBsYXllckpvaW5lZBIRCgllbnRpdHlfaWQYASABKA0SDAoEbmFtZRgCIAEoCSIfCgpQbGF5ZXJMZWZ0EhEKCWVudGl0eV9pZBgBIAEoDSpFCgxJbnRlcmFjdEtpbmQSHQoZSU5URVJBQ1RfS0lORF9VTlNQRUNJRklFRBAAEhYKEklOVEVSQUNUX0tJTkRfTE9PVBABKqUBCg5JdGVtQWN0aW9uS2luZBIgChxJVEVNX0FDVElPTl9LSU5EX1VOU1BFQ0lGSUVEEAASGQoVSVRFTV9BQ1RJT05fS0lORF9NT1ZFEAESGgoWSVRFTV9BQ1RJT05fS0lORF9FUVVJUBACEhwKGElURU1fQUNUSU9OX0tJTkRfVU5FUVVJUBADEhwKGElURU1fQUNUSU9OX0tJTkRfREVTVFJPWRAEKs4BCgpFbnRpdHlLaW5kEhsKF0VOVElUWV9LSU5EX1VOU1BFQ0lGSUVEEAASFgoSRU5USVRZX0tJTkRfUExBWUVSEAESEwoPRU5USVRZX0tJTkRfTU9CEAISFAoQRU5USVRZX0tJTkRfRFJPUBADEhMKD0VOVElUWV9LSU5EX05QQxAEEhoKFkVOVElUWV9LSU5EX1BST0pFQ1RJTEUQBRIUChBFTlRJVFlfS0lORF9BUkVBEAYSGQoVRU5USVRZX0tJTkRfVEVMRUdSQVBIEAcqmwEKC0VudGl0eUZpZWxkEhwKGEVOVElUWV9GSUVMRF9VTlNQRUNJRklFRBAAEhQKEEVOVElUWV9GSUVMRF9QT1MQARIUChBFTlRJVFlfRklFTERfVkVMEAISFgoSRU5USVRZX0ZJRUxEX0ZMQUdTEAMSFQoRRU5USVRZX0ZJRUxEX0FOSU0QBBITCg9FTlRJVFlfRklFTERfSFAQBSqVAQoKRW50aXR5RmxhZxIbChdFTlRJVFlfRkxBR19VTlNQRUNJRklFRBAAEhgKFEVOVElUWV9GTEFHX0dST1VOREVEEAESGAoURU5USVRZX0ZMQUdfQ0xJTUJJTkcQAhIbChdFTlRJVFlfRkxBR19GQUNJTkdfTEVGVBADEhkKFUVOVElUWV9GTEFHX0pVTVBfSEVMRBAEKqYBCgtDaGF0Q2hhbm5lbBIcChhDSEFUX0NIQU5ORUxfVU5TUEVDSUZJRUQQABIWChJDSEFUX0NIQU5ORUxfTE9DQUwQARIXChNDSEFUX0NIQU5ORUxfR0xPQkFMEAISGAoUQ0hBVF9DSEFOTkVMX1dISVNQRVIQAxIWChJDSEFUX0NIQU5ORUxfUEFSVFkQBBIWChJDSEFUX0NIQU5ORUxfR1VJTEQQBUI5WjdnaXRodWIuY29tL2N0cmwtcmVzZWFyY2gvbW1vL2ludGVybmFsL3dpcmUvbW1vL3YxO21tb3YxYgZwcm90bzM");
 
 /**
  * Envelope is exactly one WebSocket binary frame.
@@ -958,6 +958,12 @@ export type Event = Message<"mmo.v1.Event"> & {
      */
     value: PassiveState;
     case: "passives";
+  } | {
+    /**
+     * @generated from field: mmo.v1.BossPhase boss_phase = 26;
+     */
+    value: BossPhase;
+    case: "bossPhase";
   } | { case: undefined; value?: undefined };
 };
 
@@ -1059,6 +1065,51 @@ export const SkillCastSchema: GenMessage<SkillCast> = /*@__PURE__*/
   messageDesc(file_mmo_v1_game, 18);
 
 /**
+ * BossPhase announces an encounter changing what it is doing.
+ *
+ * Sent as an event rather than left for the client to infer from a health bar,
+ * because a phase change is the fight telling a party to do something
+ * different, and a party that misses it does not.
+ *
+ * @generated from message mmo.v1.BossPhase
+ */
+export type BossPhase = Message<"mmo.v1.BossPhase"> & {
+  /**
+   * @generated from field: uint32 entity_id = 1;
+   */
+  entityId: number;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * The phase's own name, or "enraged" when the phase's clock has run out.
+   *
+   * @generated from field: string phase = 3;
+   */
+  phase: string;
+
+  /**
+   * @generated from field: uint32 hp = 4;
+   */
+  hp: number;
+
+  /**
+   * @generated from field: uint32 hp_max = 5;
+   */
+  hpMax: number;
+};
+
+/**
+ * Describes the message mmo.v1.BossPhase.
+ * Use `create(BossPhaseSchema)` to create a new message.
+ */
+export const BossPhaseSchema: GenMessage<BossPhase> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 19);
+
+/**
  * @generated from message mmo.v1.ExpGained
  */
 export type ExpGained = Message<"mmo.v1.ExpGained"> & {
@@ -1086,7 +1137,7 @@ export type ExpGained = Message<"mmo.v1.ExpGained"> & {
  * Use `create(ExpGainedSchema)` to create a new message.
  */
 export const ExpGainedSchema: GenMessage<ExpGained> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 19);
+  messageDesc(file_mmo_v1_game, 20);
 
 /**
  * @generated from message mmo.v1.LevelUp
@@ -1108,7 +1159,7 @@ export type LevelUp = Message<"mmo.v1.LevelUp"> & {
  * Use `create(LevelUpSchema)` to create a new message.
  */
 export const LevelUpSchema: GenMessage<LevelUp> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 20);
+  messageDesc(file_mmo_v1_game, 21);
 
 /**
  * WaypointFound announces a fast-travel destination unlocked by visiting it.
@@ -1140,7 +1191,7 @@ export type WaypointFound = Message<"mmo.v1.WaypointFound"> & {
  * Use `create(WaypointFoundSchema)` to create a new message.
  */
 export const WaypointFoundSchema: GenMessage<WaypointFound> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 21);
+  messageDesc(file_mmo_v1_game, 22);
 
 /**
  * PortalRefused explains why a transition did not happen.
@@ -1172,7 +1223,7 @@ export type PortalRefused = Message<"mmo.v1.PortalRefused"> & {
  * Use `create(PortalRefusedSchema)` to create a new message.
  */
 export const PortalRefusedSchema: GenMessage<PortalRefused> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 22);
+  messageDesc(file_mmo_v1_game, 23);
 
 /**
  * OpenWorldMap asks for everything the map screen shows.
@@ -1191,7 +1242,7 @@ export type OpenWorldMap = Message<"mmo.v1.OpenWorldMap"> & {
  * Use `create(OpenWorldMapSchema)` to create a new message.
  */
 export const OpenWorldMapSchema: GenMessage<OpenWorldMap> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 23);
+  messageDesc(file_mmo_v1_game, 24);
 
 /**
  * Travel is a request to move somewhere without walking: a fast-travel
@@ -1238,7 +1289,7 @@ export type Travel = Message<"mmo.v1.Travel"> & {
  * Use `create(TravelSchema)` to create a new message.
  */
 export const TravelSchema: GenMessage<Travel> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 24);
+  messageDesc(file_mmo_v1_game, 25);
 
 /**
  * WorldMap is the map screen: where the player can go, and where they are.
@@ -1277,7 +1328,7 @@ export type WorldMap = Message<"mmo.v1.WorldMap"> & {
  * Use `create(WorldMapSchema)` to create a new message.
  */
 export const WorldMapSchema: GenMessage<WorldMap> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 25);
+  messageDesc(file_mmo_v1_game, 26);
 
 /**
  * @generated from message mmo.v1.MapSummary
@@ -1317,7 +1368,7 @@ export type MapSummary = Message<"mmo.v1.MapSummary"> & {
  * Use `create(MapSummarySchema)` to create a new message.
  */
 export const MapSummarySchema: GenMessage<MapSummary> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 26);
+  messageDesc(file_mmo_v1_game, 27);
 
 /**
  * WaypointSummary is one fast-travel destination. Only unlocked waypoints are
@@ -1348,7 +1399,7 @@ export type WaypointSummary = Message<"mmo.v1.WaypointSummary"> & {
  * Use `create(WaypointSummarySchema)` to create a new message.
  */
 export const WaypointSummarySchema: GenMessage<WaypointSummary> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 27);
+  messageDesc(file_mmo_v1_game, 28);
 
 /**
  * ChannelSummary is one instance of the map the player is currently in.
@@ -1390,7 +1441,7 @@ export type ChannelSummary = Message<"mmo.v1.ChannelSummary"> & {
  * Use `create(ChannelSummarySchema)` to create a new message.
  */
 export const ChannelSummarySchema: GenMessage<ChannelSummary> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 28);
+  messageDesc(file_mmo_v1_game, 29);
 
 /**
  * ChatSend is a player saying something.
@@ -1426,7 +1477,7 @@ export type ChatSend = Message<"mmo.v1.ChatSend"> & {
  * Use `create(ChatSendSchema)` to create a new message.
  */
 export const ChatSendSchema: GenMessage<ChatSend> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 29);
+  messageDesc(file_mmo_v1_game, 30);
 
 /**
  * ChatLine is something said, delivered.
@@ -1475,7 +1526,7 @@ export type ChatLine = Message<"mmo.v1.ChatLine"> & {
  * Use `create(ChatLineSchema)` to create a new message.
  */
 export const ChatLineSchema: GenMessage<ChatLine> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 30);
+  messageDesc(file_mmo_v1_game, 31);
 
 /**
  * SystemMessage is the server talking to one player: a refusal, a notice, a
@@ -1504,7 +1555,7 @@ export type SystemMessage = Message<"mmo.v1.SystemMessage"> & {
  * Use `create(SystemMessageSchema)` to create a new message.
  */
 export const SystemMessageSchema: GenMessage<SystemMessage> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 31);
+  messageDesc(file_mmo_v1_game, 32);
 
 /**
  * PartyAction is a request to change party membership.
@@ -1538,7 +1589,7 @@ export type PartyAction = Message<"mmo.v1.PartyAction"> & {
  * Use `create(PartyActionSchema)` to create a new message.
  */
 export const PartyActionSchema: GenMessage<PartyAction> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 32);
+  messageDesc(file_mmo_v1_game, 33);
 
 /**
  * @generated from enum mmo.v1.PartyAction.Kind
@@ -1589,7 +1640,7 @@ export enum PartyAction_Kind {
  * Describes the enum mmo.v1.PartyAction.Kind.
  */
 export const PartyAction_KindSchema: GenEnum<PartyAction_Kind> = /*@__PURE__*/
-  enumDesc(file_mmo_v1_game, 32, 0);
+  enumDesc(file_mmo_v1_game, 33, 0);
 
 /**
  * PartyState is the whole party, sent whenever any of it changes.
@@ -1638,7 +1689,7 @@ export type PartyState = Message<"mmo.v1.PartyState"> & {
  * Use `create(PartyStateSchema)` to create a new message.
  */
 export const PartyStateSchema: GenMessage<PartyState> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 33);
+  messageDesc(file_mmo_v1_game, 34);
 
 /**
  * PartyMember is one member frame.
@@ -1697,7 +1748,7 @@ export type PartyMember = Message<"mmo.v1.PartyMember"> & {
  * Use `create(PartyMemberSchema)` to create a new message.
  */
 export const PartyMemberSchema: GenMessage<PartyMember> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 34);
+  messageDesc(file_mmo_v1_game, 35);
 
 /**
  * @generated from message mmo.v1.PartyInvite
@@ -1723,7 +1774,7 @@ export type PartyInvite = Message<"mmo.v1.PartyInvite"> & {
  * Use `create(PartyInviteSchema)` to create a new message.
  */
 export const PartyInviteSchema: GenMessage<PartyInvite> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 35);
+  messageDesc(file_mmo_v1_game, 36);
 
 /**
  * GuildAction is a request to change a guild.
@@ -1753,7 +1804,7 @@ export type GuildAction = Message<"mmo.v1.GuildAction"> & {
  * Use `create(GuildActionSchema)` to create a new message.
  */
 export const GuildActionSchema: GenMessage<GuildAction> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 36);
+  messageDesc(file_mmo_v1_game, 37);
 
 /**
  * @generated from enum mmo.v1.GuildAction.Kind
@@ -1814,7 +1865,7 @@ export enum GuildAction_Kind {
  * Describes the enum mmo.v1.GuildAction.Kind.
  */
 export const GuildAction_KindSchema: GenEnum<GuildAction_Kind> = /*@__PURE__*/
-  enumDesc(file_mmo_v1_game, 36, 0);
+  enumDesc(file_mmo_v1_game, 37, 0);
 
 /**
  * GuildState is the whole guild, sent whenever any of it changes.
@@ -1860,7 +1911,7 @@ export type GuildState = Message<"mmo.v1.GuildState"> & {
  * Use `create(GuildStateSchema)` to create a new message.
  */
 export const GuildStateSchema: GenMessage<GuildState> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 37);
+  messageDesc(file_mmo_v1_game, 38);
 
 /**
  * @generated from message mmo.v1.GuildMember
@@ -1900,7 +1951,7 @@ export type GuildMember = Message<"mmo.v1.GuildMember"> & {
  * Use `create(GuildMemberSchema)` to create a new message.
  */
 export const GuildMemberSchema: GenMessage<GuildMember> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 38);
+  messageDesc(file_mmo_v1_game, 39);
 
 /**
  * @generated from message mmo.v1.GuildInvite
@@ -1927,7 +1978,7 @@ export type GuildInvite = Message<"mmo.v1.GuildInvite"> & {
  * Use `create(GuildInviteSchema)` to create a new message.
  */
 export const GuildInviteSchema: GenMessage<GuildInvite> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 39);
+  messageDesc(file_mmo_v1_game, 40);
 
 /**
  * SocialAction manages the friends list.
@@ -1953,7 +2004,7 @@ export type SocialAction = Message<"mmo.v1.SocialAction"> & {
  * Use `create(SocialActionSchema)` to create a new message.
  */
 export const SocialActionSchema: GenMessage<SocialAction> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 40);
+  messageDesc(file_mmo_v1_game, 41);
 
 /**
  * @generated from enum mmo.v1.SocialAction.Kind
@@ -1984,7 +2035,7 @@ export enum SocialAction_Kind {
  * Describes the enum mmo.v1.SocialAction.Kind.
  */
 export const SocialAction_KindSchema: GenEnum<SocialAction_Kind> = /*@__PURE__*/
-  enumDesc(file_mmo_v1_game, 40, 0);
+  enumDesc(file_mmo_v1_game, 41, 0);
 
 /**
  * FriendList is the whole list, sent when it changes or is asked for.
@@ -2007,7 +2058,7 @@ export type FriendList = Message<"mmo.v1.FriendList"> & {
  * Use `create(FriendListSchema)` to create a new message.
  */
 export const FriendListSchema: GenMessage<FriendList> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 41);
+  messageDesc(file_mmo_v1_game, 42);
 
 /**
  * @generated from message mmo.v1.FriendEntry
@@ -2047,7 +2098,7 @@ export type FriendEntry = Message<"mmo.v1.FriendEntry"> & {
  * Use `create(FriendEntrySchema)` to create a new message.
  */
 export const FriendEntrySchema: GenMessage<FriendEntry> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 42);
+  messageDesc(file_mmo_v1_game, 43);
 
 /**
  * BuffState is everything currently on a character, sent whenever it changes.
@@ -2079,7 +2130,7 @@ export type BuffState = Message<"mmo.v1.BuffState"> & {
  * Use `create(BuffStateSchema)` to create a new message.
  */
 export const BuffStateSchema: GenMessage<BuffState> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 43);
+  messageDesc(file_mmo_v1_game, 44);
 
 /**
  * @generated from message mmo.v1.BuffInstance
@@ -2123,7 +2174,7 @@ export type BuffInstance = Message<"mmo.v1.BuffInstance"> & {
  * Use `create(BuffInstanceSchema)` to create a new message.
  */
 export const BuffInstanceSchema: GenMessage<BuffInstance> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 44);
+  messageDesc(file_mmo_v1_game, 45);
 
 /**
  * Healed is sent rather than left for the client to infer from a rising
@@ -2150,7 +2201,7 @@ export type Healed = Message<"mmo.v1.Healed"> & {
  * Use `create(HealedSchema)` to create a new message.
  */
 export const HealedSchema: GenMessage<Healed> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 45);
+  messageDesc(file_mmo_v1_game, 46);
 
 /**
  * Shielded announces an absorption pool, which is not visible in the health
@@ -2175,7 +2226,7 @@ export type Shielded = Message<"mmo.v1.Shielded"> & {
  * Use `create(ShieldedSchema)` to create a new message.
  */
 export const ShieldedSchema: GenMessage<Shielded> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 46);
+  messageDesc(file_mmo_v1_game, 47);
 
 /**
  * Absorbed reports damage a shield soaked. Without it a hit that vanished
@@ -2205,7 +2256,7 @@ export type Absorbed = Message<"mmo.v1.Absorbed"> & {
  * Use `create(AbsorbedSchema)` to create a new message.
  */
 export const AbsorbedSchema: GenMessage<Absorbed> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 47);
+  messageDesc(file_mmo_v1_game, 48);
 
 /**
  * SetSkillSlot rearranges the skill bar.
@@ -2243,7 +2294,7 @@ export type SetSkillSlot = Message<"mmo.v1.SetSkillSlot"> & {
  * Use `create(SetSkillSlotSchema)` to create a new message.
  */
 export const SetSkillSlotSchema: GenMessage<SetSkillSlot> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 48);
+  messageDesc(file_mmo_v1_game, 49);
 
 /**
  * SkillBar is the whole loadout: what is on the bar, what the character knows,
@@ -2273,7 +2324,7 @@ export type SkillBar = Message<"mmo.v1.SkillBar"> & {
  * Use `create(SkillBarSchema)` to create a new message.
  */
 export const SkillBarSchema: GenMessage<SkillBar> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 49);
+  messageDesc(file_mmo_v1_game, 50);
 
 /**
  * @generated from message mmo.v1.SkillSlot
@@ -2318,7 +2369,7 @@ export type SkillSlot = Message<"mmo.v1.SkillSlot"> & {
  * Use `create(SkillSlotSchema)` to create a new message.
  */
 export const SkillSlotSchema: GenMessage<SkillSlot> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 50);
+  messageDesc(file_mmo_v1_game, 51);
 
 /**
  * @generated from message mmo.v1.KnownSkill
@@ -2358,7 +2409,7 @@ export type KnownSkill = Message<"mmo.v1.KnownSkill"> & {
  * Use `create(KnownSkillSchema)` to create a new message.
  */
 export const KnownSkillSchema: GenMessage<KnownSkill> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 51);
+  messageDesc(file_mmo_v1_game, 52);
 
 /**
  * @generated from message mmo.v1.SupportInfo
@@ -2385,7 +2436,7 @@ export type SupportInfo = Message<"mmo.v1.SupportInfo"> & {
  * Use `create(SupportInfoSchema)` to create a new message.
  */
 export const SupportInfoSchema: GenMessage<SupportInfo> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 52);
+  messageDesc(file_mmo_v1_game, 53);
 
 /**
  * PassiveAction changes the passive tree.
@@ -2428,7 +2479,7 @@ export type PassiveAction = Message<"mmo.v1.PassiveAction"> & {
  * Use `create(PassiveActionSchema)` to create a new message.
  */
 export const PassiveActionSchema: GenMessage<PassiveAction> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 53);
+  messageDesc(file_mmo_v1_game, 54);
 
 /**
  * PassiveState is what a character holds and what they can afford.
@@ -2470,7 +2521,7 @@ export type PassiveState = Message<"mmo.v1.PassiveState"> & {
  * Use `create(PassiveStateSchema)` to create a new message.
  */
 export const PassiveStateSchema: GenMessage<PassiveState> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 54);
+  messageDesc(file_mmo_v1_game, 55);
 
 /**
  * @generated from message mmo.v1.LootTaken
@@ -2517,7 +2568,7 @@ export type LootTaken = Message<"mmo.v1.LootTaken"> & {
  * Use `create(LootTakenSchema)` to create a new message.
  */
 export const LootTakenSchema: GenMessage<LootTaken> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 55);
+  messageDesc(file_mmo_v1_game, 56);
 
 /**
  * Inventory is the player's items, sent in full whenever they change.
@@ -2564,7 +2615,7 @@ export type Inventory = Message<"mmo.v1.Inventory"> & {
  * Use `create(InventorySchema)` to create a new message.
  */
 export const InventorySchema: GenMessage<Inventory> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 56);
+  messageDesc(file_mmo_v1_game, 57);
 
 /**
  * @generated from message mmo.v1.ItemStack
@@ -2634,7 +2685,7 @@ export type ItemStack = Message<"mmo.v1.ItemStack"> & {
  * Use `create(ItemStackSchema)` to create a new message.
  */
 export const ItemStackSchema: GenMessage<ItemStack> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 57);
+  messageDesc(file_mmo_v1_game, 58);
 
 /**
  * ItemMod is one rolled modifier, carrying enough to render a tooltip line
@@ -2680,7 +2731,7 @@ export type ItemMod = Message<"mmo.v1.ItemMod"> & {
  * Use `create(ItemModSchema)` to create a new message.
  */
 export const ItemModSchema: GenMessage<ItemMod> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 58);
+  messageDesc(file_mmo_v1_game, 59);
 
 /**
  * @generated from message mmo.v1.StatValue
@@ -2702,7 +2753,7 @@ export type StatValue = Message<"mmo.v1.StatValue"> & {
  * Use `create(StatValueSchema)` to create a new message.
  */
 export const StatValueSchema: GenMessage<StatValue> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 59);
+  messageDesc(file_mmo_v1_game, 60);
 
 /**
  * @generated from message mmo.v1.PlayerJoined
@@ -2724,7 +2775,7 @@ export type PlayerJoined = Message<"mmo.v1.PlayerJoined"> & {
  * Use `create(PlayerJoinedSchema)` to create a new message.
  */
 export const PlayerJoinedSchema: GenMessage<PlayerJoined> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 60);
+  messageDesc(file_mmo_v1_game, 61);
 
 /**
  * @generated from message mmo.v1.PlayerLeft
@@ -2741,7 +2792,7 @@ export type PlayerLeft = Message<"mmo.v1.PlayerLeft"> & {
  * Use `create(PlayerLeftSchema)` to create a new message.
  */
 export const PlayerLeftSchema: GenMessage<PlayerLeft> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 61);
+  messageDesc(file_mmo_v1_game, 62);
 
 /**
  * @generated from enum mmo.v1.InteractKind
@@ -2842,6 +2893,16 @@ export enum EntityKind {
    * @generated from enum value: ENTITY_KIND_AREA = 6;
    */
   AREA = 6,
+
+  /**
+   * A telegraph: the ground marker a boss puts down before an attack lands.
+   * An entity so it culls, layers, and interpolates like anything else, and
+   * so its disappearance is the attack landing rather than a separate
+   * message the client has to correlate.
+   *
+   * @generated from enum value: ENTITY_KIND_TELEGRAPH = 7;
+   */
+  TELEGRAPH = 7,
 }
 
 /**

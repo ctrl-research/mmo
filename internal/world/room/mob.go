@@ -59,6 +59,10 @@ type MobState struct {
 
 	// Killer is credited with the kill for experience and loot ownership.
 	Killer EntityID
+
+	// Boss is the encounter state, set on the first tick of a mob whose
+	// profile is "boss" and nil on everything else. See boss.go.
+	Boss *BossState
 }
 
 // phaseAI steps every mob's behaviour.
@@ -100,6 +104,15 @@ func (r *Room) stepMob(e *Entity) {
 
 	if m.Def.AI.Profile == content.AIPassive {
 		r.applyMobPhysics(e, 0)
+		return
+	}
+
+	// A boss runs its encounter instead of the ordinary state machine. Not on
+	// top of it: the two would fight over what the mob is doing, and an
+	// encounter that is sometimes overridden by a leash check is an encounter
+	// with a bug in it.
+	if m.Def.AI.Profile == content.AIBoss {
+		r.stepBoss(e)
 		return
 	}
 

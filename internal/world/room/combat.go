@@ -95,11 +95,60 @@ func (r *Room) castLinked(caster *Entity, linked *Linked) {
 	targets := r.resolveTargets(caster, skill)
 	source := r.randFor(caster.Layer)
 
+	// Split damage is divided here rather than inside applyEffect, because
+	// here is the only place that knows how many the cast landed on. Dividing
+	// the effect and letting the ordinary damage path run means a share is
+	// mitigated, resisted, and rolled for a critical exactly like any other
+	// hit -- there is no second damage pipeline to keep in step with the
+	// first.
+	effects := splitAmongTargets(linked.Effects, len(targets))
+
 	for _, target := range targets {
-		for i := range linked.Effects {
-			r.applyEffect(caster, target, skill, &linked.Effects[i], source)
+		for i := range effects {
+			r.applyEffect(caster, target, skill, &effects[i], source)
 		}
 	}
+}
+
+// splitAmongTargets turns each split_damage effect into an ordinary damage
+// effect worth its share, leaving everything else untouched.
+//
+// The list is only copied when there is something to rewrite, because every
+// cast in the game passes through here and almost none of them split.
+func splitAmongTargets(effects []content.Effect, targets int) []content.Effect {
+	if targets <= 1 {
+		// One target eats the whole thing. That is the mechanic working, not a
+		// case to soften: a hit meant for a party is supposed to be lethal to
+		// whoever takes it alone.
+		return effects
+	}
+
+	var out []content.Effect
+	for i := range effects {
+		if effects[i].Kind != content.EffectSplitDamage {
+			if out != nil {
+				out = append(out, effects[i])
+			}
+			continue
+		}
+
+		if out == nil {
+			out = make([]content.Effect, 0, len(effects))
+			out = append(out, effects[:i]...)
+		}
+
+		share := effects[i]
+		share.Kind = content.EffectDamage
+		share.BaseMin /= targets
+		share.BaseMax /= targets
+		share.ScaleAttack /= fixed.FromInt(targets)
+		out = append(out, share)
+	}
+
+	if out == nil {
+		return effects
+	}
+	return out
 }
 
 // resolveTargets finds what a cast hits.
@@ -217,7 +266,7 @@ func (r *Room) applyEffect(caster, target *Entity, skill *content.Skill, eff *co
 	}
 
 	switch eff.Kind {
-	case content.EffectDamage:
+	case content.EffectDamage, content.EffectSplitDamage:
 		amount, critical := r.rollDamage(caster, target, eff, source)
 		r.damage(caster, target, amount, critical, eff.Element)
 

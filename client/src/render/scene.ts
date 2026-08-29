@@ -10,7 +10,14 @@ import {
 } from "pixi.js";
 import { toPixels } from "@/sim/fixed";
 import { type Body, isFacingLeft } from "@/sim/body";
-import { KIND_DROP, KIND_MOB, type RenderedEntity } from "@/game/interpolator";
+import {
+  KIND_AREA,
+  KIND_DROP,
+  KIND_MOB,
+  KIND_PROJECTILE,
+  KIND_TELEGRAPH,
+  type RenderedEntity,
+} from "@/game/interpolator";
 import { Effects, drawHealthBar } from "./effects";
 import { theme, TILE } from "./theme";
 import { Sprites } from "./sprites";
@@ -366,6 +373,11 @@ class EntitySprite {
   #bars = new Graphics();
   #label: Text | null = null;
 
+  // When this entity first appeared on screen. A telegraph fills its bar from
+  // the client's own clock rather than from a per-tick update, so the whole
+  // wind-up costs one message; this is the clock it counts from.
+  #bornAt = 0;
+
   constructor(e: RenderedEntity) {
     // Anchored at the feet for the same reason the player is: sprites are
     // wider than the bodies they stand in.
@@ -383,7 +395,16 @@ class EntitySprite {
         style: new TextStyle({
           fontFamily: "ui-monospace, Menlo, monospace",
           fontSize: e.kind === KIND_MOB ? 10 : 11,
-          fill: e.kind === KIND_MOB ? theme.mobEdge : theme.nameText,
+          fontWeight: e.kind === KIND_TELEGRAPH ? "700" : "400",
+          fill:
+            e.kind === KIND_TELEGRAPH
+              ? theme.telegraph
+              : e.kind === KIND_MOB
+                ? theme.mobEdge
+                : theme.nameText,
+          // The one label that has to be readable over whatever it is drawn
+          // on top of, because it is drawn on top of the floor of a fight.
+          stroke: { color: 0x0b0d12, width: e.kind === KIND_TELEGRAPH ? 3 : 0 },
         }),
       });
       this.#label.anchor.set(0.5, 1);
@@ -397,6 +418,8 @@ class EntitySprite {
   }
 
   update(e: RenderedEntity, sprites: Sprites, now: number): void {
+    if (this.#bornAt === 0) this.#bornAt = now;
+
     const px = toPixels(e.x);
     const py = toPixels(e.y);
     const pw = toPixels(e.w);
@@ -419,6 +442,40 @@ class EntitySprite {
           Math.round(py + ph + Math.sin(now / 260 + e.id) * 2),
         );
         this.#sprite.visible = true;
+        break;
+      }
+
+      case KIND_PROJECTILE: {
+        // A bolt, drawn as a bolt. Before this it fell through to the branch
+        // below and was rendered as a tinted person, which is funny exactly
+        // once.
+        const r = Math.max(3, Math.min(pw, ph) / 2);
+        const cx = px + pw / 2;
+        const cy = py + ph / 2;
+        this.#gfx
+          .circle(cx, cy, r * 1.9)
+          .fill({ color: theme.projectile, alpha: 0.22 })
+          .circle(cx, cy, r)
+          .fill({ color: theme.projectile })
+          .circle(cx, cy, r * 0.45)
+          .fill({ color: theme.projectileCore });
+        break;
+      }
+
+      case KIND_AREA: {
+        // Ground effects breathe, so a patch of burning floor is obviously
+        // still burning rather than a mark left behind.
+        const pulse = 0.10 + 0.05 * Math.sin(now / 220 + e.id);
+        const r = Math.min(pw, ph) / 2;
+        this.#gfx
+          .circle(px + pw / 2, py + ph / 2, r)
+          .fill({ color: theme.area, alpha: pulse })
+          .stroke({ width: 2, color: theme.areaEdge, alpha: 0.7 });
+        break;
+      }
+
+      case KIND_TELEGRAPH: {
+        this.#drawTelegraph(e, px, py, pw, ph, now);
         break;
       }
 
@@ -473,10 +530,58 @@ class EntitySprite {
       this.#label.visible = e.kind !== KIND_MOB || (e.hp > 0 && e.hp < e.hpMax);
     }
   }
+
+  /**
+   * Draws a wind-up: the area an attack is about to cover, filling as it
+   * closes.
+   *
+   * The fill is the whole point. A static outline says "something is
+   * happening here"; a bar that visibly runs out says how long you have, which
+   * is the information a player is actually acting on. It is animated from the
+   * client's clock because the server sends the duration once, on entry, and
+   * then says nothing more until the attack lands.
+   */
+  #drawTelegraph(
+    e: RenderedEntity,
+    px: number,
+    py: number,
+    pw: number,
+    ph: number,
+    now: number,
+  ): void {
+    // hp is the ticks left when the marker appeared, hpMax the whole wind-up.
+    const totalMs = (e.hpMax / TICKS_PER_SECOND) * 1000;
+    const leftAtEntryMs = (e.hp / TICKS_PER_SECOND) * 1000;
+    const elapsed = leftAtEntryMs > 0 ? totalMs - leftAtEntryMs + (now - this.#bornAt) : 0;
+    const progress = totalMs > 0 ? clamp(elapsed / totalMs, 0, 1) : 1;
+
+    // Brightening as it closes, so the last moments read as urgent even at the
+    // edge of vision.
+    const alpha = 0.16 + 0.20 * progress;
+
+    this.#gfx
+      .rect(px, py, pw, ph)
+      .fill({ color: theme.telegraph, alpha })
+      .rect(px, py, pw * progress, ph)
+      .fill({ color: theme.telegraphFill, alpha: 0.34 })
+      .rect(px, py, pw, ph)
+      .stroke({ width: 2, color: theme.telegraph, alpha: 0.85 });
+  }
 }
 
+/** Ticks per second, matching the server's tick rate. */
+const TICKS_PER_SECOND = 20;
+
 function labelFor(e: RenderedEntity): string {
-  if (e.kind === KIND_DROP) return "";
+  // Loot, bolts, and ground effects are not named: a label over every coin and
+  // every spark would bury the map under text.
+  //
+  // A telegraph is the exception, and it is why the name is carried at all.
+  // Knowing which attack is winding up is the difference between reading a
+  // fight and reacting to a red box -- and it is the whole of the counterplay
+  // when two abilities want opposite things, one asking the party to stack and
+  // the next to scatter.
+  if (e.kind === KIND_DROP || e.kind === KIND_PROJECTILE || e.kind === KIND_AREA) return "";
   return e.name;
 }
 

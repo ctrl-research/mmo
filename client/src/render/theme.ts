@@ -41,6 +41,17 @@ export const theme = {
   damageCrit: 0xffb347,
   damageTaken: 0xff7a7a,
 
+  // What the effect vocabulary spawns. A bolt reads hot, ground effects read
+  // as something you are standing in, and a telegraph reads as a warning --
+  // which means it has to be the one thing on screen that cannot be mistaken
+  // for scenery.
+  projectile: 0xffca6b,
+  projectileCore: 0xfff3d0,
+  area: 0xff7a4d,
+  areaEdge: 0xffb07a,
+  telegraph: 0xff4d4d,
+  telegraphFill: 0xff8a5c,
+
   nameText: 0xd7dce6,
   ghost: 0x2ecc71,
 } as const;

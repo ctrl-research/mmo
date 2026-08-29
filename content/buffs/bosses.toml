@@ -1,0 +1,50 @@
+# Buffs that belong to encounters.
+#
+# Separate from core.toml because these are not part of the shared vocabulary:
+# nothing a player casts should be able to reach them, and a designer reading
+# core.toml should not have to work out which entries are only ever held by a
+# boss.
+
+# The armour a boss gains on entering its last phase. A soft timer: it makes
+# the fight longer, which makes the hard timer below matter.
+[buff.king_hardened]
+name = "Hardened Shell"
+kind = "buff"
+duration_ms = 600000
+max_stacks = 1
+refresh_on_apply = true
+dispellable = false
+
+[[buff.king_hardened.stat_mods]]
+stat = "armour"
+increased = 0.80
+
+[[buff.king_hardened.stat_mods]]
+stat = "movement_speed"
+increased = -0.20
+
+# The hard timer.
+#
+# An enrage exists so a fight cannot be won by outlasting it. A party that
+# cannot beat the mechanics should lose to them rather than grind through on
+# health potions, because a boss you can beat by refusing to engage with it is
+# a boss with no mechanics at all.
+[buff.king_frenzy]
+name = "Frenzy"
+kind = "buff"
+duration_ms = 600000
+max_stacks = 1
+refresh_on_apply = true
+dispellable = false
+
+[[buff.king_frenzy.stat_mods]]
+stat = "attack"
+increased = 3.00
+
+[[buff.king_frenzy.stat_mods]]
+stat = "attack_speed"
+increased = 1.00
+
+[[buff.king_frenzy.stat_mods]]
+stat = "movement_speed"
+increased = 0.50

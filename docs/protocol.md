@@ -234,10 +234,19 @@ message Event {
     ChatLine     chat      = 4;
     LootDropped  loot      = 5;
     LevelUp      level_up  = 6;
+    BossPhase    boss_phase = 7;
     // ...
   }
 }
 ```
+
+`BossPhase` is the shape of the rule: a phase change is the fight telling a party to do something different, and a party that misses it does not. Left for the client to notice in a falling health bar, it would arrive as "the numbers got worse" rather than "the fight changed".
+
+### Telegraphs are entities, not events
+
+A boss's wind-up marker enters and leaves a client's view through the same path as a mob or a bolt — one entity kind among the others — rather than as a pair of "started" and "finished" messages the client has to correlate. There is no second visibility system to keep in step with the first, and a marker cannot outlive the layer it belongs to.
+
+Its `hp` and `hp_max` carry the wind-up: ticks remaining when the marker appeared, out of the whole. Both are set once and never touched again, so the client fills the bar from its own clock and the entire wind-up costs one message rather than one per tick. Sending the *remainder* rather than the elapsed time is what makes a player who arrives mid-wind-up see the right amount of time left.
 
 ## Chat
 

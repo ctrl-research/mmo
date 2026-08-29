@@ -150,6 +150,22 @@ func sawPlayer(snaps []*mmov1.Snapshot, id uint32) bool {
 	return false
 }
 
+// fightTimeout is how long a driven fight is given to reach a kill.
+//
+// It takes a little over two seconds on an idle machine: walk three hundred
+// units, then land two swings half a second apart. The generous multiple is
+// for CI, where this package shares a runner with the whole suite under the
+// race detector and the driver's own ticker is the first thing to starve --
+// the character walks at whatever rate its intents actually get sent, while
+// the room ticks on regardless.
+//
+// Twenty seconds was not enough for that, and failed as "dealt damage but
+// never killed anything": far enough to reach a mob, not far enough to swing
+// at it twice. A timeout this far above the real duration cannot fail for
+// being slow, only for being broken -- and it costs nothing in the passing
+// case, which is every case.
+const fightTimeout = 90 * time.Second
+
 // A full combat loop over the wire: walk to a mob, hit it until it dies, gain
 // experience, and see loot appear.
 func TestFullCombatLoopOverTheWire(t *testing.T) {
@@ -163,7 +179,7 @@ func TestFullCombatLoopOverTheWire(t *testing.T) {
 	var snaps []*mmov1.Snapshot
 	sawDamage, sawDeath, sawExp := false, false, false
 
-	deadline := time.Now().Add(20 * time.Second)
+	deadline := time.Now().Add(fightTimeout)
 	for time.Now().Before(deadline) && !(sawDeath && sawExp) {
 		ev, sn := c.collect(250 * time.Millisecond)
 		snaps = append(snaps, sn...)
@@ -181,7 +197,7 @@ func TestFullCombatLoopOverTheWire(t *testing.T) {
 	}
 
 	if !sawDamage {
-		t.Fatal("never dealt damage after 20 seconds of running right and swinging")
+		t.Fatalf("never dealt damage after %s of running right and swinging", fightTimeout)
 	}
 	if !sawDeath {
 		t.Fatal("dealt damage but never killed anything")
@@ -241,7 +257,7 @@ func TestProgressionEventsAreNotBroadcast(t *testing.T) {
 	defer a.driveIntoTheFight()()
 
 	aliceGained := false
-	deadline := time.Now().Add(20 * time.Second)
+	deadline := time.Now().Add(fightTimeout)
 	for time.Now().Before(deadline) && !aliceGained {
 		ev, _ := a.collect(250 * time.Millisecond)
 		for _, e := range ev {
@@ -365,6 +381,16 @@ func TestEventEncodingRoundTrips(t *testing.T) {
 // cooldown, which under parallel test load is the difference between reaching
 // a kill and timing out.
 //
+// It swings both ways. Running right forever pins the character against the
+// far wall, where a mob that chased it is as likely to end up behind as in
+// front, and a driver that only ever swung forward would be a coin flip on
+// whether the fight happened there at all. It costs nothing to cover both.
+//
+// Every third attempt rather than every other, because attempts come twice as
+// often as the cooldown allows: the server refuses one of each pair, and with
+// two directions alternating the accepted half would be the same direction
+// every time. Three against two has no such alias.
+//
 // Write errors are swallowed rather than failing the test. This runs on its
 // own goroutine, where t.Fatal only stops that goroutine, and t.Cleanup closes
 // the connection once the test returns -- so a driver still mid-write at that
@@ -398,7 +424,7 @@ func (c *client) driveIntoTheFight() (stop func()) {
 					continue
 				}
 				if c.trySend(&mmov1.ClientMessage{Body: &mmov1.ClientMessage_Cast{
-					Cast: &mmov1.Cast{SkillId: "slash"},
+					Cast: &mmov1.Cast{SkillId: "slash", FacingLeft: (seq/5)%3 == 0},
 				}}) != nil {
 					return
 				}

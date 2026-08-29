@@ -359,44 +359,6 @@
           ]
         },
         {
-          "id": 17,
-          "name": "king",
-          "class": "mob_spawn",
-          "x": 860,
-          "y": 224,
-          "width": 0,
-          "height": 0,
-          "rotation": 0,
-          "visible": true,
-          "properties": [
-            {
-              "name": "mob_id",
-              "type": "string",
-              "value": "slime_king"
-            },
-            {
-              "name": "layer",
-              "type": "string",
-              "value": "shared"
-            },
-            {
-              "name": "respawn_ms",
-              "type": "int",
-              "value": 60000
-            },
-            {
-              "name": "max_alive",
-              "type": "int",
-              "value": 1
-            },
-            {
-              "name": "radius",
-              "type": "int",
-              "value": 0
-            }
-          ]
-        },
-        {
           "id": 18,
           "name": "to-forest",
           "class": "portal",

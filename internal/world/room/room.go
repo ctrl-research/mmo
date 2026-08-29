@@ -447,6 +447,9 @@ func (r *Room) doTick() {
 
 	r.phaseCasts()
 	r.phaseAI()
+	// After AI, so a marker put down this tick is visible in this tick's
+	// snapshot, and one whose boss just died is gone from it.
+	r.phaseTelegraphs()
 	r.phaseDrops()
 	r.phaseSpawns()
 	r.phaseSnapshot()

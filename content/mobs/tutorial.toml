@@ -66,23 +66,95 @@ cooldown_ms = 1100
 [mob.slime_king]
 name = "Slime King"
 level = 12
-hp = 900
+hp = 6000
 attack = 18
 armour = 10
-exp = 400
+exp = 4000
 width = 64.0
 height = 56.0
 drop_table = "slime_king"
 
+# The profile is "boss", which means the ordinary chase-attack-leash machine is
+# replaced by the encounter below. A boss does not leash and does not heal
+# itself by walking home: an arena fight that resets because someone pulled it
+# four tiles too far is a fight decided by geometry rather than by play.
 [mob.slime_king.ai]
-profile = "aggressive_melee"
-aggro_range = 320.0
-leash_range = 900.0
-attack_range = 64.0
+profile = "boss"
+aggro_range = 520.0
+leash_range = 4000.0
+attack_range = 120.0
 move_speed = 55.0
-idle_tick_interval = 4
+idle_tick_interval = 1
 
-[[mob.slime_king.abilities]]
-skill = "mob_bite"
-weight = 1
-cooldown_ms = 900
+# Phases are entered as health falls and never left. Each lists what the king
+# can do while it is in that phase, so the fight changes shape three times
+# rather than being one rotation with bigger numbers.
+
+[[mob.slime_king.phases]]
+name = "The King Stirs"
+at_hp_percent = 100
+
+[[mob.slime_king.phases.abilities]]
+skill = "king_slam"
+cooldown_ms = 4000
+telegraph_ms = 700
+target = "current"
+
+[[mob.slime_king.phases.abilities]]
+skill = "king_spit"
+cooldown_ms = 6000
+telegraph_ms = 500
+target = "random"
+
+# Two thirds down, the throne cracks. Throneshock scatters the party as the
+# phase opens, and from here the king starts asking for everyone at once.
+[[mob.slime_king.phases]]
+name = "The Throne Cracks"
+at_hp_percent = 65
+on_enter = "king_quake"
+
+[[mob.slime_king.phases.abilities]]
+skill = "king_crush"
+cooldown_ms = 13000
+telegraph_ms = 1600
+target = "self"
+
+[[mob.slime_king.phases.abilities]]
+skill = "king_slam"
+cooldown_ms = 4000
+telegraph_ms = 700
+target = "current"
+
+[[mob.slime_king.phases.abilities]]
+skill = "king_spit"
+cooldown_ms = 5000
+telegraph_ms = 500
+target = "farthest"
+
+# Cornered. Harden makes the fight longer; the enrage clock makes that a
+# problem. Ninety seconds is enough to finish a king already at a third health
+# and not enough to wait one out.
+[[mob.slime_king.phases]]
+name = "Cornered"
+at_hp_percent = 30
+on_enter = "king_harden"
+enrage_after_ms = 90000
+enrage_buff = "king_frenzy"
+
+[[mob.slime_king.phases.abilities]]
+skill = "king_crush"
+cooldown_ms = 9000
+telegraph_ms = 1300
+target = "self"
+
+[[mob.slime_king.phases.abilities]]
+skill = "king_sweep"
+cooldown_ms = 8000
+telegraph_ms = 900
+target = "farthest"
+
+[[mob.slime_king.phases.abilities]]
+skill = "king_slam"
+cooldown_ms = 3000
+telegraph_ms = 600
+target = "current"

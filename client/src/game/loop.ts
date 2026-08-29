@@ -1,5 +1,6 @@
 import { Connection, describeClose } from "@/net/connection";
 import type {
+  BossPhase,
   ChatLine,
   Event,
   FriendList,
@@ -82,6 +83,22 @@ export interface LoopCallbacks {
   onGuild?(state: GuildState): void;
   onGuildInvite?(invite: GuildInvite): void;
   onFriends?(list: FriendList): void;
+
+  /** Called when a boss enters a phase or enrages. */
+  onBossPhase?(phase: BossPhase): void;
+
+  /**
+   * Called every frame with the current health of the entity the boss frame is
+   * following, or null when it is no longer in view.
+   *
+   * The frame needs a bar that moves, and phase events arrive three times in a
+   * fight. Following the entity is the difference between a health bar and a
+   * notification with a number in it.
+   */
+  onBossHealth?(hp: number, hpMax: number): void;
+
+  /** Which entity the boss frame is following, or 0 when it is closed. */
+  bossEntityId?(): number;
 }
 
 export class GameLoop {
@@ -390,6 +407,10 @@ export class GameLoop {
         this.#cb.onFriends?.(e.body.value);
         break;
 
+      case "bossPhase":
+        this.#cb.onBossPhase?.(e.body.value);
+        break;
+
       case "lootTaken": {
         const l = e.body.value;
         if (l.failed) {
@@ -463,6 +484,15 @@ export class GameLoop {
     );
     this.#scene.drawEntities(this.#interp.sample(now), this.#interp.drainRemoved());
     this.#scene.effects.update(now);
+
+    const bossId = this.#cb.bossEntityId?.() ?? 0;
+    if (bossId !== 0) {
+      // Nothing tracked means the boss is dead and swept up, or the character
+      // is no longer in the room. Reported as zero rather than skipped, so the
+      // frame closes instead of hanging on the last health it saw.
+      const health = this.#interp.healthOf(bossId);
+      this.#cb.onBossHealth?.(health?.hp ?? 0, health?.hpMax ?? 0);
+    }
   }
 
   /** One simulation tick: sample input, predict, send. */
