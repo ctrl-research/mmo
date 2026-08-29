@@ -380,7 +380,7 @@ func parseFlags() config {
 	flag.StringVar(&cfg.providersFile, "providers", envOr("PROVIDERS_FILE", ""),
 		"TOML file describing OIDC providers")
 	flag.StringVar(&cfg.seedAllowlist, "seed-allowlist", envOr("SEED_ALLOWLIST", ""),
-		"comma-separated local usernames added to the allowlist at boot; additive, never removes")
+		"comma-separated local usernames re-asserted in the allowlist at boot; never removes, but re-adds anyone still listed")
 	flag.Uint64Var(&cfg.seed, "seed", 0,
 		"fixed simulation seed, making a session reproducible; 0 draws a fresh one")
 	flag.StringVar(&cfg.logLevel, "log-level", "info", "debug, info, warn, or error")
@@ -447,10 +447,17 @@ func newLogger(cfg config) (*slog.Logger, error) {
 
 // seedAllowlist ensures every username in a comma-separated list can sign in.
 //
-// Additive only. Making the environment authoritative would silently undo
-// `mmo revoke` on the next restart, and a revocation that comes back on its
-// own is worse than no revocation at all. Every write is INSERT ... ON
-// CONFLICT DO NOTHING, so a restart with an unchanged list is a no-op.
+// Additive: entries this does not name are left alone, so anyone added later
+// with `mmo allow` survives a restart, and nothing here can empty an
+// allowlist. Every write is INSERT ... ON CONFLICT DO NOTHING, so a restart
+// with an unchanged list is a no-op.
+//
+// What it does NOT do is let a revoke outlive the list. A name still in
+// SEED_ALLOWLIST is re-asserted on every boot, so `mmo revoke alice` sticks
+// only if alice is also removed from the list. That is the right way round
+// when the list lives in git -- the file is the desired state, and a
+// revocation that git keeps undoing should be fixed in git -- but it is worth
+// knowing before wondering why a revoked player came back.
 //
 // Local subject entries only, matching what `mmo allow` defaults to. Seeding
 // a provider's users would mean encoding provider names in the environment,
