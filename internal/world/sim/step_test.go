@@ -142,9 +142,16 @@ func TestJumpRisesAndReturnsToGround(t *testing.T) {
 		}
 	}
 
-	height := (fixed.FromInt(floorTop) - PlayerSize.H - apex).Int()
-	if height < 80 || height > 110 {
-		t.Errorf("jump height %d units, want roughly 96", height)
+	// Checked against the closed form rather than a hand-written range. A
+	// range is what let the jump sit at 84 units for five milestones under a
+	// comment claiming 96, while every map was built on 96 gaps.
+	height := fixed.FromInt(floorTop) - PlayerSize.H - apex
+	if want := MaxJumpHeight(&tn); height != want {
+		t.Errorf("jump reaches %v, MaxJumpHeight says %v", height, want)
+	}
+	if height < fixed.FromInt(StandardGap) {
+		t.Errorf("jump reaches %v, below the %d-unit gap the maps are built on",
+			height, StandardGap)
 	}
 	if !b.Grounded {
 		t.Error("should be back on the ground within 60 ticks")

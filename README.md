@@ -22,6 +22,7 @@ A self-hosted, horizontally scalable 2D MMO — drawing on MapleStory's side-scr
 | Ephemeral state | Redis | Presence, sessions, character leases, room directory |
 | Bus | in-process channels → NATS | Swapped behind one interface at scale |
 | Content | TOML / JSON / Tiled | No content change requires writing Go |
+| Art | Generated pixel sprites (`make sprites`) | No artist; a generator that is read and reviewed beats placeholder rectangles |
 
 ## Documentation
 
