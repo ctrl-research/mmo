@@ -1,0 +1,155 @@
+# Mage skills: spells, elements, and the class that controls the ground.
+#
+# The mage is where the effect vocabulary is doing the most work. A firebolt is
+# a projectile carrying its own payload; a firestorm is a patch of ground with
+# a tick interval. Neither is a special case in Go -- both are effects.
+
+[skill.firebolt]
+name = "Firebolt"
+class = "mage"
+max_rank = 20
+cost_mp = 6
+cooldown_ms = 700
+cast_time_ms = 150
+animation = "cast_bolt"
+tags = ["spell", "projectile", "fire"]
+
+[skill.firebolt.targeting]
+kind = "self"
+
+[[skill.firebolt.effects]]
+type = "spawn_projectile"
+speed = 22.0
+distance = 420.0
+
+# The payload travels with the bolt rather than being resolved at cast time,
+# so a support that increases fire damage reaches it.
+[[skill.firebolt.effects.effects]]
+type = "damage"
+element = "fire"
+base = { min = 12, max = 18 }
+scaling = { attack = 0.9 }
+per_rank = { base_pct = 8 }
+
+[[skill.firebolt.effects.effects]]
+type = "apply_buff"
+buff = "burning"
+chance = 0.45
+
+[skill.frost_nova]
+name = "Frost Nova"
+class = "mage"
+max_rank = 20
+cost_mp = 18
+cooldown_ms = 6000
+cast_time_ms = 250
+animation = "cast_nova"
+tags = ["spell", "cold", "debuff"]
+
+[skill.frost_nova.targeting]
+kind = "circle"
+range = 140.0
+max_targets = 8
+
+[[skill.frost_nova.effects]]
+type = "damage"
+element = "cold"
+base = { min = 10, max = 16 }
+scaling = { attack = 0.7 }
+
+# Chill is made entirely of stat modifiers and does no damage at all, which is
+# what proves a debuff and a damage-over-time are the same mechanism.
+[[skill.frost_nova.effects]]
+type = "apply_buff"
+buff = "chilled"
+
+[skill.firestorm]
+name = "Firestorm"
+class = "mage"
+max_rank = 20
+cost_mp = 30
+cooldown_ms = 10000
+cast_time_ms = 400
+animation = "cast_storm"
+tags = ["spell", "fire", "area"]
+
+[skill.firestorm.targeting]
+kind = "circle"
+range = 200.0
+max_targets = 1
+
+[[skill.firestorm.effects]]
+type = "area_persist"
+radius = 96.0
+duration_ms = 5000
+tick_ms = 500
+
+[[skill.firestorm.effects.effects]]
+type = "damage"
+element = "fire"
+base = { min = 5, max = 8 }
+scaling = { attack = 0.25 }
+
+[[skill.firestorm.effects.effects]]
+type = "apply_buff"
+buff = "burning"
+chance = 0.3
+
+# A spell that chains. The support that adds hops was written for no skill in
+# particular; this is simply the one with a chain in it.
+[skill.arc]
+name = "Arc"
+class = "mage"
+max_rank = 20
+cost_mp = 14
+cooldown_ms = 2500
+cast_time_ms = 200
+animation = "cast_arc"
+tags = ["spell", "lightning"]
+
+[skill.arc.targeting]
+kind = "cone"
+range = 130.0
+half_height = 50.0
+max_targets = 1
+
+[[skill.arc.effects]]
+type = "damage"
+element = "lightning"
+base = { min = 14, max = 24 }
+scaling = { attack = 1.0 }
+
+[[skill.arc.effects]]
+type = "chain"
+jumps = 2
+falloff = 0.7
+radius = 160.0
+
+[[skill.arc.effects.effects]]
+type = "damage"
+element = "lightning"
+base = { min = 14, max = 24 }
+scaling = { attack = 1.0 }
+
+[skill.arcane_ward]
+name = "Arcane Ward"
+class = "mage"
+max_rank = 10
+cost_mp = 22
+cooldown_ms = 14000
+cast_time_ms = 300
+animation = "cast_ward"
+tags = ["buff", "spell", "defence"]
+
+[skill.arcane_ward.targeting]
+kind = "self"
+
+[[skill.arcane_ward.effects]]
+type = "shield"
+base = { min = 50, max = 50 }
+scaling = { attack = 2.0 }
+duration_ms = 8000
+
+[[skill.arcane_ward.effects]]
+type = "restore"
+base = { min = 15, max = 25 }

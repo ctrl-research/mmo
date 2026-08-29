@@ -7,6 +7,7 @@ import { WorldMapPanel } from "@/ui/worldmap";
 import { ChatPanel } from "@/ui/chat";
 import { PartyFrames, SocialPanel } from "@/ui/social";
 import { Prompt } from "@/ui/prompt";
+import { SkillBarPanel, BuffBar } from "@/ui/skillbar";
 import { PartyAction_Kind, GuildAction_Kind } from "@/net/connection";
 import type { Character } from "@/ui/api";
 import { toPixels } from "@/sim/fixed";
@@ -34,6 +35,8 @@ const chatEl = document.getElementById("chat") as HTMLDivElement;
 const partyEl = document.getElementById("party") as HTMLDivElement;
 const socialEl = document.getElementById("social") as HTMLDivElement;
 const promptEl = document.getElementById("prompt") as HTMLDivElement;
+const skillBarEl = document.getElementById("skillbar") as HTMLDivElement;
+const buffBarEl = document.getElementById("buffbar") as HTMLDivElement;
 
 let loop: GameLoop | null = null;
 let scene: Scene | null = null;
@@ -44,6 +47,8 @@ let chat: ChatPanel | null = null;
 let party: PartyFrames | null = null;
 let social: SocialPanel | null = null;
 let prompt: Prompt | null = null;
+let skillBar: SkillBarPanel | null = null;
+let buffBar: BuffBar | null = null;
 let status = "";
 
 const shell = new Shell(overlay, {
@@ -118,6 +123,9 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
       onInventory: () => panel?.render(),
       onWorldMap: (m) => worldMap?.update(m),
       onChat: (line) => chat?.add(line),
+      onSkillBar: (bar) => skillBar?.update(bar),
+      onBuffs: (buffs) => buffBar?.update(buffs, performance.now()),
+      onCast: (skillId) => skillBar?.cast(skillId, performance.now()),
       onSystem: (msg) => chat?.addSystem(msg),
       onParty: (state) => party?.update(state),
       onGuild: (state) => social?.updateGuild(state),
@@ -149,6 +157,8 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
         social?.close();
         prompt?.cancel();
         chatEl.hidden = true;
+        skillBarEl.hidden = true;
+        buffBarEl.hidden = true;
         partyEl.hidden = true;
         void shell.resume(reason);
       },
@@ -167,6 +177,9 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
       onSwitchChannel: (id) => game.switchChannel(id),
       onNewChannel: () => game.newChannel(),
     });
+
+    skillBar = new SkillBarPanel(skillBarEl);
+    buffBar = new BuffBar(buffBarEl);
 
     prompt = new Prompt(promptEl, {
       onFocusChange: (focused) => game.setInputEnabled(!focused),
@@ -206,6 +219,13 @@ function setStatus(text: string): void {
 function startHud(): void {
   const render = () => {
     if (loop) {
+      // The cooldown sweep and the buff countdown are the only parts of the
+      // interface that change continuously, so they ride the frame loop
+      // rather than a timer.
+      const now = performance.now();
+      skillBar?.tick(now);
+      buffBar?.render(now);
+
       const s = loop.stats;
       const b = s.body;
       const state = isClimbing(b) ? "climbing" : isGrounded(b) ? "grounded" : "airborne";
@@ -223,7 +243,7 @@ function startHud(): void {
         `correct  ${s.lastCorrectionPx.toFixed(2)} px  (${s.hardCorrections} hard)\n` +
         `others   ${s.entities}\n` +
         `net      ${s.snapshotsReceived} snaps, ${(s.bytesReceived / 1024).toFixed(1)} KiB\n` +
-        `\n[i] inventory   [m] world map   [o] social   [enter] chat   [g] ghost`;
+        `\n[1-8] skills   [i] inventory   [m] world map   [o] social   [enter] chat`;
       hud.hidden = false;
     } else {
       hud.hidden = true;

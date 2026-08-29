@@ -1,0 +1,27 @@
+# The playable classes.
+#
+# A class is deliberately thin: a name, a starting position, and what it can
+# cast. It is not a package of hard-coded mechanics, because the mechanics are
+# skills and passives and those are data.
+#
+# That thinness is the point. If a class carried its own behaviour, the class
+# would be the build -- and the whole appeal of a passive tree is that two
+# characters of the same class can play nothing alike.
+
+[class.warrior]
+name = "Warrior"
+description = "Stands in the middle of it and wins by still being there."
+primary_stat = "strength"
+starting_skills = ["slash", "war_cry"]
+
+[class.mage]
+name = "Mage"
+description = "Controls the ground, and would rather not be stood on."
+primary_stat = "intelligence"
+starting_skills = ["firebolt", "frost_nova"]
+
+[class.ranger]
+name = "Ranger"
+description = "Fights at the far end of the room and leaves when asked."
+primary_stat = "dexterity"
+starting_skills = ["arrow_shot", "roll"]

@@ -52,6 +52,20 @@
 
       .divider { color: #4a5262; font-size: 11px; margin: 12px 0 8px; }
 
+      /* Class picker: cards rather than a dropdown, because the choice is
+         permanent for that character and a one-line description is the whole
+         basis for making it. */
+      .classes { display: flex; gap: 6px; margin-bottom: 8px; }
+      .class-option {
+        flex: 1; padding: 8px 6px; font: inherit; text-align: left;
+        background: #0f1218; color: #9aa3b2;
+        border: 1px solid #2f3543; border-radius: 5px; cursor: pointer;
+      }
+      .class-option:hover { border-color: #4a83ff; }
+      .class-option.chosen { border-color: #4a83ff; color: #e6e8ee; }
+      .class-name { display: block; font-size: 12px; font-weight: 600; }
+      .class-desc { display: block; font-size: 10px; color: #6b7280; margin-top: 2px; }
+
       .chars { list-style: none; margin-bottom: 14px; text-align: left; }
       .char {
         display: flex; align-items: center; gap: 8px;
@@ -244,6 +258,53 @@
       }
       .social-action:hover { border-color: #4a83ff; color: #e6e8ee; }
 
+      /* Skill bar and buff bar: permanently on screen, because both answer
+         questions that only matter in the moment. */
+      #skillbar {
+        position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+        z-index: 12; display: flex; gap: 4px;
+      }
+      #skillbar[hidden] { display: none; }
+
+      .slot {
+        position: relative; width: 54px; height: 50px; overflow: hidden;
+        background: rgba(11, 13, 18, 0.86); border: 1px solid #2f3543;
+        border-radius: 5px; padding: 3px 4px; font-size: 10px;
+      }
+      .slot-key { color: #6b7280; font-size: 9px; }
+      .slot-name {
+        display: block; color: #e6e8ee; font-size: 10px; line-height: 1.2;
+        margin-top: 1px; overflow: hidden;
+      }
+      .slot-cost { position: absolute; right: 4px; bottom: 2px; color: #6fa8ff; }
+      .slot-links {
+        position: absolute; right: 4px; top: 2px; color: #e8c977; font-size: 9px;
+      }
+      /* Grows from the bottom as the cooldown runs down, which is the
+         direction every game of this shape uses. */
+      .slot-sweep {
+        position: absolute; left: 0; bottom: 0; width: 100%; height: 0;
+        background: rgba(11, 13, 18, 0.72); pointer-events: none;
+        transition: height 60ms linear;
+      }
+
+      #buffbar {
+        position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+        z-index: 12; display: flex; gap: 4px;
+      }
+      #buffbar[hidden] { display: none; }
+
+      .buff {
+        display: flex; align-items: baseline; gap: 4px;
+        padding: 3px 7px; font-size: 10px;
+        background: rgba(11, 13, 18, 0.86); border: 1px solid #3d6b4a;
+        border-radius: 4px; color: #8fe3a8;
+      }
+      .buff.harmful { border-color: #6b3d3d; color: #ff9a9a; }
+      .buff-name { font-weight: 600; }
+      .buff-stacks { color: #e8c977; }
+      .buff-time { color: #6b7280; }
+
       /* Prompts: in-game, because a native modal blocks the render loop. */
       #prompt {
         position: fixed; top: 34%; left: 50%; transform: translate(-50%, -50%);
@@ -343,9 +404,11 @@
     <div id="party" hidden></div>
     <div id="social" hidden></div>
     <div id="prompt" hidden></div>
+    <div id="skillbar" hidden></div>
+    <div id="buffbar" hidden></div>
     <div id="tooltip" hidden></div>
     <div id="keys">
-      arrows or WASD to move &middot; space to jump &middot; X or ctrl to attack &middot; Z to loot &middot; I inventory &middot; M world map &middot; O social &middot; enter to chat
+      arrows or WASD to move &middot; space to jump &middot; 1-8 or X for skills &middot; Z to loot &middot; I inventory &middot; M world map &middot; O social &middot; enter to chat
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

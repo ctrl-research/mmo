@@ -1,6 +1,8 @@
 package room
 
 import (
+	"sort"
+
 	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
 	"github.com/ctrl-research/mmo/internal/world/sim"
 )
@@ -35,6 +37,13 @@ const (
 	KindMob
 	KindDrop
 	KindNPC
+
+	// KindProjectile and KindArea are what the effect vocabulary spawns: a
+	// bolt in flight, and a patch of ground that keeps applying something.
+	// Entities rather than a separate list, so they interpolate, cull, and
+	// layer like everything else.
+	KindProjectile
+	KindArea
 )
 
 func (k Kind) wire() mmov1.EntityKind {
@@ -47,6 +56,10 @@ func (k Kind) wire() mmov1.EntityKind {
 		return mmov1.EntityKind_ENTITY_KIND_DROP
 	case KindNPC:
 		return mmov1.EntityKind_ENTITY_KIND_NPC
+	case KindProjectile:
+		return mmov1.EntityKind_ENTITY_KIND_PROJECTILE
+	case KindArea:
+		return mmov1.EntityKind_ENTITY_KIND_AREA
 	default:
 		return mmov1.EntityKind_ENTITY_KIND_UNSPECIFIED
 	}
@@ -78,6 +91,23 @@ type Entity struct {
 	HP    uint32
 	MaxHP uint32
 	Name  string
+
+	// Buffs are the temporary state on this entity, keyed by buff id. Nil
+	// until something applies one, which is the common case.
+	Buffs map[string]*activeBuff
+
+	// Shield absorbs damage before health does, and expires unspent. In front
+	// of health rather than added to it, which is what makes it different
+	// from a heal.
+	Shield      uint32
+	ShieldUntil uint64
+
+	// Projectile and Area are set on the entities the effect vocabulary
+	// spawns. Both carry their own payload rather than pointing back at the
+	// skill that made them, so a projectile in flight is unaffected by its
+	// caster dying, unequipping, or leaving the room.
+	Projectile *ProjectileState
+	Area       *AreaState
 
 	// Kind-specific state. Exactly one of these is non-nil, matching Kind.
 	// A discriminated union by nilable pointer rather than an interface: the
@@ -231,4 +261,33 @@ func (cur view) delta(id EntityID, prev view) (*mmov1.EntityDelta, bool) {
 	}
 	d.FieldMask = mask
 	return d, true
+}
+
+// id returns an entity's ID, tolerating a nil receiver.
+//
+// Buff sources are looked up by ID and an entity can leave the room between
+// applying a buff and it ticking, so the nil case is normal rather than a bug.
+func (e *Entity) id() EntityID {
+	if e == nil {
+		return 0
+	}
+	return e.ID
+}
+
+// buffOrder returns this entity's buff ids in a stable order.
+//
+// Sorted, because Go randomises map iteration and the order buffs tick in
+// decides which one lands a killing blow -- which would make a replay diverge
+// from the fight it is replaying.
+func (e *Entity) buffOrder() []string {
+	if len(e.Buffs) == 0 {
+		return nil
+	}
+
+	out := make([]string, 0, len(e.Buffs))
+	for id := range e.Buffs {
+		out = append(out, id)
+	}
+	sort.Strings(out)
+	return out
 }

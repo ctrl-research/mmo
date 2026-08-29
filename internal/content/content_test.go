@@ -177,13 +177,24 @@ func TestInvalidValuesAreRejected(t *testing.T) {
 			wantErr: "unknown kind",
 		},
 		{
-			// M6 adds the rest of the vocabulary; until then an unimplemented
-			// effect must fail the build rather than silently do nothing.
-			name: "unimplemented effect type",
+			// An effect outside the vocabulary must fail the build rather than
+			// silently do nothing: a skill that casts, plays its animation,
+			// and produces no number is the hardest kind of content bug to
+			// track down.
+			name: "unknown effect type",
+			mutate: func(f fstest.MapFS) {
+				f["skills/test.toml"] = file(strings.Replace(skillsTOML, `type = "damage"`, `type = "levitate"`, 1))
+			},
+			wantErr: "unknown effect type",
+		},
+		{
+			// In the vocabulary, but missing what it needs to do anything.
+			// Same failure mode, same answer.
+			name: "effect missing its target",
 			mutate: func(f fstest.MapFS) {
 				f["skills/test.toml"] = file(strings.Replace(skillsTOML, `type = "damage"`, `type = "apply_buff"`, 1))
 			},
-			wantErr: "M1 implements only",
+			wantErr: "names no buff",
 		},
 		{
 			name: "skill with unknown targeting",
@@ -429,6 +440,38 @@ party = 30
 guild = 30
 `
 
+const buffsTOML = `
+[buff.test_burn]
+name = "Test Burn"
+kind = "debuff"
+duration_ms = 2000
+tick_ms = 500
+max_stacks = 3
+refresh_on_apply = true
+[[buff.test_burn.effects]]
+type = "damage"
+element = "fire"
+base = { min = 2, max = 4 }
+`
+
+const supportsTOML = `
+[support.test_heavy]
+name = "Test Heavy"
+tags = ["melee", "attack"]
+mana_mult = 1.5
+[[support.test_heavy.modify]]
+kind = "damage"
+more = 0.5
+repeat = 2
+`
+
+const classesTOML = `
+[class.warrior]
+name = "Test Warrior"
+primary_stat = "strength"
+starting_skills = ["test_hit"]
+`
+
 const curvesTOML = `
 [main]
 max_level = 200
@@ -588,6 +631,9 @@ func minimalFS() fstest.MapFS {
 		"affixes/test.toml":    file(affixesTOML),
 		"droptables/test.toml": file(dropsTOML),
 		"skills/test.toml":     file(skillsTOML),
+		"buffs/test.toml":      file(buffsTOML),
+		"supports/test.toml":   file(supportsTOML),
+		"classes/test.toml":    file(classesTOML),
 		"mobs/test.toml":       file(mobsTOML),
 		"maps/test.tmj":        file(mapTMJ),
 	}

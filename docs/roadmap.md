@@ -267,18 +267,88 @@ without writing SQL by hand.
 
 ---
 
-## M6 — Skill trees and classes
+## M6 — Skill trees and classes — **half done**
 
-- Effect DSL interpreter with the full effect vocabulary
-- Active skills with ranks, cooldowns, resource costs
-- Buff and debuff system, stacking rules, DoTs, auras
-- Passive tree: allocation, connectivity validation, respec
-- A passive tree editor tool (generates `tree.json`)
-- Three classes with distinct starting positions and mechanics
-- Support modifiers attaching to skills by tag
-- Skill bar, cooldown UI, buff bar
+*Where the game becomes itself.*
 
-**Exit:** two characters of the same class with different trees play measurably differently. A support modifier attaches to a skill it was never explicitly written for, and works.
+- [x] Effect DSL interpreter with the full effect vocabulary
+- [x] Active skills with ranks, cooldowns, resource costs
+- [x] Buff and debuff system, stacking rules, DoTs
+- [x] Three classes with distinct starting skills and mechanics
+- [x] Support modifiers attaching to skills by tag
+- [x] Skill bar, cooldown UI, buff bar
+- [ ] Passive tree: allocation, connectivity validation, respec
+- [ ] A passive tree editor tool (generates `tree.json`)
+
+**Half of the exit criterion is met, and half is not.** *"A support modifier
+attaches to a skill it was never explicitly written for, and works"* — done, and
+tested. *"Two characters of the same class with different trees play measurably
+differently"* — not done, because there are no trees yet.
+
+Splitting it here rather than shipping one enormous change: the effect engine
+is what the tree will be built out of, and it is worth reviewing on its own.
+
+| Claim | How it was checked |
+| --- | --- |
+| A support attaches to skills it never named | `TestASupportAttachesToSkillsItWasNeverWrittenFor` walks every skill Swiftness matches and asserts each buff got longer |
+| Supports need every tag, not any | `TestSupportsNeedEveryTag` — matching any would put a melee support on a fireball |
+| A support reaches a projectile's payload | `TestSupportsReachNestedEffects` — otherwise a fire support does nothing on any projectile skill |
+| Supports never edit the skill | `TestApplyingASupportDoesNotEditTheSkill` — every room on the node shares that struct |
+| The trade is real | `TestMultistrikeTradesDamageForRepeats` — less per hit, more total, and it costs mana |
+| Shields absorb before health and expire unspent | Two tests, mutation-checked |
+| Stacks multiply modifiers | `TestStacksMultiplyAModifier`, mutation-checked |
+| Buffs expire and give their modifiers back | `TestBuffsExpireAndGiveBackTheirModifiers` |
+| Projectiles travel, hit, and expire on a miss | Two tests — a bolt that finds nothing must stop existing |
+| Ground areas tick and then stop | `TestAnAreaKeepsApplyingAndThenExpires` |
+| A chain hops and skips its origin | `TestAChainReachesASecondTargetForLess`, mutation-checked |
+| A trigger loop cannot reach the tick | Refused at content load, with the whole chain tracked rather than only self-reference |
+| Three classes play differently | Verified in a browser: a mage spawns with Firebolt and Frost Nova, casts both, and the cooldown sweeps |
+
+**Design notes worth keeping.**
+
+*One struct for every effect kind*, rather than an interface per kind. A support
+rewrites effects it has never heard of, so every effect has to be inspectable
+and copyable without knowing its type. The cost is fields that mean nothing for
+most kinds, which is visible and harmless; the alternative costs the entire
+support system.
+
+*A buff is two things at once* — effects on a beat, and stat modifiers feeding
+the same pipeline as gear. Keeping them one mechanism is why a support that
+lengthens durations works on both a damage-over-time and a strength buff
+without knowing what either is.
+
+*Buff durations are resolved at load.* A support that scales a duration would
+otherwise silently do nothing on every skill that used a buff's default — which
+is nearly all of them. This was a real bug, caught by the test that walks every
+matching skill rather than a hand-picked one.
+
+*Rank before supports.* A support that multiplies damage should multiply the
+ranked damage; the other order makes a support worth progressively less the more
+a skill is levelled, which is the opposite of what anyone expects.
+
+*A triggered skill does not inherit its trigger's supports.* A support that
+repeated an effect would repeat the trigger, and a support chain feeding itself
+is a loop the content check cannot see.
+
+**Also fixed here:** first login was doing a dozen database round trips to seed
+a character's skills and bar. It now does two statements. That showed up as a
+reconnect test failing under full-suite load and passing in isolation — extra
+work on a path a player waits on is extra work on a path a player waits on.
+
+---
+
+## M6b — The passive tree
+
+*The other half of M6, and the half that makes builds interesting.*
+
+- Passive tree content: `tree.json`, generated rather than hand-authored
+- A generator tool, because hand-editing a thousand-node graph is not a plan
+- Allocation, connectivity validation, and respec
+- Class start nodes, and skill points from levelling
+- The tree screen
+
+**Exit:** two characters of the same class with different trees play measurably
+differently.
 
 ---
 

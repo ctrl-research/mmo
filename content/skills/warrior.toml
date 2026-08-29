@@ -1,12 +1,12 @@
-# Active skills.
+# Warrior skills: melee, physical, and the class that stands still and wins.
 #
 # A skill is targeting plus an ordered list of effects, never Go code. That is
-# what makes hundreds of them tractable, and it is the precondition for
-# PoE-style support modifiers in M6: a support transforms a skill's effect
-# list, so a new support works with every existing compatible skill.
+# what makes hundreds of them tractable, and it is what lets a support attach
+# to one it was never written for.
 #
-# M1 implements only the `damage` effect. Any other type is a load error rather
-# than a silent no-op.
+# Tags decide which supports attach, so they are part of the design rather than
+# labels: "melee" and "attack" together are what Multistrike looks for, and
+# "buff" is what Swiftness looks for.
 
 [skill.slash]
 name = "Slash"
@@ -21,7 +21,6 @@ tags = ["melee", "attack", "physical"]
 [skill.slash.targeting]
 kind = "cone"
 range = 72.0
-
 # A 2D platformer needs a vertical bound on melee, or a ground-level swing
 # hits everything standing on the platform above.
 half_height = 40.0
@@ -34,22 +33,143 @@ base = { min = 8, max = 14 }
 scaling = { attack = 1.0 }
 per_rank = { base_pct = 8 }
 
-# The mob attack that AI profiles use. Mobs and players draw from the same
-# skill system, so a mob ability is not a separate concept to maintain.
-[skill.mob_bite]
-name = "Bite"
-max_rank = 1
-cooldown_ms = 1200
+# Wider and slower. The trade against Slash is reach and targets against rate,
+# which is a decision rather than an upgrade.
+[skill.cleave]
+name = "Cleave"
+class = "warrior"
+max_rank = 20
+cost_mp = 8
+cooldown_ms = 3000
+cast_time_ms = 150
+animation = "cleave"
 tags = ["melee", "attack", "physical"]
 
-[skill.mob_bite.targeting]
+[skill.cleave.targeting]
 kind = "cone"
-range = 40.0
-half_height = 32.0
-max_targets = 1
+range = 108.0
+half_height = 56.0
+max_targets = 6
 
-[[skill.mob_bite.effects]]
+[[skill.cleave.effects]]
 type = "damage"
 element = "physical"
-base = { min = 3, max = 6 }
-scaling = { attack = 1.0 }
+base = { min = 14, max = 22 }
+scaling = { attack = 1.3 }
+per_rank = { base_pct = 7 }
+
+# Every hit builds a stack of Rage, which decays if the fight stops. That is
+# the warrior's whole rhythm: weak when they arrive, strong once they commit.
+[[skill.cleave.effects]]
+type = "apply_buff"
+buff = "rage"
+stacks = 1
+
+[skill.rend]
+name = "Rend"
+class = "warrior"
+max_rank = 20
+cost_mp = 10
+cooldown_ms = 5000
+cast_time_ms = 100
+animation = "rend"
+tags = ["melee", "attack", "physical", "debuff"]
+
+[skill.rend.targeting]
+kind = "cone"
+range = 72.0
+half_height = 40.0
+max_targets = 2
+
+[[skill.rend.effects]]
+type = "damage"
+element = "physical"
+base = { min = 6, max = 10 }
+scaling = { attack = 0.6 }
+
+# Most of the damage is over time, which is what makes Rend worth casting
+# early in a fight rather than as a finisher.
+[[skill.rend.effects]]
+type = "apply_buff"
+buff = "bleeding"
+stacks = 1
+chance = 0.9
+
+# Self-buff. Tagged "buff" so Swiftness attaches to it -- a support written
+# for no skill in particular.
+[skill.war_cry]
+name = "War Cry"
+class = "warrior"
+max_rank = 10
+cost_mp = 20
+cooldown_ms = 12000
+cast_time_ms = 300
+animation = "shout"
+tags = ["buff", "shout"]
+
+[skill.war_cry.targeting]
+kind = "self"
+
+[[skill.war_cry.effects]]
+type = "apply_buff"
+buff = "rage"
+stacks = 3
+
+[skill.shield_wall]
+name = "Shield Wall"
+class = "warrior"
+max_rank = 10
+cost_mp = 25
+cooldown_ms = 15000
+cast_time_ms = 200
+animation = "guard"
+tags = ["buff", "defence"]
+
+[skill.shield_wall.targeting]
+kind = "self"
+
+[[skill.shield_wall.effects]]
+type = "apply_buff"
+buff = "guard"
+
+# A shield sits in front of health rather than adding to it: it expires
+# unspent, which is what makes it a decision about timing.
+[[skill.shield_wall.effects]]
+type = "shield"
+base = { min = 40, max = 40 }
+scaling = { attack = 1.5 }
+duration_ms = 6000
+
+# The gap-closer. Movement is resolved by the simulation, so it stops at a
+# wall like everything else -- a dash that teleports is a dash that goes
+# through geometry.
+[skill.shoulder_charge]
+name = "Shoulder Charge"
+class = "warrior"
+max_rank = 10
+cost_mp = 15
+cooldown_ms = 8000
+animation = "charge"
+tags = ["melee", "attack", "physical", "movement"]
+
+[skill.shoulder_charge.targeting]
+kind = "cone"
+range = 90.0
+half_height = 40.0
+max_targets = 3
+
+[[skill.shoulder_charge.effects]]
+type = "dash"
+speed = 26.0
+distance = 8.0
+
+[[skill.shoulder_charge.effects]]
+type = "damage"
+element = "physical"
+base = { min = 10, max = 16 }
+scaling = { attack = 0.9 }
+
+[[skill.shoulder_charge.effects]]
+type = "knockback"
+speed = 14.0
+distance = 10.0

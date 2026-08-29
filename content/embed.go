@@ -15,11 +15,14 @@ import "embed"
 // FS holds every content file.
 //
 //go:embed all:affixes
+//go:embed all:buffs
 //go:embed balance.toml
+//go:embed all:classes
 //go:embed all:curves
 //go:embed all:droptables
 //go:embed all:items
 //go:embed all:maps
 //go:embed all:mobs
 //go:embed all:skills
+//go:embed all:supports
 var FS embed.FS

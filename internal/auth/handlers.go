@@ -38,6 +38,9 @@ type Service struct {
 	// localAuth enables username and password accounts held by this server.
 	localAuth bool
 
+	// classes are the playable archetypes, from content, in a stable order.
+	classes []ClassInfo
+
 	// loginLimiter throttles sign-in attempts by source address, alongside the
 	// per-account lockout in the database.
 	loginLimiter *attemptLimiter
@@ -51,6 +54,12 @@ type ServiceConfig struct {
 	Logger     *slog.Logger
 	DevAuth    bool
 	DefaultMap string
+
+	// Classes are the playable archetypes, from content. Character creation
+	// checks against them rather than accepting whatever a client sends: a
+	// character created with a class that does not exist starts with no
+	// skills and cannot act.
+	Classes []ClassInfo
 
 	// LocalAuth enables username and password accounts held by this server.
 	//
@@ -88,6 +97,7 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 		devAuth:    cfg.DevAuth,
 		defaultMap: cfg.DefaultMap,
 		localAuth:  cfg.LocalAuth,
+		classes:    cfg.Classes,
 
 		loginLimiter: newAttemptLimiter(loginAttemptLimit, loginAttemptWindow),
 	}, nil
@@ -100,6 +110,12 @@ func (s *Service) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/callback", s.handleCallback)
 	mux.HandleFunc("POST /auth/refresh", s.handleRefresh)
 	mux.HandleFunc("POST /auth/logout", s.handleLogout)
+
+	// Public: the character screen needs it before anybody has signed in, and
+	// the list of classes is not a secret.
+	mux.HandleFunc("GET /api/classes", func(w http.ResponseWriter, r *http.Request) {
+		s.handleClasses(w, r)
+	})
 
 	mux.HandleFunc("GET /api/me", s.requireSession(s.handleMe))
 	mux.HandleFunc("GET /api/characters", s.requireSession(s.handleListCharacters))
@@ -422,9 +438,10 @@ func (s *Service) handleCreateCharacter(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	class := req.Class
-	if class == "" {
-		class = "warrior"
+	class, ok := s.resolveClass(req.Class)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "no such class")
+		return
 	}
 
 	ctx := r.Context()
@@ -535,4 +552,43 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 
 func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, map[string]any{"error": message})
+}
+
+// ClassInfo is a playable class as the character screen needs it.
+//
+// A flattened copy rather than the content type, because internal/auth has no
+// business importing the simulation's content model to render a menu.
+type ClassInfo struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	PrimaryStat string `json:"primaryStat"`
+}
+
+// resolveClass validates a requested class, falling back to the first when
+// none was asked for.
+//
+// Checked rather than trusted: a character created with a class that does not
+// exist starts with no skills and cannot act, and the symptom is a character
+// who logs in and finds an empty skill bar.
+func (s *Service) resolveClass(requested string) (string, bool) {
+	if len(s.classes) == 0 {
+		// No content configured, which happens only in tests that do not care.
+		return requested, true
+	}
+
+	if requested == "" {
+		return s.classes[0].ID, true
+	}
+	for _, c := range s.classes {
+		if c.ID == requested {
+			return c.ID, true
+		}
+	}
+	return "", false
+}
+
+// handleClasses lists the playable classes for the character screen.
+func (s *Service) handleClasses(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"classes": s.classes})
 }

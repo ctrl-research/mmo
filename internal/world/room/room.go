@@ -437,6 +437,14 @@ func (r *Room) doTick() {
 	// before combat and AI: a player standing in a portal is leaving, and
 	// should not take a hit from a mob on the way out.
 	r.phasePortals()
+
+	// Buffs and spawned entities resolve before anything acts. A
+	// damage-over-time or a bolt that kills something this tick stops it
+	// acting; the alternative is a mob that gets a free swing from beyond the
+	// grave, which reads as the game cheating.
+	r.phaseBuffs()
+	r.phaseSpawned()
+
 	r.phaseCasts()
 	r.phaseAI()
 	r.phaseDrops()

@@ -25,6 +25,9 @@ func FS() fstest.MapFS {
 		"affixes/test.toml":    file(Affixes),
 		"droptables/test.toml": file(Drops),
 		"skills/test.toml":     file(Skills),
+		"buffs/test.toml":      file(Buffs),
+		"supports/test.toml":   file(Supports),
+		"classes/test.toml":    file(Classes),
 		"mobs/test.toml":       file(Mobs),
 		"maps/test.tmj":        file(MapTMJ),
 		"maps/annex.tmj":       file(AnnexTMJ),
@@ -65,6 +68,65 @@ global = 6
 whisper = 20
 party = 30
 guild = 30
+`
+
+// Buffs covers both halves of what a buff is: one that ticks an effect, and
+// one made only of stat modifiers.
+const Buffs = `
+[buff.test_burn]
+name = "Test Burn"
+kind = "debuff"
+duration_ms = 2000
+tick_ms = 500
+max_stacks = 3
+refresh_on_apply = true
+dispellable = true
+[[buff.test_burn.effects]]
+type = "damage"
+element = "fire"
+base = { min = 2, max = 4 }
+
+[buff.test_might]
+name = "Test Might"
+kind = "buff"
+duration_ms = 3000
+max_stacks = 2
+refresh_on_apply = true
+[[buff.test_might.stat_mods]]
+stat = "attack"
+increased = 0.25
+`
+
+// Supports covers the two halves of what a support does: scale an effect, and
+// repeat it. The tags are chosen so one attaches to the test skill and one
+// does not, which is what the attachment rules need testing against.
+const Supports = `
+[support.test_heavy]
+name = "Test Heavy"
+tags = ["melee", "attack"]
+mana_mult = 1.5
+[[support.test_heavy.modify]]
+kind = "damage"
+more = 0.5
+repeat = 2
+
+[support.test_spellonly]
+name = "Test Spell Only"
+tags = ["spell"]
+mana_mult = 1.2
+[[support.test_spellonly.modify]]
+kind = "damage"
+more = 1.5
+`
+
+// Classes is one class whose starting skill is the test skill, so a joined
+// character in a room test can actually cast something.
+const Classes = `
+[class.warrior]
+name = "Test Warrior"
+description = "A test class."
+primary_stat = "strength"
+starting_skills = ["slash"]
 `
 
 const Curves = `

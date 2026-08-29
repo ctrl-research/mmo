@@ -1,0 +1,124 @@
+# Ranger skills: projectiles, mobility, and the class that fights at range.
+#
+# The ranger's identity is in the tags as much as the numbers: nearly
+# everything is a projectile, so Piercing attaches to nearly everything, and
+# almost nothing is melee, so Multistrike attaches to almost nothing. That is
+# what makes two classes with the same supports available play differently.
+
+[skill.arrow_shot]
+name = "Arrow Shot"
+class = "ranger"
+max_rank = 20
+cost_mp = 4
+cooldown_ms = 600
+cast_time_ms = 100
+animation = "shoot"
+tags = ["attack", "projectile", "physical"]
+
+[skill.arrow_shot.targeting]
+kind = "self"
+
+[[skill.arrow_shot.effects]]
+type = "spawn_projectile"
+speed = 30.0
+distance = 500.0
+
+[[skill.arrow_shot.effects.effects]]
+type = "damage"
+element = "physical"
+base = { min = 11, max = 17 }
+scaling = { attack = 1.1 }
+per_rank = { base_pct = 8 }
+
+# Already pierces one target before any support. Piercing adds two more, which
+# is an increase rather than the whole of the skill.
+[skill.split_arrow]
+name = "Split Arrow"
+class = "ranger"
+max_rank = 20
+cost_mp = 12
+cooldown_ms = 3500
+cast_time_ms = 200
+animation = "shoot_heavy"
+tags = ["attack", "projectile", "physical"]
+
+[skill.split_arrow.targeting]
+kind = "self"
+
+[[skill.split_arrow.effects]]
+type = "spawn_projectile"
+speed = 26.0
+distance = 460.0
+jumps = 1
+
+[[skill.split_arrow.effects.effects]]
+type = "damage"
+element = "physical"
+base = { min = 9, max = 15 }
+scaling = { attack = 0.85 }
+
+[[skill.split_arrow.effects.effects]]
+type = "apply_buff"
+buff = "bleeding"
+chance = 0.35
+
+[skill.hunters_mark]
+name = "Hunter's Mark"
+class = "ranger"
+max_rank = 10
+cost_mp = 10
+cooldown_ms = 6000
+cast_time_ms = 150
+animation = "mark"
+tags = ["debuff", "attack"]
+
+[skill.hunters_mark.targeting]
+kind = "cone"
+range = 240.0
+half_height = 80.0
+max_targets = 1
+
+[[skill.hunters_mark.effects]]
+type = "apply_buff"
+buff = "weakened"
+
+[skill.take_aim]
+name = "Take Aim"
+class = "ranger"
+max_rank = 10
+cost_mp = 16
+cooldown_ms = 12000
+cast_time_ms = 200
+animation = "aim"
+tags = ["buff"]
+
+[skill.take_aim.targeting]
+kind = "self"
+
+[[skill.take_aim.effects]]
+type = "apply_buff"
+buff = "focus"
+
+# Mobility with a buff attached, so escaping and repositioning are the same
+# button. Tagged "buff" so Swiftness attaches -- again, to a skill it was
+# never written for.
+[skill.roll]
+name = "Roll"
+class = "ranger"
+max_rank = 10
+cost_mp = 8
+cooldown_ms = 5000
+animation = "roll"
+tags = ["movement", "buff"]
+
+[skill.roll.targeting]
+kind = "self"
+
+[[skill.roll.effects]]
+type = "dash"
+speed = 24.0
+distance = 6.0
+
+[[skill.roll.effects]]
+type = "apply_buff"
+buff = "haste"

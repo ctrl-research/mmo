@@ -16,6 +16,11 @@ export class InputSource {
   #attackPressed = false;
   #lootPressed = false;
 
+  // The skill slot pressed since the last tick, or -1. One per tick rather
+  // than a queue: a player who mashes two keys in 50ms meant one of them, and
+  // the server would refuse the second for cooldown anyway.
+  #slotPressed = -1;
+
   attach(): void {
     if (this.#attached) return;
     this.#attached = true;
@@ -47,6 +52,9 @@ export class InputSource {
 
     if (ATTACK_KEYS.has(e.code)) this.#attackPressed = true;
     if (LOOT_KEYS.has(e.code)) this.#lootPressed = true;
+
+    const slot = SKILL_KEYS.indexOf(e.code);
+    if (slot >= 0) this.#slotPressed = slot;
   };
 
   #onUp = (e: KeyboardEvent) => {
@@ -57,7 +65,15 @@ export class InputSource {
     this.#held.clear();
     this.#attackPressed = false;
     this.#lootPressed = false;
+    this.#slotPressed = -1;
   };
+
+  /** Consumes the skill slot pressed since the last tick, or -1. */
+  takeSlot(): number {
+    const slot = this.#slotPressed;
+    this.#slotPressed = -1;
+    return slot;
+  }
 
   /** Samples the current intent. */
   sample(): Input {
@@ -104,6 +120,13 @@ export class InputSource {
 }
 
 const ATTACK_KEYS = new Set(["KeyX", "ControlLeft", "ControlRight"]);
+
+// The skill bar. Number keys, in order, which is what every game of this shape
+// uses and therefore what a player's hands already expect.
+const SKILL_KEYS = [
+  "Digit1", "Digit2", "Digit3", "Digit4",
+  "Digit5", "Digit6", "Digit7", "Digit8",
+];
 const LOOT_KEYS = new Set(["KeyZ", "KeyC"]);
 
 const GAME_KEYS = new Set([
@@ -111,6 +134,7 @@ const GAME_KEYS = new Set([
   "KeyA", "KeyD", "KeyW", "KeyS",
   "Space",
   ...ATTACK_KEYS,
+  ...SKILL_KEYS,
   ...LOOT_KEYS,
 ]);
 

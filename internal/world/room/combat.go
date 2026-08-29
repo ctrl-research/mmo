@@ -35,41 +35,69 @@ func (r *Room) phaseCasts() {
 }
 
 func (r *Room) resolveCastRequest(caster *Entity, req castRequest) {
-	skill, ok := r.content.Skills[req.skillID]
-	if !ok {
-		// An unknown skill id is a stale or forged client. Nothing to do, and
-		// nothing worth telling the client -- it will simply see no effect.
+	// Against the character's own loadout, not the whole content set. A client
+	// may ask for any skill id, and this is what stops it casting a mob
+	// ability, a skill for another class, or one it has not learned.
+	linked := r.linkedSkill(caster, req.skillID)
+	if linked == nil {
 		return
 	}
-	// M1 grants one starter skill to everyone. The passive tree decides this
-	// properly in M6; until then, refusing anything else keeps a client from
-	// casting a mob ability at will.
-	if starter := starterSkill(r.content); starter == nil || skill.ID != starter.ID {
-		return
-	}
-	if !r.canCast(caster, skill) {
+	if !r.canCast(caster, linked) {
 		return
 	}
 
 	caster.Body.FacingLeft = req.facingLeft
-	r.beginCast(caster, skill)
-	r.castSkill(caster, skill)
+	r.beginCast(caster, linked)
+	r.castLinked(caster, linked)
 }
 
-// castSkill resolves one cast from a caster that has already been validated.
+// linkedSkill returns a caster's set-up version of a skill, or nil if they
+// cannot cast it.
+//
+// Mobs have no loadout: their abilities come from their content definition,
+// which is the server's own data rather than anything a client can name.
+func (r *Room) linkedSkill(caster *Entity, skillID string) *Linked {
+	if caster.Player != nil {
+		return caster.Player.Loadout[skillID]
+	}
+
+	skill, ok := r.content.Skills[skillID]
+	if !ok {
+		return nil
+	}
+	return link(skill, 1, nil)
+}
+
+// castSkill resolves a skill with no supports linked.
+//
+// For everything the simulation casts on its own behalf: a mob ability, and a
+// trigger_skill effect. A triggered skill deliberately does not inherit the
+// triggering skill's supports -- a support that repeated an effect would
+// repeat the trigger, and a support chain that fed itself would be a loop the
+// content check cannot see.
 func (r *Room) castSkill(caster *Entity, skill *content.Skill) {
+	r.castLinked(caster, link(skill, 1, nil))
+}
+
+// castLinked resolves one cast from a caster that has already been validated.
+func (r *Room) castLinked(caster *Entity, linked *Linked) {
+	skill := linked.Skill
+
 	r.emit(&mmov1.Event{Body: &mmov1.Event_SkillCast{SkillCast: &mmov1.SkillCast{
 		CasterId:   uint32(caster.ID),
 		SkillId:    skill.ID,
 		FacingLeft: caster.Body.FacingLeft,
 	}}}, caster.Layer)
 
+	// Self-targeted skills resolve against the caster; everything else needs
+	// something in range. A skill whose whole payload is a projectile is
+	// self-targeted, because the bolt finds its own target later.
 	targets := r.resolveTargets(caster, skill)
 	source := r.randFor(caster.Layer)
 
 	for _, target := range targets {
-		for i := range skill.Effects {
-			r.applyEffect(caster, target, skill, &skill.Effects[i], source)
+		for i := range linked.Effects {
+			r.applyEffect(caster, target, skill, &linked.Effects[i], source)
 		}
 	}
 }
@@ -172,13 +200,81 @@ func canInteract(a, b *Entity) bool {
 }
 
 // applyEffect resolves one effect against one target.
+//
+// The interpreter. Every skill in the game is a list of these, and every
+// support modifier is a transformation of such a list -- which is only
+// possible because the vocabulary is small, general, and closed. An effect
+// kind added for one skill would be an effect kind no support knows about.
+//
+// Depth is bounded by the caller rather than here: a chain re-enters with one
+// fewer jump, a trigger re-enters with the triggering skill marked, and both
+// are checked at content load so a loop cannot reach this at all.
 func (r *Room) applyEffect(caster, target *Entity, skill *content.Skill, eff *content.Effect, source *rng.Source) {
-	if eff.Kind != content.EffectDamage {
+	// A chance roll comes from the room's stream like every other roll, so a
+	// replay reproduces which of a skill's effects happened to land.
+	if eff.Chance > 0 && !source.PPM(eff.Chance) {
 		return
 	}
 
-	amount, critical := r.rollDamage(caster, target, eff, source)
-	r.damage(caster, target, amount, critical, eff.Element)
+	switch eff.Kind {
+	case content.EffectDamage:
+		amount, critical := r.rollDamage(caster, target, eff, source)
+		r.damage(caster, target, amount, critical, eff.Element)
+
+	case content.EffectHeal:
+		r.heal(target, r.rollAmount(caster, eff, source))
+
+	case content.EffectRestore:
+		r.restore(target, r.rollAmount(caster, eff, source))
+
+	case content.EffectApplyBuff:
+		r.applyBuff(caster, target, r.content.Buffs[eff.BuffID], eff.Stacks, eff.DurationTicks)
+
+	case content.EffectRemoveBuff:
+		r.removeBuff(target, eff.BuffID)
+
+	case content.EffectShield:
+		r.applyShield(caster, target, r.rollAmount(caster, eff, source), eff.DurationTicks)
+
+	case content.EffectDash:
+		// The caster moves, not the target: a dash is how the caster gets
+		// somewhere, and applying it per target would move them once per
+		// enemy hit.
+		r.dash(caster, eff)
+
+	case content.EffectKnockback:
+		r.knockback(caster, target, eff)
+
+	case content.EffectChain:
+		r.chain(caster, target, skill, eff, source)
+
+	case content.EffectTriggerSkill:
+		if triggered, ok := r.content.Skills[eff.SkillID]; ok {
+			r.castSkill(caster, triggered)
+		}
+
+	case content.EffectProjectile:
+		r.spawnProjectile(caster, eff)
+
+	case content.EffectArea:
+		r.spawnArea(caster, target, eff)
+	}
+}
+
+// rollAmount rolls a non-damage magnitude: healing, a resource, a shield.
+//
+// The same shape as damage without the mitigation, so a heal scales with the
+// caster's stats the way a hit does and a support that increases magnitude
+// works on both.
+func (r *Room) rollAmount(caster *Entity, eff *content.Effect, source *rng.Source) int {
+	base := source.Range(eff.BaseMin, eff.BaseMax)
+	total := fixed.FromInt(base) + fixed.FromInt(attackStat(caster)).Mul(eff.ScaleAttack)
+
+	amount := total.Int()
+	if amount < 0 {
+		return 0
+	}
+	return amount
 }
 
 // rollDamage runs the damage pipeline.
@@ -254,6 +350,22 @@ func armourStat(e *Entity) int {
 func (r *Room) damage(source, target *Entity, amount int, critical bool, element string) {
 	if amount <= 0 || !isAlive(target) {
 		return
+	}
+
+	// A shield absorbs before health does, and reports what it soaked -- a
+	// hit that vanishes into a pool the player cannot see reads as the attack
+	// having missed.
+	if absorbed := r.absorb(target, amount); absorbed > 0 {
+		r.emit(&mmov1.Event{Body: &mmov1.Event_Absorbed{Absorbed: &mmov1.Absorbed{
+			EntityId:  uint32(target.ID),
+			Amount:    uint32(absorbed),
+			Remaining: target.Shield,
+		}}}, target.Layer)
+
+		amount -= absorbed
+		if amount <= 0 {
+			return
+		}
 	}
 
 	if uint32(amount) >= target.HP {
@@ -339,4 +451,22 @@ func (r *Room) isFrozen(e *Entity) bool {
 	}
 	p, ok := r.players[e.ID]
 	return ok && p.frozen
+}
+
+// absorb takes what it can from a shield, returning how much it soaked.
+//
+// Expiry is checked here rather than on a tick, so a shield that has run out
+// costs nothing until something tries to use it.
+func (r *Room) absorb(target *Entity, amount int) int {
+	if target.Shield == 0 {
+		return 0
+	}
+	if r.tick >= target.ShieldUntil {
+		target.Shield = 0
+		return 0
+	}
+
+	soaked := min(uint32(amount), target.Shield)
+	target.Shield -= soaked
+	return int(soaked)
 }

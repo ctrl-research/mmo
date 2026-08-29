@@ -106,6 +106,14 @@ chance      = 0.35
 
 New effect *types* are Go code and should be rare. New *skills* are TOML and should be constant. If you find yourself adding an effect type per skill, the vocabulary is factored wrong.
 
+Every kind is validated for the fields it actually needs. An effect missing them does nothing at all, and an effect that silently does nothing is the hardest kind of content bug to find: the skill casts, the animation plays, and the number never appears. `summon` is the one entry above not yet implemented — it needs AI ownership and pet commands, which is a milestone rather than an effect.
+
+**One struct holds every kind**, rather than an interface per kind. A support rewrites effects it has never heard of, so every effect must be inspectable and copyable without knowing its type. The cost is fields that mean nothing for most kinds; the alternative costs the entire support system.
+
+**References are resolved at load.** A skill that applies a buff that does not exist, or triggers a skill that triggers it back, fails the build — the loop check tracks the whole chain rather than only self-reference, because a three-skill cycle would not terminate inside a tick either.
+
+**Buff durations are filled in at load** where a skill does not override them. Without that, a support that scales durations silently does nothing on every skill using a buff's default — which is nearly all of them.
+
 ### Support modifiers
 
 PoE-style supports are transformations applied to a skill's resolved effect list at compute time — never at authoring time:
@@ -120,7 +128,17 @@ more   = -0.25                    # 25% less damage
 repeat = 3                        # ...three times
 ```
 
-Because supports operate on the effect list rather than on hardcoded skill knowledge, a new support automatically works with every existing compatible skill, and a new skill automatically works with every existing compatible support. That combinatorial property is the entire appeal of the system, and it only exists if supports never special-case individual skills.
+Because supports operate on the effect list rather than on hardcoded skill knowledge, a new support automatically works with every existing compatible skill, and a new skill automatically works with every existing compatible support. That combinatorial property is the entire appeal of the system, and it only exists if supports never special-case individual skills. **There is deliberately no field for naming a skill.**
+
+Three rules keep it honest:
+
+- **Every tag, not any.** "melee" and "attack" together mean melee attacks; matching either would attach a melee support to a fireball.
+- **Every support costs mana.** One that costs nothing is one everybody takes, and therefore not a decision.
+- **Supports reach nested effects.** A fire support has to work on a fireball whether the fire is applied directly or carried by a bolt the skill launches.
+
+Ordering matters twice. Rank is applied *before* supports, so a support multiplies the ranked damage rather than the rank-one damage — the other way round makes a support worth progressively less the more a skill is levelled. And the linked supports apply in the order they are linked, because two that both scale damage compose differently depending on which repeats first.
+
+A triggered skill does **not** inherit the triggering skill's supports. A support that repeated an effect would repeat the trigger, and a support chain feeding itself is a loop the content check cannot see.
 
 ## Buffs
 
@@ -144,7 +162,29 @@ stat = "movement_speed"
 increased = -0.15
 ```
 
-Buffs both tick effects and contribute stat modifiers, feeding the same stat pipeline as gear and passives (`data-model.md` § Stats).
+Buffs both tick effects and contribute stat modifiers, feeding the same stat pipeline as gear and passives (`data-model.md` § Stats). Keeping them one mechanism is the point: "burning" and "+20% attack for ten seconds" are the same kind of thing, which is why a support that lengthens durations works on both without knowing what either does.
+
+Stacking is the interesting knob. A buff that **refreshes on apply** is one a player maintains; one that only **stacks** is one they build up and then spend. Stacks multiply both the modifiers and the ticked effects, so three stacks hit three times as hard rather than three times as often.
+
+The room layers buffs over the stat block the session pushes in, rather than asking for a rebuilt one. The two change on completely different clocks — equipment when somebody equips something, buffs several times a second in a fight — and rebuilding from items every time a stack of Burning ticked would mean the room asking the session for stats mid-tick.
+
+## Classes
+
+A class is deliberately thin: a name, a starting position on the tree, and what it can cast. It is **not** a package of hard-coded mechanics, because the mechanics are skills and passives and those are data.
+
+That thinness is what makes "two characters of the same class play differently" possible at all. If a class carried its own behaviour, the class would be the build.
+
+```toml
+[class.mage]
+name = "Mage"
+description = "Controls the ground, and would rather not be stood on."
+primary_stat = "intelligence"
+starting_skills = ["firebolt", "frost_nova"]
+```
+
+A class whose starting skill does not exist produces a character who cannot act, and the symptom is a button that does nothing — so it fails the build.
+
+Which skills a class *may* learn comes from the skill's own `class` field rather than a list on the class: adding a skill to a class is one line in the skill, rather than two files that can disagree.
 
 ## Mobs and enhanced mobs
 

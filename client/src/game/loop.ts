@@ -9,6 +9,8 @@ import type {
   PartyInvite,
   PartyState,
   Snapshot,
+  SkillBar,
+  BuffState,
   SystemMessage,
   Welcome,
   WorldMap,
@@ -67,6 +69,11 @@ export interface LoopCallbacks {
   onMapChanged?(mapId: string): void;
 
   onChat?(line: ChatLine): void;
+  onSkillBar?(bar: SkillBar): void;
+  onBuffs?(buffs: BuffState): void;
+
+  /** Called when the server confirms this player cast something. */
+  onCast?(skillId: string): void;
   onSystem?(msg: SystemMessage): void;
   onParty?(state: PartyState): void;
   onPartyInvite?(invite: PartyInvite): void;
@@ -118,6 +125,15 @@ export class GameLoop {
 
   /** The server's view of the inventory, cached so the UI can be drawn. */
   readonly inventory = new InventoryState();
+
+  /**
+   * The skill bar as the server last sent it.
+   *
+   * The client never decides what is on it: the bar is persisted, validated
+   * against what the character has learned, and pushed down. Pressing a key
+   * looks up an id here and asks.
+   */
+  #bar: SkillBar | null = null;
 
   constructor(sim: Sim, scene: Scene, cb: LoopCallbacks) {
     this.#sim = sim;
@@ -288,9 +304,27 @@ export class GameLoop {
         break;
       }
 
-      case "skillCast":
-        this.#scene.playAttack(e.body.value.casterId, this.#selfId);
+      case "skillBar":
+        this.#bar = e.body.value;
+        this.#cb.onSkillBar?.(e.body.value);
         break;
+
+      case "buffs":
+        this.#cb.onBuffs?.(e.body.value);
+        break;
+
+      case "skillCast": {
+        const cast = e.body.value;
+        this.#scene.playAttack(cast.casterId, this.#selfId);
+
+        // The bar's cooldown sweep starts when the server confirms the cast,
+        // not when the key was pressed: a cast the server refused should not
+        // grey the key out.
+        if (cast.casterId === this.#selfId) {
+          this.#cb.onCast?.(cast.skillId);
+        }
+        break;
+      }
 
       case "died": {
         const d = e.body.value;
@@ -440,8 +474,22 @@ export class GameLoop {
     // for how much, and guessing locally would mean showing damage numbers
     // that the server then contradicts -- worse than showing them a frame
     // later.
+    // The bar decides what a key casts. The client sends a skill id and the
+    // server checks it against the character's own loadout, so pressing 3 is
+    // a request rather than an instruction.
+    const facing = isFacingLeft(this.#predictor.body);
+
+    const slot = this.#input.takeSlot();
+    if (slot >= 0) {
+      const skill = this.#bar?.slots[slot]?.skillId;
+      if (skill) this.#conn.sendCast(seq, skill, facing);
+    }
+
+    // The attack key is slot one, so the game is playable without learning
+    // the bar first.
     if (this.#input.takeAttack()) {
-      this.#conn.sendCast(seq, "slash", isFacingLeft(this.#predictor.body));
+      const skill = this.#bar?.slots[0]?.skillId;
+      if (skill) this.#conn.sendCast(seq, skill, facing);
     }
 
     if (this.#input.takeLoot()) {
@@ -471,6 +519,16 @@ export class GameLoop {
   /** Asks to change the friends list. */
   friends(kind: SocialAction_Kind, target = ""): void {
     this.#conn.sendSocial(kind, target);
+  }
+
+  /** Asks to put a skill and its supports in a bar slot. */
+  setSkillSlot(slot: number, skillId: string, supports: string[]): void {
+    this.#conn.sendSkillSlot(slot, skillId, supports);
+  }
+
+  /** The bar as the server last sent it, for the UI to draw. */
+  get skillBar(): SkillBar | null {
+    return this.#bar;
   }
 
   /**

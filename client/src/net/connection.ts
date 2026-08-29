@@ -21,6 +21,7 @@ import {
   GuildAction_Kind,
   SocialActionSchema,
   SocialAction_Kind,
+  SetSkillSlotSchema,
   type Inventory,
   type Snapshot,
   type Welcome,
@@ -35,6 +36,8 @@ import {
   type GuildState,
   type GuildInvite,
   type FriendList,
+  type SkillBar,
+  type BuffState,
 } from "@/gen/mmo/v1/game_pb";
 
 /** Bumped on any incompatible wire change; must match gateway.ProtocolVersion. */
@@ -237,6 +240,14 @@ export class Connection {
     this.send({ case: "social", value: create(SocialActionSchema, { kind, target }) });
   }
 
+  /** Asks to put a skill and its supports in a bar slot. */
+  sendSkillSlot(slot: number, skillId: string, supports: string[]): void {
+    this.send({
+      case: "skillSlot",
+      value: create(SetSkillSlotSchema, { slot, skillId, supports }),
+    });
+  }
+
   send(body: ClientMessage["body"]): void {
     if (!this.connected) return;
     const msg = create(ClientMessageSchema, { body });
@@ -349,5 +360,7 @@ export type {
   GuildState,
   GuildInvite,
   FriendList,
+  SkillBar,
+  BuffState,
 };
 export { ChatChannel, PartyAction_Kind, GuildAction_Kind, SocialAction_Kind };

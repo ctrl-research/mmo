@@ -138,7 +138,26 @@ export async function listCharacters(): Promise<{ characters: Character[]; max: 
   return request("/api/characters");
 }
 
-export async function createCharacter(name: string, cls = "warrior"): Promise<Character> {
+/** One playable class, as the character screen shows it. */
+export interface ClassInfo {
+  id: string;
+  name: string;
+  description: string;
+  primaryStat: string;
+}
+
+/**
+ * The playable classes.
+ *
+ * From the server rather than a list in the client: classes are content, and a
+ * client with its own copy would offer one the server does not have -- which
+ * produces a character with no skills and no way to act.
+ */
+export async function listClasses(): Promise<{ classes: ClassInfo[] }> {
+  return request("/api/classes");
+}
+
+export async function createCharacter(name: string, cls: string): Promise<Character> {
   return request("/api/characters", {
     method: "POST",
     body: JSON.stringify({ name, class: cls }),
