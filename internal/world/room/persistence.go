@@ -61,6 +61,10 @@ type JoinSpec struct {
 	Fresh bool
 
 	Sink Sink
+
+	// Items receives loot claims for this player. Set by the session, which is
+	// where item persistence happens.
+	Items ItemSink
 }
 
 // Snapshot is a character's current persistable state, taken on the room

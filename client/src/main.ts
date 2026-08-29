@@ -2,6 +2,7 @@ import { GameLoop } from "@/game/loop";
 import { Scene } from "@/render/scene";
 import { Sim } from "@/sim/wasm";
 import { Shell } from "@/ui/screens";
+import { InventoryPanel } from "@/ui/inventory";
 import type { Character } from "@/ui/api";
 import { toPixels } from "@/sim/fixed";
 import { isClimbing, isGrounded } from "@/sim/body";
@@ -21,10 +22,13 @@ import { isClimbing, isGrounded } from "@/sim/body";
 const overlay = document.getElementById("overlay") as HTMLDivElement;
 const hud = document.getElementById("hud") as HTMLDivElement;
 const stage = document.getElementById("stage") as HTMLDivElement;
+const inventoryEl = document.getElementById("inventory") as HTMLDivElement;
+const tooltipEl = document.getElementById("tooltip") as HTMLDivElement;
 
 let loop: GameLoop | null = null;
 let scene: Scene | null = null;
 let sim: Sim | null = null;
+let panel: InventoryPanel | null = null;
 let status = "";
 
 const shell = new Shell(overlay, {
@@ -36,8 +40,19 @@ async function main(): Promise<void> {
   // drawn body, reconciliation is wrong, and seeing that live beats inferring
   // it from a log.
   window.addEventListener("keydown", (e) => {
-    if (e.code === "KeyG" && loop) {
+    if (!loop) return;
+
+    if (e.code === "KeyG") {
       setStatus(loop.toggleGhost() ? "server ghost on" : "server ghost off");
+    }
+    if (e.code === "KeyI") {
+      // Prevented, or the keypress also reaches the game and the character
+      // acts on the same press that opened the panel.
+      e.preventDefault();
+      panel?.toggle();
+    }
+    if (e.code === "Escape") {
+      panel?.close();
     }
   });
 
@@ -57,11 +72,20 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
 
     scene.clearEntities();
 
-    loop = new GameLoop(sim, scene, {
+    const game = new GameLoop(sim, scene, {
       onStatus: setStatus,
+      onInventory: () => panel?.render(),
       onDisconnect: (reason) => {
         loop = null;
+        panel?.close();
         void shell.resume(reason);
+      },
+    });
+    loop = game;
+
+    panel = new InventoryPanel(inventoryEl, tooltipEl, game.inventory, {
+      onAction: (kind, item, slot, equipSlot) => {
+        game.itemAction(kind, item?.itemId ?? "", slot ?? 0, equipSlot ?? "");
       },
     });
 
@@ -98,7 +122,7 @@ function startHud(): void {
         `correct  ${s.lastCorrectionPx.toFixed(2)} px  (${s.hardCorrections} hard)\n` +
         `others   ${s.entities}\n` +
         `net      ${s.snapshotsReceived} snaps, ${(s.bytesReceived / 1024).toFixed(1)} KiB\n` +
-        `\n[g] toggle server ghost`;
+        `\n[i] inventory   [g] server ghost`;
       hud.hidden = false;
     } else {
       hud.hidden = true;

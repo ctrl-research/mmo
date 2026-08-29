@@ -5,14 +5,47 @@ import (
 	"io/fs"
 
 	"github.com/BurntSushi/toml"
+	"github.com/ctrl-research/mmo/internal/world/stats"
 )
 
-// Item is a base item type.
+// EquipSlot is where an item is worn. Empty for things that are not equipment.
+type EquipSlot string
+
+const (
+	SlotWeapon EquipSlot = "weapon"
+	SlotHelmet EquipSlot = "helmet"
+	SlotChest  EquipSlot = "chest"
+	SlotGloves EquipSlot = "gloves"
+	SlotBoots  EquipSlot = "boots"
+	SlotRing   EquipSlot = "ring"
+)
+
+// EquipSlots lists every slot, in the order a paperdoll shows them.
+var EquipSlots = []EquipSlot{
+	SlotWeapon, SlotHelmet, SlotChest, SlotGloves, SlotBoots, SlotRing,
+}
+
+var validSlots = func() map[EquipSlot]bool {
+	m := make(map[EquipSlot]bool, len(EquipSlots))
+	for _, s := range EquipSlots {
+		m[s] = true
+	}
+	return m
+}()
+
+// ImplicitMod is a modifier every instance of a base type carries.
 //
-// M1 needs only enough to put something on the ground and pick it up. The
-// affix pools, tiers, rarity rolls, and equipment slots that make items
-// interesting arrive in M3; this struct is expected to grow, and the fields
-// here keep their meaning when it does.
+// Rolled per instance like an affix, so two iron swords are not identical --
+// which is what makes a base type worth re-examining rather than a solved
+// quantity.
+type ImplicitMod struct {
+	Stat stats.StatID
+	Kind stats.Kind
+	Min  stats.Value
+	Max  stats.Value
+}
+
+// Item is a base item type.
 type Item struct {
 	ID        string
 	Name      string
@@ -20,9 +53,23 @@ type Item struct {
 	Stackable bool
 	MaxStack  int
 
-	// Level gates who can use the item and, from M3, which affixes it can roll.
+	// Level gates who can use the item and which affix tiers it can roll.
 	Level int
+
+	// Slot is where equipment is worn. Empty for everything else.
+	Slot EquipSlot
+
+	// Class decides which affixes may roll on it: "sword", "body_armour".
+	// Separate from Slot because two slots can share an affix pool and one
+	// slot can hold several classes.
+	Class string
+
+	// Implicits are rolled on every instance.
+	Implicits []ImplicitMod
 }
+
+// IsEquipment reports whether the item can be worn.
+func (i *Item) IsEquipment() bool { return i.Slot != "" }
 
 type itemsFile struct {
 	Item map[string]struct {
@@ -31,6 +78,15 @@ type itemsFile struct {
 		Stackable bool   `toml:"stackable"`
 		MaxStack  int    `toml:"max_stack"`
 		Level     int    `toml:"level"`
+		Slot      string `toml:"slot"`
+		Class     string `toml:"class"`
+
+		Implicit []struct {
+			Stat string  `toml:"stat"`
+			Kind string  `toml:"kind"`
+			Min  float64 `toml:"min"`
+			Max  float64 `toml:"max"`
+		} `toml:"implicit"`
 	} `toml:"item"`
 }
 
@@ -76,14 +132,51 @@ func (c *Content) loadItems(fsys fs.FS, rec *hashRecorder) error {
 				return fmt.Errorf("%s: item %q is stackable but has max_stack %d", name, id, maxStack)
 			}
 
-			c.Items[id] = &Item{
+			item := &Item{
 				ID:        id,
 				Name:      raw.Name,
 				Kind:      raw.Kind,
 				Stackable: raw.Stackable,
 				MaxStack:  maxStack,
 				Level:     raw.Level,
+				Slot:      EquipSlot(raw.Slot),
+				Class:     raw.Class,
 			}
+
+			if item.Slot != "" && !validSlots[item.Slot] {
+				return fmt.Errorf("%s: item %q has unknown slot %q", name, id, raw.Slot)
+			}
+			// Equipment that is stackable would have to share one set of
+			// rolled affixes across the stack, which is incoherent.
+			if item.IsEquipment() && item.Stackable {
+				return fmt.Errorf("%s: item %q is equipment and stackable; "+
+					"rolled affixes cannot be shared across a stack", name, id)
+			}
+			if item.Kind == "equipment" && item.Slot == "" {
+				return fmt.Errorf("%s: item %q is equipment but names no slot", name, id)
+			}
+
+			for i, im := range raw.Implicit {
+				stat, ok := stats.Parse(im.Stat)
+				if !ok {
+					return fmt.Errorf("%s: item %q implicit %d references unknown stat %q",
+						name, id, i, im.Stat)
+				}
+				kind, ok := stats.ParseKind(im.Kind)
+				if !ok {
+					return fmt.Errorf("%s: item %q implicit %d has modifier kind %q",
+						name, id, i, im.Kind)
+				}
+				if im.Max < im.Min {
+					return fmt.Errorf("%s: item %q implicit %d has max below min", name, id, i)
+				}
+				item.Implicits = append(item.Implicits, ImplicitMod{
+					Stat: stat, Kind: kind,
+					Min: stats.FromFloat(im.Min), Max: stats.FromFloat(im.Max),
+				})
+			}
+
+			c.Items[id] = item
 		}
 	}
 	return nil

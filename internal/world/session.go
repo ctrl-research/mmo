@@ -8,9 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ctrl-research/mmo/internal/content"
 	"github.com/ctrl-research/mmo/internal/directory"
 	"github.com/ctrl-research/mmo/internal/store"
 	"github.com/ctrl-research/mmo/internal/world/room"
+	"github.com/ctrl-research/mmo/internal/world/stats"
 	"github.com/google/uuid"
 )
 
@@ -67,6 +69,11 @@ type PlayerSession interface {
 	// Disconnect holds the character in the world for a grace period after a
 	// dropped connection, so a transient blip is not a wipe.
 	Disconnect(ctx context.Context)
+
+	// ApplyItemAction performs an inventory request. It writes to the database
+	// before the result reaches the room, so the two cannot disagree about
+	// where an item is.
+	ApplyItemAction(ctx context.Context, action ItemAction) error
 }
 
 // Session is one character in the world.
@@ -87,6 +94,17 @@ type Session struct {
 	// connection rather than leave a client playing a character it no longer
 	// owns.
 	onLost func(reason string)
+
+	// inventory is owned here rather than in the room, because item writes
+	// must be durable the moment they happen and the room must never block.
+	inventory *Inventory
+
+	// claims carries loot requests from the tick loop to this session's
+	// goroutine, where the database can be reached.
+	claims chan room.LootClaim
+
+	// sink delivers inventory updates to the connected client.
+	sink room.Sink
 
 	closeOnce sync.Once
 	done      chan struct{}
@@ -192,11 +210,11 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 		Sink:  sink,
 	}
 
-	entityID, err := handle.Join(ctx, spec)
+	inventory, err := LoadInventory(ctx, n.store, n.content, characterID)
 	if err != nil {
 		n.dir.Leave(ctx, instance)
 		release()
-		return nil, err
+		return nil, fmt.Errorf("world: loading inventory: %w", err)
 	}
 
 	s := &Session{
@@ -205,13 +223,30 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 		characterID: characterID,
 		name:        character.Name,
 		handle:      handle,
-		entityID:    entityID,
 		instance:    instance,
 		lease:       lease,
-		done:        make(chan struct{}),
+		inventory:   inventory,
+		sink:        sink,
+		// Buffered so the tick loop never blocks handing a claim over; a
+		// player cannot legitimately claim faster than this.
+		claims: make(chan room.LootClaim, 16),
+		done:   make(chan struct{}),
 		log: n.log.With(
 			"character", characterID.String(), "name", character.Name, "account", accountID.String()),
 	}
+	spec.Items = s
+
+	entityID, err := handle.Join(ctx, spec)
+	if err != nil {
+		n.dir.Leave(ctx, instance)
+		release()
+		return nil, err
+	}
+	s.entityID = entityID
+
+	// The stat block and the client's first inventory view, before anything
+	// else observes the character.
+	s.refreshStats(ctx, character.Level)
 
 	n.hold(characterID, s)
 	go s.maintain()
@@ -235,6 +270,9 @@ func (s *Session) maintain() {
 		select {
 		case <-s.done:
 			return
+
+		case claim := <-s.claims:
+			s.handleClaim(claim)
 
 		case <-renew.C:
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -374,6 +412,27 @@ func (s *Session) Resume(ctx context.Context, sink room.Sink) bool {
 		return false
 	}
 
+	// The session must talk to the *new* connection. Without this, every later
+	// inventory push goes to the socket that just dropped, and the returning
+	// player sees an empty inventory for the rest of the session.
+	s.mu.Lock()
+	s.sink = sink
+	s.mu.Unlock()
+
+	// Reloaded from the database rather than re-sent from memory: the
+	// in-memory copy is from the moment of joining, and anything that happened
+	// while the player was away -- an administrator granting an item today, a
+	// trade or mail delivery later -- would otherwise be invisible until they
+	// fully logged out.
+	if err := s.inventory.reload(ctx); err != nil {
+		s.log.Error("reloading inventory on reconnect", "err", err)
+	}
+
+	// The new connection has no state at all, so everything sent once at join
+	// has to be sent again. The room re-sends its world state on thaw; the
+	// inventory and stats are the session's to re-send.
+	s.refreshStats(ctx, s.characterLevel(ctx))
+
 	s.log.Info("player reconnected within the grace window")
 	return true
 }
@@ -430,3 +489,113 @@ func (s *Session) detach() {
 }
 
 var _ PlayerSession = (*Session)(nil)
+
+// ClaimLoot receives a loot claim from the tick loop.
+//
+// Called mid-tick, so it must not block: it hands the claim to this session's
+// own goroutine and returns immediately.
+func (s *Session) ClaimLoot(claim room.LootClaim) {
+	select {
+	case s.claims <- claim:
+	default:
+		// The queue is full, which means persistence is badly backed up.
+		// Refusing returns the drop to the ground rather than losing it.
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		s.handle.ResolveLoot(ctx, claim.Player, claim.DropID, false, "the server is busy; try again")
+		cancel()
+	}
+}
+
+// handleClaim persists a claimed item and confirms or returns it.
+func (s *Session) handleClaim(claim room.LootClaim) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := s.inventory.Grant(ctx, claim.Instance, claim.Tick)
+	switch {
+	case errors.Is(err, ErrInventoryFull):
+		// Returned to the ground, so the player can make room and come back
+		// for it rather than losing it.
+		s.handle.ResolveLoot(ctx, claim.Player, claim.DropID, false, "your inventory is full")
+		return
+	case err != nil:
+		s.log.Error("granting loot", "err", err)
+		s.handle.ResolveLoot(ctx, claim.Player, claim.DropID, false, "could not pick that up")
+		return
+	}
+
+	s.handle.ResolveLoot(ctx, claim.Player, claim.DropID, true, "")
+	s.pushInventory(ctx)
+}
+
+// refreshStats recomputes the stat block and pushes it to the room and client.
+//
+// Rebuilt from scratch on every change: removing a modifier from a running
+// product is lossy, and an incremental path that drifts produces stats that
+// depend on the order things were equipped.
+func (s *Session) refreshStats(ctx context.Context, level int) {
+	block := s.inventory.StatBlock(level)
+
+	maxLife := block.IntClampedNonNegative(stats.MaxLife)
+	if maxLife < 1 {
+		maxLife = 1
+	}
+
+	s.handle.SetStats(ctx, s.entityID, block, uint32(maxLife))
+	s.pushInventoryWithStats(ctx, block)
+}
+
+// ApplyItemAction performs a player's inventory request.
+//
+// Every action goes to the database first and the in-memory view is rebuilt
+// from the result, because the database is the authority on where an item is
+// -- and a divergence between the two is how an item comes to appear twice.
+func (s *Session) ApplyItemAction(ctx context.Context, action ItemAction) error {
+	level := s.characterLevel(ctx)
+
+	var err error
+	switch action.Kind {
+	case ItemMove:
+		err = s.inventory.Move(ctx, action.ItemID, action.Slot, 0)
+	case ItemEquip:
+		err = s.inventory.Equip(ctx, action.ItemID, level, 0)
+	case ItemUnequip:
+		err = s.inventory.Unequip(ctx, action.EquipSlot, 0)
+	case ItemDestroy:
+		err = s.inventory.Destroy(ctx, action.ItemID, 0)
+	default:
+		return fmt.Errorf("world: unknown item action")
+	}
+	if err != nil {
+		return err
+	}
+
+	s.refreshStats(ctx, level)
+	return nil
+}
+
+// characterLevel reads the level the room currently has for this character.
+func (s *Session) characterLevel(ctx context.Context) int {
+	if snap, ok := s.handle.Capture(ctx, s.entityID); ok && snap.Progress.Level > 0 {
+		return snap.Progress.Level
+	}
+	return 1
+}
+
+// ItemActionKind is what a player wants done with an item.
+type ItemActionKind uint8
+
+const (
+	ItemMove ItemActionKind = iota + 1
+	ItemEquip
+	ItemUnequip
+	ItemDestroy
+)
+
+// ItemAction is a request to change the inventory.
+type ItemAction struct {
+	Kind      ItemActionKind
+	ItemID    uuid.UUID
+	Slot      int
+	EquipSlot content.EquipSlot
+}

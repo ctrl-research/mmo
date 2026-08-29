@@ -434,6 +434,55 @@ kind = "material"
 stackable = true
 max_stack = 100
 level = 1
+
+[item."test.blade"]
+name = "Test Blade"
+kind = "equipment"
+slot = "weapon"
+class = "sword"
+level = 1
+
+[[item."test.blade".implicit]]
+stat = "attack"
+kind = "flat"
+min = 2
+max = 4
+`
+
+const affixesTOML = `
+[affix.test_attack]
+name = "Sharp"
+type = "prefix"
+classes = ["sword"]
+stat = "attack"
+kind = "flat"
+
+[[affix.test_attack.tiers]]
+tier = 2
+item_level = 1
+min = 1
+max = 3
+weight = 100
+
+[[affix.test_attack.tiers]]
+tier = 1
+item_level = 20
+min = 4
+max = 8
+weight = 20
+
+[affix.test_strength]
+name = "of the Ox"
+type = "suffix"
+stat = "strength"
+kind = "flat"
+
+[[affix.test_strength.tiers]]
+tier = 1
+item_level = 1
+min = 2
+max = 5
+weight = 100
 `
 
 const dropsTOML = `
@@ -524,6 +573,7 @@ func minimalFS() fstest.MapFS {
 		"balance.toml":         file(balanceTOML),
 		"curves/exp.toml":      file(curvesTOML),
 		"items/test.toml":      file(itemsTOML),
+		"affixes/test.toml":    file(affixesTOML),
 		"droptables/test.toml": file(dropsTOML),
 		"skills/test.toml":     file(skillsTOML),
 		"mobs/test.toml":       file(mobsTOML),

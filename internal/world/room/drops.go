@@ -3,6 +3,7 @@ package room
 import (
 	"github.com/ctrl-research/mmo/internal/fixed"
 	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
+	"github.com/ctrl-research/mmo/internal/world/items"
 	"github.com/ctrl-research/mmo/internal/world/sim"
 )
 
@@ -17,6 +18,21 @@ type DropState struct {
 	ItemID string
 	Qty    uint32
 	Gold   uint32
+
+	// Instance is the rolled item, generated at the moment of the kill so its
+	// modifiers come from the room's seeded stream and a replay reproduces the
+	// exact drop.
+	//
+	// Deliberately not persisted while it lies on the ground: most drops are
+	// never picked up, and writing every one would be a great many writes for
+	// nothing. The cost is that un-looted loot does not survive a crash.
+	Instance *items.Instance
+
+	// Claimed marks a drop a player has asked for and whose persistence is in
+	// flight. It stays in the world, invisible and unlootable, until the write
+	// succeeds -- so a database error returns the item rather than destroying
+	// it.
+	Claimed bool
 
 	// Owner may loot immediately; anyone else in the same layer must wait for
 	// the lock to expire. Within one player's layer this never matters, but it
@@ -82,7 +98,18 @@ func (r *Room) rollDrops(killer, victim *Entity) {
 		if qty <= 0 {
 			continue
 		}
-		spawn(DropState{ItemID: entry.Item, Qty: uint32(qty)})
+
+		// Rolled here rather than at pickup, so the item exists the moment it
+		// drops and two players examining the same corpse could not see
+		// different loot.
+		inst, err := r.items.Roll(source, entry.Item, victim.Mob.Def.Level, r.rarityWeights())
+		if err != nil {
+			r.log.Error("rolling a drop", "item", entry.Item, "err", err)
+			continue
+		}
+		inst.Stack = qty
+
+		spawn(DropState{ItemID: entry.Item, Qty: uint32(qty), Instance: inst})
 	}
 }
 
@@ -121,6 +148,11 @@ func (r *Room) tryLoot(player *Entity, dropID EntityID) {
 	if drop.Drop.Owner != player.ID && r.tick < drop.Drop.UnlockAt {
 		return
 	}
+	// Already asked for, with the write in flight. Silently ignoring a second
+	// request beats granting the item twice.
+	if drop.Drop.Claimed {
+		return
+	}
 
 	gap := horizontalGap(player.Body.FeetCenter(), drop.Body.FeetCenter())
 	vgap := verticalGap(player.Body.FeetCenter(), drop.Body.FeetCenter())
@@ -129,19 +161,65 @@ func (r *Room) tryLoot(player *Entity, dropID EntityID) {
 		return
 	}
 
+	// Gold has no inventory slot and cannot fail to be stored, so it is
+	// granted immediately.
 	if drop.Drop.Gold > 0 {
 		player.Player.Gold += int64(drop.Drop.Gold)
+
+		r.emitTo(player.ID, &mmov1.Event{Body: &mmov1.Event_LootTaken{LootTaken: &mmov1.LootTaken{
+			EntityId: uint32(dropID),
+			Gold:     drop.Drop.Gold,
+		}}})
+		r.removeEntity(dropID)
+		return
 	}
 
-	r.emitTo(player.ID, &mmov1.Event{Body: &mmov1.Event_LootTaken{LootTaken: &mmov1.LootTaken{
+	p := r.players[player.ID]
+	if drop.Drop.Instance == nil || p == nil || p.items == nil {
+		// Nothing to store, or nowhere to store it. Leaving the drop rather
+		// than silently consuming it means the loss is visible.
+		return
+	}
+
+	// Claimed rather than removed. The item stays in the world until the
+	// database confirms it, so a transient failure returns it instead of
+	// destroying a drop the player just earned.
+	drop.Drop.Claimed = true
+
+	p.items.ClaimLoot(LootClaim{
+		Player:      player.ID,
+		CharacterID: p.characterID,
+		DropID:      dropID,
+		Instance:    drop.Drop.Instance,
+		Tick:        r.tick,
+	})
+}
+
+// resolveLoot completes a claim once persistence has finished.
+func (r *Room) resolveLoot(dropID EntityID, playerID EntityID, granted bool, reason string) {
+	drop := r.entity(dropID)
+	if drop == nil || drop.Drop == nil {
+		return
+	}
+
+	if !granted {
+		// Returned to the ground, so the player can try again once whatever
+		// blocked it clears.
+		drop.Drop.Claimed = false
+		if reason != "" {
+			r.emitTo(playerID, &mmov1.Event{Body: &mmov1.Event_LootTaken{LootTaken: &mmov1.LootTaken{
+				EntityId: uint32(dropID),
+				Failed:   true,
+				Reason:   reason,
+			}}})
+		}
+		return
+	}
+
+	r.emitTo(playerID, &mmov1.Event{Body: &mmov1.Event_LootTaken{LootTaken: &mmov1.LootTaken{
 		EntityId: uint32(dropID),
 		ItemId:   drop.Drop.ItemID,
 		Qty:      drop.Drop.Qty,
-		Gold:     drop.Drop.Gold,
 	}}})
-
-	// Inventory arrives in M3. Until then an item drop is consumed and
-	// acknowledged so the pickup path is exercised end to end; only gold has
-	// somewhere to go.
 	r.removeEntity(dropID)
 }

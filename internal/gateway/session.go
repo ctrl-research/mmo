@@ -8,10 +8,12 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	"github.com/ctrl-research/mmo/internal/content"
 	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
 	"github.com/ctrl-research/mmo/internal/world"
 	"github.com/ctrl-research/mmo/internal/world/room"
 	"github.com/ctrl-research/mmo/internal/world/sim"
+	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -321,6 +323,13 @@ func (s *session) handleClientMessage(ctx context.Context, cm *mmov1.ClientMessa
 			s.handle.Interact(ctx, s.entityID, room.EntityID(in.GetEntityId()), room.InteractLoot)
 		}
 
+	case cm.GetItemAction() != nil:
+		if !limiter.allow() {
+			s.gw.metrics.InputsDropped.Inc()
+			return
+		}
+		s.handleItemAction(ctx, cm.GetItemAction())
+
 	case cm.GetPing() != nil:
 		s.Send(&mmov1.ServerMessage{
 			Body: &mmov1.ServerMessage_Pong{Pong: &mmov1.Pong{
@@ -445,5 +454,53 @@ func (s *session) gracefulDisconnect() bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// handleItemAction forwards an inventory request to the session.
+//
+// Handled off the tick loop, on the reader goroutine, because it writes to the
+// database. The room learns only the result: a recomputed stat block.
+func (s *session) handleItemAction(ctx context.Context, action *mmov1.ItemAction) {
+	if s.play == nil {
+		return
+	}
+
+	req := world.ItemAction{
+		Slot:      int(action.GetSlot()),
+		EquipSlot: content.EquipSlot(action.GetEquipSlot()),
+	}
+
+	switch action.GetKind() {
+	case mmov1.ItemActionKind_ITEM_ACTION_KIND_MOVE:
+		req.Kind = world.ItemMove
+	case mmov1.ItemActionKind_ITEM_ACTION_KIND_EQUIP:
+		req.Kind = world.ItemEquip
+	case mmov1.ItemActionKind_ITEM_ACTION_KIND_UNEQUIP:
+		req.Kind = world.ItemUnequip
+	case mmov1.ItemActionKind_ITEM_ACTION_KIND_DESTROY:
+		req.Kind = world.ItemDestroy
+	default:
+		return
+	}
+
+	if req.Kind != world.ItemUnequip {
+		id, err := uuid.Parse(action.GetItemId())
+		if err != nil {
+			return
+		}
+		req.ItemID = id
+	}
+
+	// A generous timeout: this is a database round trip on a player-initiated
+	// action, not something on the tick path.
+	actionCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	if err := s.play.ApplyItemAction(actionCtx, req); err != nil {
+		// Refused actions are common and mostly benign -- a full inventory, a
+		// level requirement, an item already moved. The client resyncs from
+		// the inventory message it is about to receive anyway.
+		s.log.Debug("item action refused", "err", err)
 	}
 }

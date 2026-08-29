@@ -3,6 +3,7 @@ package room
 import (
 	"github.com/ctrl-research/mmo/internal/content"
 	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
+	"github.com/ctrl-research/mmo/internal/world/stats"
 )
 
 // PlayerState is a character's progression and derived stats.
@@ -19,6 +20,13 @@ type PlayerState struct {
 
 	// Cooldowns maps a skill to the tick from which it may be cast again.
 	Cooldowns map[string]uint64
+
+	// Stats is the character's derived statistics, computed by the session
+	// from level and equipment and pushed in whenever either changes.
+	//
+	// The room never computes it: doing so would mean the room knowing about
+	// items, and item state belongs where it can be written durably.
+	Stats *stats.Block
 }
 
 func newPlayerState() *PlayerState {
@@ -27,21 +35,56 @@ func newPlayerState() *PlayerState {
 		MP:        50,
 		MaxMP:     50,
 		Cooldowns: make(map[string]uint64),
+		Stats:     stats.NewBlock(),
 	}
 }
 
-// Attack is the player's offensive stat.
-//
-// Derived from level alone until equipment and the full base/increased/more
-// pipeline arrive in M3. Keeping it behind a method means the call sites do
-// not change when the real stat engine replaces this.
-func (p *PlayerState) Attack() int { return 5 + p.Level*2 }
+// Attack is the player's offensive stat, after equipment.
+func (p *PlayerState) Attack() int {
+	if p.Stats == nil {
+		return 5 + p.Level*2
+	}
+	return p.Stats.IntClampedNonNegative(stats.Attack)
+}
 
-// Armour is the player's mitigation, likewise a placeholder for M3.
-func (p *PlayerState) Armour() int { return p.Level }
+// Armour is the player's mitigation, after equipment.
+func (p *PlayerState) Armour() int {
+	if p.Stats == nil {
+		return p.Level
+	}
+	return p.Stats.IntClampedNonNegative(stats.Armour)
+}
 
-// MaxHPFor returns the hit points a character has at a level.
+// CritChance is the probability of a critical hit, in stat millionths.
+func (p *PlayerState) CritChance() stats.Value {
+	if p.Stats == nil {
+		return 0
+	}
+	return p.Stats.Value(stats.CritChance)
+}
+
+// CritMultiplier is the damage multiplier on a critical hit.
+func (p *PlayerState) CritMultiplier() stats.Value {
+	if p.Stats == nil {
+		return stats.FromPercent(150)
+	}
+	return p.Stats.Value(stats.CritMultiplier)
+}
+
+// MaxHPFor returns the hit points a character has at a level, before any
+// equipment. The stat block is authoritative once one exists.
 func MaxHPFor(level int) uint32 { return uint32(100 + (level-1)*20) }
+
+// maxLifeFrom returns the hit points a character has, including equipment.
+func maxLifeFrom(p *PlayerState) uint32 {
+	if p.Stats == nil {
+		return MaxHPFor(p.Level)
+	}
+	if v := p.Stats.IntClampedNonNegative(stats.MaxLife); v > 0 {
+		return uint32(v)
+	}
+	return MaxHPFor(p.Level)
+}
 
 // awardKill grants experience for a kill and handles any resulting levels.
 func (r *Room) awardKill(killer *Entity, victim *Entity) {
@@ -85,7 +128,7 @@ func (r *Room) applyLevels(e *Entity) {
 
 		// Levelling restores the character, which is both a reward and what
 		// makes a level-up mid-fight feel like one.
-		e.MaxHP = MaxHPFor(p.Level)
+		e.MaxHP = maxLifeFrom(p)
 		e.HP = e.MaxHP
 		p.MaxMP = uint32(50 + (p.Level-1)*10)
 		p.MP = p.MaxMP

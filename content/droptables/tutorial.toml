@@ -21,7 +21,7 @@ item = "potion.red_small"
 chance = 0.12
 
 [[drop_table.slime_green.entries]]
-item = "equipment.rusty_sword"
+item = "weapon.rusty_sword"
 chance = 0.02
 
 [drop_table.boar_wild]
@@ -56,6 +56,6 @@ qty = { min = 2, max = 5 }
 # Rare enough to be worth announcing. Reserved for genuinely rare items -- an
 # announcement on anything common is noise.
 [[drop_table.slime_king.entries]]
-item = "equipment.slime_crown"
+item = "jewellery.slime_crown"
 chance = 0.03
 announce = true

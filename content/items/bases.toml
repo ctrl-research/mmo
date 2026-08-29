@@ -1,7 +1,15 @@
 # Base item types.
 #
-# M1 needs only enough to put something on the ground and pick it up. Affix
-# pools, tiers, rarity rolls, and equipment slots arrive in M3.
+# `slot` is where equipment is worn; `class` decides which affixes may roll on
+# it. They are separate because two slots can share an affix pool and one slot
+# can hold several classes -- a sword and an axe both go in the weapon slot but
+# need not share every modifier.
+#
+# Implicits are rolled per instance like affixes, so two iron swords are not
+# identical. That is what makes a base type worth re-examining rather than a
+# solved quantity.
+
+# --- consumables and materials ----------------------------------------------
 
 [item."potion.red_small"]
 name = "Small Red Potion"
@@ -31,14 +39,149 @@ stackable = true
 max_stack = 500
 level = 5
 
-[item."equipment.rusty_sword"]
+# --- weapons ----------------------------------------------------------------
+
+[item."weapon.rusty_sword"]
 name = "Rusty Sword"
 kind = "equipment"
-stackable = false
+slot = "weapon"
+class = "sword"
 level = 1
 
-[item."equipment.slime_crown"]
+[[item."weapon.rusty_sword".implicit]]
+stat = "attack"
+kind = "flat"
+min = 3
+max = 6
+
+[item."weapon.iron_sword"]
+name = "Iron Sword"
+kind = "equipment"
+slot = "weapon"
+class = "sword"
+level = 8
+
+[[item."weapon.iron_sword".implicit]]
+stat = "attack"
+kind = "flat"
+min = 8
+max = 14
+
+[item."weapon.war_axe"]
+name = "War Axe"
+kind = "equipment"
+slot = "weapon"
+class = "axe"
+level = 12
+
+[[item."weapon.war_axe".implicit]]
+stat = "attack"
+kind = "flat"
+min = 14
+max = 22
+
+# Slower but harder hitting, so weapon choice is a trade rather than a ladder.
+[[item."weapon.war_axe".implicit]]
+stat = "attack_speed"
+kind = "increased"
+min = -0.15
+max = -0.05
+
+# --- armour -----------------------------------------------------------------
+
+[item."armour.leather_cap"]
+name = "Leather Cap"
+kind = "equipment"
+slot = "helmet"
+class = "helmet"
+level = 1
+
+[[item."armour.leather_cap".implicit]]
+stat = "armour"
+kind = "flat"
+min = 3
+max = 6
+
+[item."armour.leather_vest"]
+name = "Leather Vest"
+kind = "equipment"
+slot = "chest"
+class = "body_armour"
+level = 1
+
+[[item."armour.leather_vest".implicit]]
+stat = "armour"
+kind = "flat"
+min = 8
+max = 14
+
+[item."armour.iron_plate"]
+name = "Iron Plate"
+kind = "equipment"
+slot = "chest"
+class = "body_armour"
+level = 10
+
+[[item."armour.iron_plate".implicit]]
+stat = "armour"
+kind = "flat"
+min = 25
+max = 40
+
+[item."armour.leather_gloves"]
+name = "Leather Gloves"
+kind = "equipment"
+slot = "gloves"
+class = "gloves"
+level = 1
+
+[[item."armour.leather_gloves".implicit]]
+stat = "armour"
+kind = "flat"
+min = 2
+max = 5
+
+[item."armour.leather_boots"]
+name = "Leather Boots"
+kind = "equipment"
+slot = "boots"
+class = "boots"
+level = 1
+
+[[item."armour.leather_boots".implicit]]
+stat = "armour"
+kind = "flat"
+min = 2
+max = 5
+
+[item."jewellery.copper_ring"]
+name = "Copper Ring"
+kind = "equipment"
+slot = "ring"
+class = "ring"
+level = 3
+
+[[item."jewellery.copper_ring".implicit]]
+stat = "max_life"
+kind = "flat"
+min = 3
+max = 8
+
+[item."jewellery.slime_crown"]
 name = "Slime Crown"
 kind = "equipment"
-stackable = false
+slot = "helmet"
+class = "helmet"
 level = 10
+
+[[item."jewellery.slime_crown".implicit]]
+stat = "armour"
+kind = "flat"
+min = 20
+max = 35
+
+[[item."jewellery.slime_crown".implicit]]
+stat = "max_life"
+kind = "flat"
+min = 15
+max = 30

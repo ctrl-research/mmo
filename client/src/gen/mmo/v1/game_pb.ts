@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mmo/v1/game.proto.
  */
 export const file_mmo_v1_game: GenFile = /*@__PURE__*/
-  fileDesc("ChFtbW8vdjEvZ2FtZS5wcm90bxIGbW1vLnYxIlgKCEVudmVsb3BlEiUKBnNlcnZlchgBIAMoCzIVLm1tby52MS5TZXJ2ZXJNZXNzYWdlEiUKBmNsaWVudBgCIAMoCzIVLm1tby52MS5DbGllbnRNZXNzYWdlIsEBCg1DbGllbnRNZXNzYWdlEh4KBWhlbGxvGAEgASgLMg0ubW1vLnYxLkhlbGxvSAASIAoGaW50ZW50GAIgASgLMg4ubW1vLnYxLkludGVudEgAEhwKBHBpbmcYAyABKAsyDC5tbW8udjEuUGluZ0gAEhwKBGNhc3QYBCABKAsyDC5tbW8udjEuQ2FzdEgAEiQKCGludGVyYWN0GAUgASgLMhAubW1vLnYxLkludGVyYWN0SABCBgoEYm9keUoECAYQCiI6CgRDYXN0EgsKA3NlcRgBIAEoDRIQCghza2lsbF9pZBgCIAEoCRITCgtmYWNpbmdfbGVmdBgDIAEoCCJBCghJbnRlcmFjdBIRCgllbnRpdHlfaWQYASABKA0SIgoEa2luZBgCIAEoDjIULm1tby52MS5JbnRlcmFjdEtpbmQiwwEKDVNlcnZlck1lc3NhZ2USIgoHd2VsY29tZRgBIAEoCzIPLm1tby52MS5XZWxjb21lSAASJAoIc25hcHNob3QYAiABKAsyEC5tbW8udjEuU25hcHNob3RIABIeCgVldmVudBgDIAEoCzINLm1tby52MS5FdmVudEgAEhwKBHBvbmcYBCABKAsyDC5tbW8udjEuUG9uZ0gAEhwKBGtpY2sYBSABKAsyDC5tbW8udjEuS2lja0gAQgYKBGJvZHlKBAgGEAoiRwoFSGVsbG8SDgoGdGlja2V0GAEgASgJEhgKEHByb3RvY29sX3ZlcnNpb24YAiABKA0SFAoMY29udGVudF9oYXNoGAMgASgJIoMBCgdXZWxjb21lEhEKCWVudGl0eV9pZBgBIAEoDRITCgtpbnN0YW5jZV9pZBgCIAEoBBIMCgR0aWNrGAMgASgEEg8KB3RpY2tfbXMYBCABKA0SDgoGbWFwX2lkGAUgASgJEiEKBHNlbGYYBiABKAsyEy5tbW8udjEuRW50aXR5U3RhdGUiJAoES2ljaxIMCgRjb2RlGAEgASgNEg4KBnJlYXNvbhgCIAEoCSJjCgZJbnRlbnQSCwoDc2VxGAEgASgNEhQKDGFja19zbmFwc2hvdBgCIAEoBBIOCgZtb3ZlX3gYAyABKBESDAoEanVtcBgEIAEoCBIKCgJ1cBgFIAEoCBIMCgRkb3duGAYgASgIIh4KBFBpbmcSFgoOY2xpZW50X3RpbWVfbXMYASABKAQiMwoEUG9uZxIWCg5jbGllbnRfdGltZV9tcxgBIAEoBBITCgtzZXJ2ZXJfdGljaxgCIAEoBCKlAwoLRW50aXR5U3RhdGUSCgoCaWQYASABKA0SIAoEa2luZBgCIAEoDjISLm1tby52MS5FbnRpdHlLaW5kEg0KBWxheWVyGAMgASgNEgkKAXgYBCABKBESCQoBeRgFIAEoERIKCgJ2eBgGIAEoERIKCgJ2eRgHIAEoERIJCgF3GAggASgREgkKAWgYCSABKBESDQoFZmxhZ3MYCiABKA0SDAoEYW5pbRgLIAEoDRIKCgJocBgMIAEoDRIOCgZocF9tYXgYDSABKA0SDAoEbmFtZRgOIAEoCRIOCgZjb3lvdGUYDyABKA0SEwoLanVtcF9idWZmZXIYECABKA0SFAoMZHJvcF90aHJvdWdoGBEgASgNEg0KBWxldmVsGBIgASgNEgsKA2V4cBgTIAEoBBITCgtleHBfdG9fbmV4dBgUIAEoBBIKCgJtcBgVIAEoDRIOCgZtcF9tYXgYFiABKA0SEQoJZHJvcF9pdGVtGBcgASgJEhAKCGRyb3BfcXR5GBggASgNEhEKCWRyb3BfZ29sZBgZIAEoDRIOCgZtb2JfaWQYGiABKAkilAEKC0VudGl0eURlbHRhEgoKAmlkGAEgASgNEhIKCmZpZWxkX21hc2sYAiABKA0SCQoBeBgDIAEoERIJCgF5GAQgASgREgoKAnZ4GAUgASgREgoKAnZ5GAYgASgREg0KBWZsYWdzGAcgASgNEgwKBGFuaW0YCCABKA0SCgoCaHAYCSABKA0SDgoGaHBfbWF4GAogASgNIsEBCghTbmFwc2hvdBIMCgR0aWNrGAEgASgEEhUKDWJhc2VsaW5lX3RpY2sYAiABKAQSDwoHYWNrX3NlcRgDIAEoDRIlCghlbnRpdGllcxgEIAMoCzITLm1tby52MS5FbnRpdHlEZWx0YRIkCgdlbnRlcmVkGAUgAygLMhMubW1vLnYxLkVudGl0eVN0YXRlEg8KB3JlbW92ZWQYBiADKA0SIQoEc2VsZhgHIAEoCzITLm1tby52MS5FbnRpdHlTdGF0ZSLaAgoFRXZlbnQSLQoNcGxheWVyX2pvaW5lZBgBIAEoCzIULm1tby52MS5QbGF5ZXJKb2luZWRIABIpCgtwbGF5ZXJfbGVmdBgCIAEoCzISLm1tby52MS5QbGF5ZXJMZWZ0SAASJQoGZGFtYWdlGAMgASgLMhMubW1vLnYxLkRhbWFnZURlYWx0SAASIgoEZGllZBgEIAEoCzISLm1tby52MS5FbnRpdHlEaWVkSAASJwoKc2tpbGxfY2FzdBgFIAEoCzIRLm1tby52MS5Ta2lsbENhc3RIABInCgpleHBfZ2FpbmVkGAYgASgLMhEubW1vLnYxLkV4cEdhaW5lZEgAEiMKCGxldmVsX3VwGAcgASgLMg8ubW1vLnYxLkxldmVsVXBIABInCgpsb290X3Rha2VuGAggASgLMhEubW1vLnYxLkxvb3RUYWtlbkgAQgYKBGJvZHlKBAgJEBAiZgoLRGFtYWdlRGVhbHQSEQoJc291cmNlX2lkGAEgASgNEhEKCXRhcmdldF9pZBgCIAEoDRIOCgZhbW91bnQYAyABKA0SEAoIY3JpdGljYWwYBCABKAgSDwoHZWxlbWVudBgFIAEoCSIyCgpFbnRpdHlEaWVkEhEKCWVudGl0eV9pZBgBIAEoDRIRCglraWxsZXJfaWQYAiABKA0iRQoJU2tpbGxDYXN0EhEKCWNhc3Rlcl9pZBgBIAEoDRIQCghza2lsbF9pZBgCIAEoCRITCgtmYWNpbmdfbGVmdBgDIAEoCCIqCglFeHBHYWluZWQSDgoGYW1vdW50GAEgASgEEg0KBXRvdGFsGAIgASgEIi0KB0xldmVsVXASDQoFbGV2ZWwYASABKA0SEwoLZXhwX3RvX25leHQYAiABKAQiSgoJTG9vdFRha2VuEhEKCWVudGl0eV9pZBgBIAEoDRIPCgdpdGVtX2lkGAIgASgJEgsKA3F0eRgDIAEoDRIMCgRnb2xkGAQgASgNIi8KDFBsYXllckpvaW5lZBIRCgllbnRpdHlfaWQYASABKA0SDAoEbmFtZRgCIAEoCSIfCgpQbGF5ZXJMZWZ0EhEKCWVudGl0eV9pZBgBIAEoDSpFCgxJbnRlcmFjdEtpbmQSHQoZSU5URVJBQ1RfS0lORF9VTlNQRUNJRklFRBAAEhYKEklOVEVSQUNUX0tJTkRfTE9PVBABKoEBCgpFbnRpdHlLaW5kEhsKF0VOVElUWV9LSU5EX1VOU1BFQ0lGSUVEEAASFgoSRU5USVRZX0tJTkRfUExBWUVSEAESEwoPRU5USVRZX0tJTkRfTU9CEAISFAoQRU5USVRZX0tJTkRfRFJPUBADEhMKD0VOVElUWV9LSU5EX05QQxAEKpsBCgtFbnRpdHlGaWVsZBIcChhFTlRJVFlfRklFTERfVU5TUEVDSUZJRUQQABIUChBFTlRJVFlfRklFTERfUE9TEAESFAoQRU5USVRZX0ZJRUxEX1ZFTBACEhYKEkVOVElUWV9GSUVMRF9GTEFHUxADEhUKEUVOVElUWV9GSUVMRF9BTklNEAQSEwoPRU5USVRZX0ZJRUxEX0hQEAUqlQEKCkVudGl0eUZsYWcSGwoXRU5USVRZX0ZMQUdfVU5TUEVDSUZJRUQQABIYChRFTlRJVFlfRkxBR19HUk9VTkRFRBABEhgKFEVOVElUWV9GTEFHX0NMSU1CSU5HEAISGwoXRU5USVRZX0ZMQUdfRkFDSU5HX0xFRlQQAxIZChVFTlRJVFlfRkxBR19KVU1QX0hFTEQQBEKJAQoKY29tLm1tby52MUIJR2FtZVByb3RvUAFaN2dpdGh1Yi5jb20vY3RybC1yZXNlYXJjaC9tbW8vaW50ZXJuYWwvd2lyZS9tbW8vdjE7bW1vdjGiAgNNWFiqAgZNbW8uVjHKAgZNbW9cVjHiAhJNbW9cVjFcR1BCTWV0YWRhdGHqAgdNbW86OlYxYgZwcm90bzM");
+  fileDesc("ChFtbW8vdjEvZ2FtZS5wcm90bxIGbW1vLnYxIlgKCEVudmVsb3BlEiUKBnNlcnZlchgBIAMoCzIVLm1tby52MS5TZXJ2ZXJNZXNzYWdlEiUKBmNsaWVudBgCIAMoCzIVLm1tby52MS5DbGllbnRNZXNzYWdlIuwBCg1DbGllbnRNZXNzYWdlEh4KBWhlbGxvGAEgASgLMg0ubW1vLnYxLkhlbGxvSAASIAoGaW50ZW50GAIgASgLMg4ubW1vLnYxLkludGVudEgAEhwKBHBpbmcYAyABKAsyDC5tbW8udjEuUGluZ0gAEhwKBGNhc3QYBCABKAsyDC5tbW8udjEuQ2FzdEgAEiQKCGludGVyYWN0GAUgASgLMhAubW1vLnYxLkludGVyYWN0SAASKQoLaXRlbV9hY3Rpb24YBiABKAsyEi5tbW8udjEuSXRlbUFjdGlvbkgAQgYKBGJvZHlKBAgHEAoiOgoEQ2FzdBILCgNzZXEYASABKA0SEAoIc2tpbGxfaWQYAiABKAkSEwoLZmFjaW5nX2xlZnQYAyABKAgiQQoISW50ZXJhY3QSEQoJZW50aXR5X2lkGAEgASgNEiIKBGtpbmQYAiABKA4yFC5tbW8udjEuSW50ZXJhY3RLaW5kImUKCkl0ZW1BY3Rpb24SJAoEa2luZBgBIAEoDjIWLm1tby52MS5JdGVtQWN0aW9uS2luZBIPCgdpdGVtX2lkGAIgASgJEgwKBHNsb3QYAyABKA0SEgoKZXF1aXBfc2xvdBgEIAEoCSLrAQoNU2VydmVyTWVzc2FnZRIiCgd3ZWxjb21lGAEgASgLMg8ubW1vLnYxLldlbGNvbWVIABIkCghzbmFwc2hvdBgCIAEoCzIQLm1tby52MS5TbmFwc2hvdEgAEh4KBWV2ZW50GAMgASgLMg0ubW1vLnYxLkV2ZW50SAASHAoEcG9uZxgEIAEoCzIMLm1tby52MS5Qb25nSAASHAoEa2ljaxgFIAEoCzIMLm1tby52MS5LaWNrSAASJgoJaW52ZW50b3J5GAYgASgLMhEubW1vLnYxLkludmVudG9yeUgAQgYKBGJvZHlKBAgHEAoiRwoFSGVsbG8SDgoGdGlja2V0GAEgASgJEhgKEHByb3RvY29sX3ZlcnNpb24YAiABKA0SFAoMY29udGVudF9oYXNoGAMgASgJIoMBCgdXZWxjb21lEhEKCWVudGl0eV9pZBgBIAEoDRITCgtpbnN0YW5jZV9pZBgCIAEoBBIMCgR0aWNrGAMgASgEEg8KB3RpY2tfbXMYBCABKA0SDgoGbWFwX2lkGAUgASgJEiEKBHNlbGYYBiABKAsyEy5tbW8udjEuRW50aXR5U3RhdGUiJAoES2ljaxIMCgRjb2RlGAEgASgNEg4KBnJlYXNvbhgCIAEoCSJjCgZJbnRlbnQSCwoDc2VxGAEgASgNEhQKDGFja19zbmFwc2hvdBgCIAEoBBIOCgZtb3ZlX3gYAyABKBESDAoEanVtcBgEIAEoCBIKCgJ1cBgFIAEoCBIMCgRkb3duGAYgASgIIh4KBFBpbmcSFgoOY2xpZW50X3RpbWVfbXMYASABKAQiMwoEUG9uZxIWCg5jbGllbnRfdGltZV9tcxgBIAEoBBITCgtzZXJ2ZXJfdGljaxgCIAEoBCKlAwoLRW50aXR5U3RhdGUSCgoCaWQYASABKA0SIAoEa2luZBgCIAEoDjISLm1tby52MS5FbnRpdHlLaW5kEg0KBWxheWVyGAMgASgNEgkKAXgYBCABKBESCQoBeRgFIAEoERIKCgJ2eBgGIAEoERIKCgJ2eRgHIAEoERIJCgF3GAggASgREgkKAWgYCSABKBESDQoFZmxhZ3MYCiABKA0SDAoEYW5pbRgLIAEoDRIKCgJocBgMIAEoDRIOCgZocF9tYXgYDSABKA0SDAoEbmFtZRgOIAEoCRIOCgZjb3lvdGUYDyABKA0SEwoLanVtcF9idWZmZXIYECABKA0SFAoMZHJvcF90aHJvdWdoGBEgASgNEg0KBWxldmVsGBIgASgNEgsKA2V4cBgTIAEoBBITCgtleHBfdG9fbmV4dBgUIAEoBBIKCgJtcBgVIAEoDRIOCgZtcF9tYXgYFiABKA0SEQoJZHJvcF9pdGVtGBcgASgJEhAKCGRyb3BfcXR5GBggASgNEhEKCWRyb3BfZ29sZBgZIAEoDRIOCgZtb2JfaWQYGiABKAkilAEKC0VudGl0eURlbHRhEgoKAmlkGAEgASgNEhIKCmZpZWxkX21hc2sYAiABKA0SCQoBeBgDIAEoERIJCgF5GAQgASgREgoKAnZ4GAUgASgREgoKAnZ5GAYgASgREg0KBWZsYWdzGAcgASgNEgwKBGFuaW0YCCABKA0SCgoCaHAYCSABKA0SDgoGaHBfbWF4GAogASgNIsEBCghTbmFwc2hvdBIMCgR0aWNrGAEgASgEEhUKDWJhc2VsaW5lX3RpY2sYAiABKAQSDwoHYWNrX3NlcRgDIAEoDRIlCghlbnRpdGllcxgEIAMoCzITLm1tby52MS5FbnRpdHlEZWx0YRIkCgdlbnRlcmVkGAUgAygLMhMubW1vLnYxLkVudGl0eVN0YXRlEg8KB3JlbW92ZWQYBiADKA0SIQoEc2VsZhgHIAEoCzITLm1tby52MS5FbnRpdHlTdGF0ZSLaAgoFRXZlbnQSLQoNcGxheWVyX2pvaW5lZBgBIAEoCzIULm1tby52MS5QbGF5ZXJKb2luZWRIABIpCgtwbGF5ZXJfbGVmdBgCIAEoCzISLm1tby52MS5QbGF5ZXJMZWZ0SAASJQoGZGFtYWdlGAMgASgLMhMubW1vLnYxLkRhbWFnZURlYWx0SAASIgoEZGllZBgEIAEoCzISLm1tby52MS5FbnRpdHlEaWVkSAASJwoKc2tpbGxfY2FzdBgFIAEoCzIRLm1tby52MS5Ta2lsbENhc3RIABInCgpleHBfZ2FpbmVkGAYgASgLMhEubW1vLnYxLkV4cEdhaW5lZEgAEiMKCGxldmVsX3VwGAcgASgLMg8ubW1vLnYxLkxldmVsVXBIABInCgpsb290X3Rha2VuGAggASgLMhEubW1vLnYxLkxvb3RUYWtlbkgAQgYKBGJvZHlKBAgJEBAiZgoLRGFtYWdlRGVhbHQSEQoJc291cmNlX2lkGAEgASgNEhEKCXRhcmdldF9pZBgCIAEoDRIOCgZhbW91bnQYAyABKA0SEAoIY3JpdGljYWwYBCABKAgSDwoHZWxlbWVudBgFIAEoCSIyCgpFbnRpdHlEaWVkEhEKCWVudGl0eV9pZBgBIAEoDRIRCglraWxsZXJfaWQYAiABKA0iRQoJU2tpbGxDYXN0EhEKCWNhc3Rlcl9pZBgBIAEoDRIQCghza2lsbF9pZBgCIAEoCRITCgtmYWNpbmdfbGVmdBgDIAEoCCIqCglFeHBHYWluZWQSDgoGYW1vdW50GAEgASgEEg0KBXRvdGFsGAIgASgEIi0KB0xldmVsVXASDQoFbGV2ZWwYASABKA0SEwoLZXhwX3RvX25leHQYAiABKAQiagoJTG9vdFRha2VuEhEKCWVudGl0eV9pZBgBIAEoDRIPCgdpdGVtX2lkGAIgASgJEgsKA3F0eRgDIAEoDRIMCgRnb2xkGAQgASgNEg4KBmZhaWxlZBgFIAEoCBIOCgZyZWFzb24YBiABKAkilgEKCUludmVudG9yeRIiCgdjYXJyaWVkGAEgAygLMhEubW1vLnYxLkl0ZW1TdGFjaxIjCghlcXVpcHBlZBgCIAMoCzIRLm1tby52MS5JdGVtU3RhY2sSEAoIY2FwYWNpdHkYAyABKA0SDAoEZ29sZBgEIAEoBBIgCgVzdGF0cxgFIAMoCzIRLm1tby52MS5TdGF0VmFsdWUixwEKCUl0ZW1TdGFjaxIPCgdpdGVtX2lkGAEgASgJEg8KB2Jhc2VfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRIOCgZyYXJpdHkYBCABKAkSDAoEc2xvdBgFIAEoDRINCgVzdGFjaxgGIAEoDRISCgppdGVtX2xldmVsGAcgASgNEhIKCmVxdWlwX3Nsb3QYCCABKAkSFgoOcmVxdWlyZWRfbGV2ZWwYCSABKA0SHQoEbW9kcxgKIAMoCzIPLm1tby52MS5JdGVtTW9kIlQKB0l0ZW1Nb2QSDAoEc3RhdBgBIAEoCRIMCgRraW5kGAIgASgJEg0KBXZhbHVlGAMgASgSEgwKBHRpZXIYBCABKA0SEAoIaW1wbGljaXQYBSABKAgiKAoJU3RhdFZhbHVlEgwKBHN0YXQYASABKAkSDQoFdmFsdWUYAiABKBIiLwoMUGxheWVySm9pbmVkEhEKCWVudGl0eV9pZBgBIAEoDRIMCgRuYW1lGAIgASgJIh8KClBsYXllckxlZnQSEQoJZW50aXR5X2lkGAEgASgNKkUKDEludGVyYWN0S2luZBIdChlJTlRFUkFDVF9LSU5EX1VOU1BFQ0lGSUVEEAASFgoSSU5URVJBQ1RfS0lORF9MT09UEAEqpQEKDkl0ZW1BY3Rpb25LaW5kEiAKHElURU1fQUNUSU9OX0tJTkRfVU5TUEVDSUZJRUQQABIZChVJVEVNX0FDVElPTl9LSU5EX01PVkUQARIaChZJVEVNX0FDVElPTl9LSU5EX0VRVUlQEAISHAoYSVRFTV9BQ1RJT05fS0lORF9VTkVRVUlQEAMSHAoYSVRFTV9BQ1RJT05fS0lORF9ERVNUUk9ZEAQqgQEKCkVudGl0eUtpbmQSGwoXRU5USVRZX0tJTkRfVU5TUEVDSUZJRUQQABIWChJFTlRJVFlfS0lORF9QTEFZRVIQARITCg9FTlRJVFlfS0lORF9NT0IQAhIUChBFTlRJVFlfS0lORF9EUk9QEAMSEwoPRU5USVRZX0tJTkRfTlBDEAQqmwEKC0VudGl0eUZpZWxkEhwKGEVOVElUWV9GSUVMRF9VTlNQRUNJRklFRBAAEhQKEEVOVElUWV9GSUVMRF9QT1MQARIUChBFTlRJVFlfRklFTERfVkVMEAISFgoSRU5USVRZX0ZJRUxEX0ZMQUdTEAMSFQoRRU5USVRZX0ZJRUxEX0FOSU0QBBITCg9FTlRJVFlfRklFTERfSFAQBSqVAQoKRW50aXR5RmxhZxIbChdFTlRJVFlfRkxBR19VTlNQRUNJRklFRBAAEhgKFEVOVElUWV9GTEFHX0dST1VOREVEEAESGAoURU5USVRZX0ZMQUdfQ0xJTUJJTkcQAhIbChdFTlRJVFlfRkxBR19GQUNJTkdfTEVGVBADEhkKFUVOVElUWV9GTEFHX0pVTVBfSEVMRBAEQokBCgpjb20ubW1vLnYxQglHYW1lUHJvdG9QAVo3Z2l0aHViLmNvbS9jdHJsLXJlc2VhcmNoL21tby9pbnRlcm5hbC93aXJlL21tby92MTttbW92MaICA01YWKoCBk1tby5WMcoCBk1tb1xWMeICEk1tb1xWMVxHUEJNZXRhZGF0YeoCB01tbzo6VjFiBnByb3RvMw");
 
 /**
  * Envelope is exactly one WebSocket binary frame.
@@ -77,6 +77,12 @@ export type ClientMessage = Message<"mmo.v1.ClientMessage"> & {
      */
     value: Interact;
     case: "interact";
+  } | {
+    /**
+     * @generated from field: mmo.v1.ItemAction item_action = 6;
+     */
+    value: ItemAction;
+    case: "itemAction";
   } | { case: undefined; value?: undefined };
 };
 
@@ -151,6 +157,50 @@ export const InteractSchema: GenMessage<Interact> = /*@__PURE__*/
   messageDesc(file_mmo_v1_game, 3);
 
 /**
+ * ItemAction asks the server to move, equip, or destroy an item.
+ *
+ * The client names the item by its durable id and says what it wants done. It
+ * never says where the item ends up in the database, and never asserts what
+ * the resulting stats are -- the server decides both.
+ *
+ * @generated from message mmo.v1.ItemAction
+ */
+export type ItemAction = Message<"mmo.v1.ItemAction"> & {
+  /**
+   * @generated from field: mmo.v1.ItemActionKind kind = 1;
+   */
+  kind: ItemActionKind;
+
+  /**
+   * The item instance to act on, for move, equip, and destroy.
+   *
+   * @generated from field: string item_id = 2;
+   */
+  itemId: string;
+
+  /**
+   * Destination slot, for a move within the inventory.
+   *
+   * @generated from field: uint32 slot = 3;
+   */
+  slot: number;
+
+  /**
+   * Which equipment slot to clear, for unequip.
+   *
+   * @generated from field: string equip_slot = 4;
+   */
+  equipSlot: string;
+};
+
+/**
+ * Describes the message mmo.v1.ItemAction.
+ * Use `create(ItemActionSchema)` to create a new message.
+ */
+export const ItemActionSchema: GenMessage<ItemAction> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 4);
+
+/**
  * @generated from message mmo.v1.ServerMessage
  */
 export type ServerMessage = Message<"mmo.v1.ServerMessage"> & {
@@ -187,6 +237,12 @@ export type ServerMessage = Message<"mmo.v1.ServerMessage"> & {
      */
     value: Kick;
     case: "kick";
+  } | {
+    /**
+     * @generated from field: mmo.v1.Inventory inventory = 6;
+     */
+    value: Inventory;
+    case: "inventory";
   } | { case: undefined; value?: undefined };
 };
 
@@ -195,7 +251,7 @@ export type ServerMessage = Message<"mmo.v1.ServerMessage"> & {
  * Use `create(ServerMessageSchema)` to create a new message.
  */
 export const ServerMessageSchema: GenMessage<ServerMessage> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 4);
+  messageDesc(file_mmo_v1_game, 5);
 
 /**
  * Hello is the first message on a new connection.
@@ -231,7 +287,7 @@ export type Hello = Message<"mmo.v1.Hello"> & {
  * Use `create(HelloSchema)` to create a new message.
  */
 export const HelloSchema: GenMessage<Hello> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 5);
+  messageDesc(file_mmo_v1_game, 6);
 
 /**
  * @generated from message mmo.v1.Welcome
@@ -279,7 +335,7 @@ export type Welcome = Message<"mmo.v1.Welcome"> & {
  * Use `create(WelcomeSchema)` to create a new message.
  */
 export const WelcomeSchema: GenMessage<Welcome> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 6);
+  messageDesc(file_mmo_v1_game, 7);
 
 /**
  * Kick closes the connection with a reason the client can act on. The code
@@ -304,7 +360,7 @@ export type Kick = Message<"mmo.v1.Kick"> & {
  * Use `create(KickSchema)` to create a new message.
  */
 export const KickSchema: GenMessage<Kick> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 7);
+  messageDesc(file_mmo_v1_game, 8);
 
 /**
  * Intent is what buttons the player is holding. It carries no position: the
@@ -359,7 +415,7 @@ export type Intent = Message<"mmo.v1.Intent"> & {
  * Use `create(IntentSchema)` to create a new message.
  */
 export const IntentSchema: GenMessage<Intent> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 8);
+  messageDesc(file_mmo_v1_game, 9);
 
 /**
  * @generated from message mmo.v1.Ping
@@ -376,7 +432,7 @@ export type Ping = Message<"mmo.v1.Ping"> & {
  * Use `create(PingSchema)` to create a new message.
  */
 export const PingSchema: GenMessage<Ping> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 9);
+  messageDesc(file_mmo_v1_game, 10);
 
 /**
  * @generated from message mmo.v1.Pong
@@ -400,7 +456,7 @@ export type Pong = Message<"mmo.v1.Pong"> & {
  * Use `create(PongSchema)` to create a new message.
  */
 export const PongSchema: GenMessage<Pong> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 10);
+  messageDesc(file_mmo_v1_game, 11);
 
 /**
  * EntityState is a complete entity, sent when it first becomes visible and
@@ -569,7 +625,7 @@ export type EntityState = Message<"mmo.v1.EntityState"> & {
  * Use `create(EntityStateSchema)` to create a new message.
  */
 export const EntityStateSchema: GenMessage<EntityState> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 11);
+  messageDesc(file_mmo_v1_game, 12);
 
 /**
  * EntityDelta carries only what changed since the baseline tick.
@@ -635,7 +691,7 @@ export type EntityDelta = Message<"mmo.v1.EntityDelta"> & {
  * Use `create(EntityDeltaSchema)` to create a new message.
  */
 export const EntityDeltaSchema: GenMessage<EntityDelta> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 12);
+  messageDesc(file_mmo_v1_game, 13);
 
 /**
  * @generated from message mmo.v1.Snapshot
@@ -697,7 +753,7 @@ export type Snapshot = Message<"mmo.v1.Snapshot"> & {
  * Use `create(SnapshotSchema)` to create a new message.
  */
 export const SnapshotSchema: GenMessage<Snapshot> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 13);
+  messageDesc(file_mmo_v1_game, 14);
 
 /**
  * Event is a one-shot fact rather than state: never delta-compressed, and
@@ -766,7 +822,7 @@ export type Event = Message<"mmo.v1.Event"> & {
  * Use `create(EventSchema)` to create a new message.
  */
 export const EventSchema: GenMessage<Event> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 14);
+  messageDesc(file_mmo_v1_game, 15);
 
 /**
  * DamageDealt is sent rather than inferred from a falling HP number, because a
@@ -807,7 +863,7 @@ export type DamageDealt = Message<"mmo.v1.DamageDealt"> & {
  * Use `create(DamageDealtSchema)` to create a new message.
  */
 export const DamageDealtSchema: GenMessage<DamageDealt> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 15);
+  messageDesc(file_mmo_v1_game, 16);
 
 /**
  * @generated from message mmo.v1.EntityDied
@@ -829,7 +885,7 @@ export type EntityDied = Message<"mmo.v1.EntityDied"> & {
  * Use `create(EntityDiedSchema)` to create a new message.
  */
 export const EntityDiedSchema: GenMessage<EntityDied> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 16);
+  messageDesc(file_mmo_v1_game, 17);
 
 /**
  * @generated from message mmo.v1.SkillCast
@@ -856,7 +912,7 @@ export type SkillCast = Message<"mmo.v1.SkillCast"> & {
  * Use `create(SkillCastSchema)` to create a new message.
  */
 export const SkillCastSchema: GenMessage<SkillCast> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 17);
+  messageDesc(file_mmo_v1_game, 18);
 
 /**
  * @generated from message mmo.v1.ExpGained
@@ -878,7 +934,7 @@ export type ExpGained = Message<"mmo.v1.ExpGained"> & {
  * Use `create(ExpGainedSchema)` to create a new message.
  */
 export const ExpGainedSchema: GenMessage<ExpGained> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 18);
+  messageDesc(file_mmo_v1_game, 19);
 
 /**
  * @generated from message mmo.v1.LevelUp
@@ -900,7 +956,7 @@ export type LevelUp = Message<"mmo.v1.LevelUp"> & {
  * Use `create(LevelUpSchema)` to create a new message.
  */
 export const LevelUpSchema: GenMessage<LevelUp> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 19);
+  messageDesc(file_mmo_v1_game, 20);
 
 /**
  * @generated from message mmo.v1.LootTaken
@@ -925,6 +981,21 @@ export type LootTaken = Message<"mmo.v1.LootTaken"> & {
    * @generated from field: uint32 gold = 4;
    */
   gold: number;
+
+  /**
+   * A claim that could not be completed -- a full inventory, or a database
+   * error. The drop is returned to the ground rather than destroyed, so the
+   * player can try again; saying why is what stops that reading as the game
+   * ignoring the keypress.
+   *
+   * @generated from field: bool failed = 5;
+   */
+  failed: boolean;
+
+  /**
+   * @generated from field: string reason = 6;
+   */
+  reason: string;
 };
 
 /**
@@ -932,7 +1003,192 @@ export type LootTaken = Message<"mmo.v1.LootTaken"> & {
  * Use `create(LootTakenSchema)` to create a new message.
  */
 export const LootTakenSchema: GenMessage<LootTaken> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 20);
+  messageDesc(file_mmo_v1_game, 21);
+
+/**
+ * Inventory is the player's items, sent in full whenever they change.
+ *
+ * Not delta-compressed: inventories change rarely compared to positions, they
+ * are small, and a delta bug here means an item that appears to exist twice --
+ * which is the one class of bug this system is built to make impossible.
+ *
+ * @generated from message mmo.v1.Inventory
+ */
+export type Inventory = Message<"mmo.v1.Inventory"> & {
+  /**
+   * @generated from field: repeated mmo.v1.ItemStack carried = 1;
+   */
+  carried: ItemStack[];
+
+  /**
+   * @generated from field: repeated mmo.v1.ItemStack equipped = 2;
+   */
+  equipped: ItemStack[];
+
+  /**
+   * @generated from field: uint32 capacity = 3;
+   */
+  capacity: number;
+
+  /**
+   * @generated from field: uint64 gold = 4;
+   */
+  gold: bigint;
+
+  /**
+   * The character's derived statistics, so a tooltip can show what equipping
+   * something would change without the client reimplementing the stat
+   * pipeline.
+   *
+   * @generated from field: repeated mmo.v1.StatValue stats = 5;
+   */
+  stats: StatValue[];
+};
+
+/**
+ * Describes the message mmo.v1.Inventory.
+ * Use `create(InventorySchema)` to create a new message.
+ */
+export const InventorySchema: GenMessage<Inventory> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 22);
+
+/**
+ * @generated from message mmo.v1.ItemStack
+ */
+export type ItemStack = Message<"mmo.v1.ItemStack"> & {
+  /**
+   * the instance's durable identity
+   *
+   * @generated from field: string item_id = 1;
+   */
+  itemId: string;
+
+  /**
+   * @generated from field: string base_id = 2;
+   */
+  baseId: string;
+
+  /**
+   * generated: "Heavy Iron Sword of Force"
+   *
+   * @generated from field: string name = 3;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string rarity = 4;
+   */
+  rarity: string;
+
+  /**
+   * @generated from field: uint32 slot = 5;
+   */
+  slot: number;
+
+  /**
+   * @generated from field: uint32 stack = 6;
+   */
+  stack: number;
+
+  /**
+   * @generated from field: uint32 item_level = 7;
+   */
+  itemLevel: number;
+
+  /**
+   * The slot this is worn in, for equipped items.
+   *
+   * @generated from field: string equip_slot = 8;
+   */
+  equipSlot: string;
+
+  /**
+   * Level required to equip it.
+   *
+   * @generated from field: uint32 required_level = 9;
+   */
+  requiredLevel: number;
+
+  /**
+   * @generated from field: repeated mmo.v1.ItemMod mods = 10;
+   */
+  mods: ItemMod[];
+};
+
+/**
+ * Describes the message mmo.v1.ItemStack.
+ * Use `create(ItemStackSchema)` to create a new message.
+ */
+export const ItemStackSchema: GenMessage<ItemStack> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 23);
+
+/**
+ * ItemMod is one rolled modifier, carrying enough to render a tooltip line
+ * without the client holding a copy of the affix tables.
+ *
+ * @generated from message mmo.v1.ItemMod
+ */
+export type ItemMod = Message<"mmo.v1.ItemMod"> & {
+  /**
+   * @generated from field: string stat = 1;
+   */
+  stat: string;
+
+  /**
+   * @generated from field: string kind = 2;
+   */
+  kind: string;
+
+  /**
+   * The rolled value, in stat millionths, so the client shows exactly the
+   * number the server computed with.
+   *
+   * @generated from field: sint64 value = 3;
+   */
+  value: bigint;
+
+  /**
+   * Tier and whether it is implicit, so a tooltip can show how good a roll is
+   * rather than only what it does.
+   *
+   * @generated from field: uint32 tier = 4;
+   */
+  tier: number;
+
+  /**
+   * @generated from field: bool implicit = 5;
+   */
+  implicit: boolean;
+};
+
+/**
+ * Describes the message mmo.v1.ItemMod.
+ * Use `create(ItemModSchema)` to create a new message.
+ */
+export const ItemModSchema: GenMessage<ItemMod> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 24);
+
+/**
+ * @generated from message mmo.v1.StatValue
+ */
+export type StatValue = Message<"mmo.v1.StatValue"> & {
+  /**
+   * @generated from field: string stat = 1;
+   */
+  stat: string;
+
+  /**
+   * @generated from field: sint64 value = 2;
+   */
+  value: bigint;
+};
+
+/**
+ * Describes the message mmo.v1.StatValue.
+ * Use `create(StatValueSchema)` to create a new message.
+ */
+export const StatValueSchema: GenMessage<StatValue> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 25);
 
 /**
  * @generated from message mmo.v1.PlayerJoined
@@ -954,7 +1210,7 @@ export type PlayerJoined = Message<"mmo.v1.PlayerJoined"> & {
  * Use `create(PlayerJoinedSchema)` to create a new message.
  */
 export const PlayerJoinedSchema: GenMessage<PlayerJoined> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 21);
+  messageDesc(file_mmo_v1_game, 26);
 
 /**
  * @generated from message mmo.v1.PlayerLeft
@@ -971,7 +1227,7 @@ export type PlayerLeft = Message<"mmo.v1.PlayerLeft"> & {
  * Use `create(PlayerLeftSchema)` to create a new message.
  */
 export const PlayerLeftSchema: GenMessage<PlayerLeft> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 22);
+  messageDesc(file_mmo_v1_game, 27);
 
 /**
  * @generated from enum mmo.v1.InteractKind
@@ -993,6 +1249,42 @@ export enum InteractKind {
  */
 export const InteractKindSchema: GenEnum<InteractKind> = /*@__PURE__*/
   enumDesc(file_mmo_v1_game, 0);
+
+/**
+ * @generated from enum mmo.v1.ItemActionKind
+ */
+export enum ItemActionKind {
+  /**
+   * @generated from enum value: ITEM_ACTION_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: ITEM_ACTION_KIND_MOVE = 1;
+   */
+  MOVE = 1,
+
+  /**
+   * @generated from enum value: ITEM_ACTION_KIND_EQUIP = 2;
+   */
+  EQUIP = 2,
+
+  /**
+   * @generated from enum value: ITEM_ACTION_KIND_UNEQUIP = 3;
+   */
+  UNEQUIP = 3,
+
+  /**
+   * @generated from enum value: ITEM_ACTION_KIND_DESTROY = 4;
+   */
+  DESTROY = 4,
+}
+
+/**
+ * Describes the enum mmo.v1.ItemActionKind.
+ */
+export const ItemActionKindSchema: GenEnum<ItemActionKind> = /*@__PURE__*/
+  enumDesc(file_mmo_v1_game, 1);
 
 /**
  * @generated from enum mmo.v1.EntityKind
@@ -1028,7 +1320,7 @@ export enum EntityKind {
  * Describes the enum mmo.v1.EntityKind.
  */
 export const EntityKindSchema: GenEnum<EntityKind> = /*@__PURE__*/
-  enumDesc(file_mmo_v1_game, 1);
+  enumDesc(file_mmo_v1_game, 2);
 
 /**
  * Bit positions in EntityDelta.field_mask.
@@ -1071,7 +1363,7 @@ export enum EntityField {
  * Describes the enum mmo.v1.EntityField.
  */
 export const EntityFieldSchema: GenEnum<EntityField> = /*@__PURE__*/
-  enumDesc(file_mmo_v1_game, 2);
+  enumDesc(file_mmo_v1_game, 3);
 
 /**
  * Bit positions in EntityState.flags and EntityDelta.flags.
@@ -1109,5 +1401,5 @@ export enum EntityFlag {
  * Describes the enum mmo.v1.EntityFlag.
  */
 export const EntityFlagSchema: GenEnum<EntityFlag> = /*@__PURE__*/
-  enumDesc(file_mmo_v1_game, 3);
+  enumDesc(file_mmo_v1_game, 4);
 

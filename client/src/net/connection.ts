@@ -9,6 +9,9 @@ import {
   CastSchema,
   InteractSchema,
   InteractKind,
+  ItemActionSchema,
+  ItemActionKind,
+  type Inventory,
   type Snapshot,
   type Welcome,
   type Event,
@@ -41,6 +44,7 @@ export interface ConnectionHandlers {
   onWelcome(w: Welcome): void;
   onSnapshot(s: Snapshot): void;
   onEvent(e: Event): void;
+  onInventory(i: Inventory): void;
   onPong(clientTimeMs: number): void;
   onClosed(code: number, reason: string): void;
 }
@@ -146,6 +150,32 @@ export class Connection {
     });
   }
 
+  /**
+   * Asks the server to move, equip, or destroy an item.
+   *
+   * The client says what it wants done and never where the item ends up, nor
+   * what the resulting stats are. The server decides both, and answers with a
+   * whole new inventory.
+   */
+  sendItemAction(
+    kind: "move" | "equip" | "unequip" | "destroy",
+    itemId: string,
+    slot = 0,
+    equipSlot = "",
+  ): void {
+    const kinds = {
+      move: ItemActionKind.MOVE,
+      equip: ItemActionKind.EQUIP,
+      unequip: ItemActionKind.UNEQUIP,
+      destroy: ItemActionKind.DESTROY,
+    } as const;
+
+    this.send({
+      case: "itemAction",
+      value: create(ItemActionSchema, { kind: kinds[kind], itemId, slot, equipSlot }),
+    });
+  }
+
   send(body: ClientMessage["body"]): void {
     if (!this.connected) return;
     const msg = create(ClientMessageSchema, { body });
@@ -185,6 +215,9 @@ export class Connection {
         }
         case "event":
           this.#handlers.onEvent(msg.body.value);
+          break;
+        case "inventory":
+          this.#handlers.onInventory(msg.body.value);
           break;
         case "pong": {
           const sent = Number(msg.body.value.clientTimeMs);
@@ -241,4 +274,4 @@ export function isRetryable(code: number): boolean {
   );
 }
 
-export type { Snapshot, Welcome, Event, EntityState };
+export type { Snapshot, Welcome, Event, EntityState, Inventory };

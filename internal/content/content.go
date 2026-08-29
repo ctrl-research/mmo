@@ -20,11 +20,12 @@ type Content struct {
 	Balance Balance
 	Curves  Curves
 
-	Items  map[string]*Item
-	Mobs   map[string]*Mob
-	Drops  map[string]*DropTable
-	Skills map[string]*Skill
-	Maps   map[string]*Map
+	Items   map[string]*Item
+	Affixes map[string]*Affix
+	Mobs    map[string]*Mob
+	Drops   map[string]*DropTable
+	Skills  map[string]*Skill
+	Maps    map[string]*Map
 
 	// Hash identifies this exact set of content. The client sends it at the
 	// handshake and a mismatch is refused: a client that thinks a mob has 400
@@ -40,11 +41,12 @@ type Content struct {
 // reports weeks later that trace back to a warning nobody read.
 func Load(fsys fs.FS) (*Content, error) {
 	c := &Content{
-		Items:  make(map[string]*Item),
-		Mobs:   make(map[string]*Mob),
-		Drops:  make(map[string]*DropTable),
-		Skills: make(map[string]*Skill),
-		Maps:   make(map[string]*Map),
+		Items:   make(map[string]*Item),
+		Affixes: make(map[string]*Affix),
+		Mobs:    make(map[string]*Mob),
+		Drops:   make(map[string]*DropTable),
+		Skills:  make(map[string]*Skill),
+		Maps:    make(map[string]*Map),
 	}
 
 	hasher := sha256.New()
@@ -58,6 +60,7 @@ func Load(fsys fs.FS) (*Content, error) {
 		{"balance", c.loadBalance},
 		{"curves", c.loadCurves},
 		{"items", c.loadItems},
+		{"affixes", c.loadAffixes},
 		{"drop tables", c.loadDrops},
 		{"skills", c.loadSkills},
 		{"mobs", c.loadMobs},
@@ -95,6 +98,25 @@ func (c *Content) verify() error {
 			if _, ok := c.Skills[a.Skill]; !ok {
 				return fmt.Errorf("content: mob %q references unknown skill %q", id, a.Skill)
 			}
+		}
+	}
+
+	// Every equipment base must have at least one affix able to roll on it, or
+	// it can only ever drop as a plain white item -- which looks like a bug in
+	// the drop system rather than a deliberate design choice.
+	for id, item := range c.Items {
+		if !item.IsEquipment() {
+			continue
+		}
+		usable := 0
+		for _, a := range c.Affixes {
+			if a.AppliesTo(item.Class) {
+				usable++
+			}
+		}
+		if usable == 0 {
+			return fmt.Errorf("content: item %q (class %q) has no affixes that can roll on it",
+				id, item.Class)
 		}
 	}
 
