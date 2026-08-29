@@ -1,0 +1,137 @@
+# Tags every merge to main, then builds the images for that tag.
+#
+# The bump comes from a label on the merged PR: Major, Minor, or Patch/Hotfix.
+# No label means Patch, because the common case is a small change and requiring
+# a label on every PR to get a release would mean releases silently stop the
+# first time someone forgets.
+#
+# This calls images.yml rather than letting it fire on the tag push, and that
+# is not a stylistic choice: a tag created with GITHUB_TOKEN deliberately does
+# NOT trigger other workflows. GitHub suppresses it to stop workflows
+# recursively triggering each other. Relying on `on: push: tags` here would
+# leave every automated release tagged and never built, with nothing reporting
+# a failure.
+
+name: Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+# Two PRs merging close together would otherwise race to read the latest tag
+# and both compute the same next version, and the loser's push is rejected
+# after its build has already run.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: Tag
+    # Closed is not merged: a PR closed without merging fires this same event.
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.next.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Tags are needed to work out what the last release was, and the
+          # default shallow fetch has none of them.
+          fetch-depth: 0
+
+      - name: Work out the next version
+        id: next
+        env:
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          # Highest wins, so a PR labelled both Major and Patch is a major.
+          if jq -e 'index("Major")' <<<"$LABELS" >/dev/null; then
+            bump=major
+          elif jq -e 'index("Minor")' <<<"$LABELS" >/dev/null; then
+            bump=minor
+          elif jq -e 'index("Patch")' <<<"$LABELS" >/dev/null; then
+            bump=patch
+          elif jq -e 'index("Hotfix")' <<<"$LABELS" >/dev/null; then
+            # Hotfix is a patch bump. The label says something about urgency
+            # and review path, not about the version arithmetic.
+            bump=patch
+          else
+            bump=patch
+          fi
+
+          # --sort=-v:refname orders numerically, so 0.10.0 sorts above 0.9.0.
+          # A plain lexical sort would pick 0.9.0 and quietly re-release it.
+          latest=$(git tag --list --sort=-v:refname \
+            | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -1 || true)
+
+          if [ -z "$latest" ]; then
+            # First release. Not 0.0.1: client/package.json already declares
+            # 0.1.0 and the homelab manifests are pinned to it.
+            version=0.1.0
+            echo "No existing tags; cutting the first release."
+          else
+            IFS=. read -r major minor patch <<<"$latest"
+            case "$bump" in
+              major) major=$((major + 1)); minor=0; patch=0 ;;
+              minor) minor=$((minor + 1)); patch=0 ;;
+              patch) patch=$((patch + 1)) ;;
+            esac
+            version="${major}.${minor}.${patch}"
+          fi
+
+          # Re-running this workflow on an already-released merge would
+          # otherwise fail at push with a rejection that reads like a
+          # permissions problem.
+          if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
+            echo "::error::Tag $version already exists"
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Release \`$version\`"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Previous | \`${latest:-none}\` |"
+            echo "| Bump | \`$bump\` |"
+            echo "| From | #$PR |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create and push the tag
+        env:
+          VERSION: ${{ steps.next.outputs.version }}
+          TITLE: ${{ github.event.pull_request.title }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Annotated, so `git describe` sees it and the tag carries what it was for.
+          git tag -a "$VERSION" -m "$VERSION
+
+          $TITLE (#$PR)"
+          git push origin "$VERSION"
+
+  images:
+    name: Images
+    needs: tag
+    uses: ./.github/workflows/images.yml
+    with:
+      version: ${{ needs.tag.outputs.version }}
+    permissions:
+      contents: read
+      packages: write

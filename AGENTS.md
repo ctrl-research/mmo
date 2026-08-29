@@ -58,6 +58,11 @@ These are not style preferences. Violating one produces a bug that only appears 
 
 - `.tool-versions` is the single source of truth for language and tool versions. Check it before building, testing, or running tooling; install via `mise install` or `asdf install`. Pin new tools there first — never assume a globally installed version.
 - Versioning: [SemVer](https://semver.org/) as bare `X.Y.Z`, no `v` prefix.
+- Every merge to `main` releases. `.github/workflows/release.yml` tags the merge
+  commit and builds the images for that tag. The bump comes from a label on the
+  PR — `Major`, `Minor`, `Patch`, or `Hotfix` — and an unlabelled PR is a patch,
+  so forgetting one costs a version number rather than stopping releases.
+  `Hotfix` is a patch bump; the label describes urgency, not the arithmetic.
 - Branch protection: never push directly to `main`. All changes via PR with review.
 - Migrations are plain SQL, sequentially numbered, **forward-only**. Schema changes follow expand → backfill → contract.
 - Balance numbers live in `content/balance.toml`, never as Go literals.
