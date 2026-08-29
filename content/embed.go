@@ -14,6 +14,7 @@ import "embed"
 
 // FS holds every content file.
 //
+//go:embed all:affixes
 //go:embed balance.toml
 //go:embed all:curves
 //go:embed all:droptables

@@ -1,0 +1,132 @@
+# Weapon affixes.
+#
+# Each affix is one stat modifier at several tiers. A tier bounds the value
+# range and the item level at which it becomes available, which is what makes a
+# high-level drop meaningfully different from a low-level one rather than
+# merely bigger.
+#
+# Tier 1 is the strongest. Higher tiers carry lower weights, so the good rolls
+# stay rare without being unreachable.
+
+# --- prefixes ---------------------------------------------------------------
+
+[affix.weapon_flat_attack]
+name = "Heavy"
+type = "prefix"
+classes = ["sword", "axe", "mace"]
+stat = "attack"
+kind = "flat"
+
+[[affix.weapon_flat_attack.tiers]]
+tier = 3
+item_level = 1
+min = 2
+max = 5
+weight = 100
+
+[[affix.weapon_flat_attack.tiers]]
+tier = 2
+item_level = 10
+min = 6
+max = 11
+weight = 45
+
+[[affix.weapon_flat_attack.tiers]]
+tier = 1
+item_level = 25
+min = 12
+max = 20
+weight = 15
+
+[affix.weapon_increased_attack]
+name = "Tempered"
+type = "prefix"
+classes = ["sword", "axe", "mace"]
+stat = "attack"
+kind = "increased"
+
+[[affix.weapon_increased_attack.tiers]]
+tier = 3
+item_level = 1
+min = 0.10
+max = 0.24
+weight = 100
+
+[[affix.weapon_increased_attack.tiers]]
+tier = 2
+item_level = 15
+min = 0.25
+max = 0.44
+weight = 40
+
+[[affix.weapon_increased_attack.tiers]]
+tier = 1
+item_level = 35
+min = 0.45
+max = 0.70
+weight = 10
+
+# --- suffixes ---------------------------------------------------------------
+
+[affix.crit_chance]
+name = "of Precision"
+type = "suffix"
+classes = ["sword", "axe", "mace"]
+stat = "crit_chance"
+kind = "increased"
+
+[[affix.crit_chance.tiers]]
+tier = 2
+item_level = 1
+min = 0.10
+max = 0.29
+weight = 100
+
+[[affix.crit_chance.tiers]]
+tier = 1
+item_level = 20
+min = 0.30
+max = 0.60
+weight = 25
+
+[affix.crit_multiplier]
+name = "of Ruin"
+type = "suffix"
+classes = ["sword", "axe", "mace"]
+stat = "crit_multiplier"
+kind = "flat"
+
+[[affix.crit_multiplier.tiers]]
+tier = 2
+item_level = 1
+min = 0.10
+max = 0.19
+weight = 100
+
+[[affix.crit_multiplier.tiers]]
+tier = 1
+item_level = 30
+min = 0.20
+max = 0.35
+weight = 20
+
+[affix.attack_speed]
+name = "of Swiftness"
+type = "suffix"
+classes = ["sword", "axe", "mace"]
+stat = "attack_speed"
+kind = "increased"
+
+[[affix.attack_speed.tiers]]
+tier = 2
+item_level = 1
+min = 0.05
+max = 0.12
+weight = 100
+
+[[affix.attack_speed.tiers]]
+tier = 1
+item_level = 25
+min = 0.13
+max = 0.22
+weight = 25

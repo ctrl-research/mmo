@@ -22,6 +22,7 @@ func FS() fstest.MapFS {
 		"balance.toml":         file(Balance),
 		"curves/exp.toml":      file(Curves),
 		"items/test.toml":      file(Items),
+		"affixes/test.toml":    file(Affixes),
 		"droptables/test.toml": file(Drops),
 		"skills/test.toml":     file(Skills),
 		"mobs/test.toml":       file(Mobs),
@@ -70,6 +71,64 @@ kind = "material"
 stackable = true
 max_stack = 100
 level = 1
+
+[item."test.sword"]
+name = "Test Sword"
+kind = "equipment"
+slot = "weapon"
+class = "sword"
+level = 1
+
+[[item."test.sword".implicit]]
+stat = "attack"
+kind = "flat"
+min = 5
+max = 5
+`
+
+// Affixes are deliberately few and with fixed ranges, so a test can assert an
+// exact resulting stat rather than a plausible one.
+const Affixes = `
+[affix.test_flat_attack]
+name = "Sharp"
+type = "prefix"
+classes = ["sword"]
+stat = "attack"
+kind = "flat"
+
+[[affix.test_flat_attack.tiers]]
+tier = 1
+item_level = 1
+min = 10
+max = 10
+weight = 100
+
+[affix.test_increased_attack]
+name = "Keen"
+type = "prefix"
+classes = ["sword"]
+stat = "attack"
+kind = "increased"
+
+[[affix.test_increased_attack.tiers]]
+tier = 1
+item_level = 1
+min = 0.50
+max = 0.50
+weight = 100
+
+[affix.test_life]
+name = "of Vigour"
+type = "suffix"
+stat = "max_life"
+kind = "flat"
+
+[[affix.test_life.tiers]]
+tier = 1
+item_level = 1
+min = 20
+max = 20
+weight = 100
 `
 
 // Drops always produce gold and always produce the gem, so a test asserting
@@ -81,6 +140,10 @@ gold = { min = 5, max = 5, chance = 1.0 }
 item = "test.gem"
 chance = 1.0
 qty = { min = 1, max = 1 }
+
+[[drop_table.test_table.entries]]
+item = "test.sword"
+chance = 1.0
 `
 
 // Skills mirror the real starter skill's id, because the room grants exactly

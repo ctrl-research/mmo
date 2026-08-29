@@ -1,0 +1,126 @@
+# Armour and jewellery affixes.
+#
+# Deliberately overlapping pools: several classes share the same affix, so a
+# ring and a chestpiece can both roll life without either being defined twice.
+
+# --- prefixes ---------------------------------------------------------------
+
+[affix.flat_armour]
+name = "Plated"
+type = "prefix"
+classes = ["helmet", "body_armour", "gloves", "boots"]
+stat = "armour"
+kind = "flat"
+
+[[affix.flat_armour.tiers]]
+tier = 3
+item_level = 1
+min = 5
+max = 14
+weight = 100
+
+[[affix.flat_armour.tiers]]
+tier = 2
+item_level = 12
+min = 15
+max = 34
+weight = 45
+
+[[affix.flat_armour.tiers]]
+tier = 1
+item_level = 30
+min = 35
+max = 70
+weight = 12
+
+[affix.flat_life]
+name = "Hale"
+type = "prefix"
+classes = ["helmet", "body_armour", "gloves", "boots", "ring"]
+stat = "max_life"
+kind = "flat"
+
+[[affix.flat_life.tiers]]
+tier = 3
+item_level = 1
+min = 8
+max = 19
+weight = 100
+
+[[affix.flat_life.tiers]]
+tier = 2
+item_level = 15
+min = 20
+max = 44
+weight = 40
+
+[[affix.flat_life.tiers]]
+tier = 1
+item_level = 35
+min = 45
+max = 90
+weight = 10
+
+# --- suffixes ---------------------------------------------------------------
+
+[affix.strength]
+name = "of the Bull"
+type = "suffix"
+stat = "strength"
+kind = "flat"
+
+[[affix.strength.tiers]]
+tier = 2
+item_level = 1
+min = 3
+max = 9
+weight = 100
+
+[[affix.strength.tiers]]
+tier = 1
+item_level = 20
+min = 10
+max = 20
+weight = 25
+
+[affix.fire_resistance]
+name = "of the Ember"
+type = "suffix"
+classes = ["helmet", "body_armour", "gloves", "boots", "ring"]
+stat = "fire_resistance"
+kind = "flat"
+
+[[affix.fire_resistance.tiers]]
+tier = 2
+item_level = 1
+min = 0.06
+max = 0.15
+weight = 100
+
+[[affix.fire_resistance.tiers]]
+tier = 1
+item_level = 25
+min = 0.16
+max = 0.30
+weight = 25
+
+[affix.movement_speed]
+name = "of the Hart"
+type = "suffix"
+classes = ["boots"]
+stat = "movement_speed"
+kind = "increased"
+
+[[affix.movement_speed.tiers]]
+tier = 2
+item_level = 1
+min = 0.05
+max = 0.10
+weight = 100
+
+[[affix.movement_speed.tiers]]
+tier = 1
+item_level = 20
+min = 0.11
+max = 0.20
+weight = 20
