@@ -12,6 +12,8 @@ import { PassivePanel } from "@/ui/passives";
 import { BossFrame } from "@/ui/boss";
 import { DeathScreen } from "@/ui/death";
 import { DungeonFrame } from "@/ui/dungeon";
+import { VitalsBar } from "@/ui/vitals";
+import { SettingsPanel } from "@/ui/settings";
 import { PartyAction_Kind, GuildAction_Kind } from "@/net/connection";
 import type { Character } from "@/ui/api";
 import { toPixels } from "@/sim/fixed";
@@ -45,6 +47,8 @@ const passivesEl = document.getElementById("passives") as HTMLDivElement;
 const bossEl = document.getElementById("boss") as HTMLDivElement;
 const deathEl = document.getElementById("death") as HTMLDivElement;
 const dungeonEl = document.getElementById("dungeon") as HTMLDivElement;
+const vitalsEl = document.getElementById("vitals") as HTMLDivElement;
+const settingsEl = document.getElementById("settings") as HTMLDivElement;
 
 let loop: GameLoop | null = null;
 let scene: Scene | null = null;
@@ -61,6 +65,8 @@ let passives: PassivePanel | null = null;
 let boss: BossFrame | null = null;
 let death: DeathScreen | null = null;
 let dungeon: DungeonFrame | null = null;
+let vitals: VitalsBar | null = null;
+let settings: SettingsPanel | null = null;
 let status = "";
 
 const shell = new Shell(overlay, {
@@ -85,6 +91,10 @@ async function main(): Promise<void> {
       return;
     }
 
+    if (e.code === "KeyK") {
+      e.preventDefault();
+      settings?.toggle();
+    }
     if (e.code === "KeyG") {
       setStatus(loop.toggleGhost() ? "server ghost on" : "server ghost off");
     }
@@ -120,6 +130,7 @@ async function main(): Promise<void> {
       worldMap?.close();
       social?.close();
       passives?.close();
+      settings?.close();
     }
   });
 
@@ -194,6 +205,8 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
         boss?.hide();
         death?.hide();
         dungeon?.hide();
+        vitals?.hide();
+        settings?.close();
         passives?.close();
         partyEl.hidden = true;
         void shell.resume(reason);
@@ -224,6 +237,14 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
     boss = new BossFrame(bossEl);
     death = new DeathScreen(deathEl);
     dungeon = new DungeonFrame(dungeonEl);
+    vitals = new VitalsBar(vitalsEl);
+
+    // Built here rather than at startup because it needs the scene, and the
+    // scene does not exist until a character is in the world.
+    settings = new SettingsPanel(settingsEl, {
+      onZoom: (zoom) => scene!.setZoom(zoom),
+    });
+    settings.restore();
 
     prompt = new Prompt(promptEl, {
       onFocusChange: (focused) => game.setInputEnabled(!focused),
@@ -272,6 +293,7 @@ function startHud(): void {
       boss?.render(now);
       death?.render(now, loop.stats.hp);
       dungeon?.render(now);
+      vitals?.update(loop.stats);
 
       const s = loop.stats;
       const b = s.body;
@@ -290,7 +312,7 @@ function startHud(): void {
         `correct  ${s.lastCorrectionPx.toFixed(2)} px  (${s.hardCorrections} hard)\n` +
         `others   ${s.entities}\n` +
         `net      ${s.snapshotsReceived} snaps, ${(s.bytesReceived / 1024).toFixed(1)} KiB\n` +
-        `\n[1-8] skills  [i] inventory  [p] passives  [m] map  [o] social  [enter] chat`;
+        `\n[1-8] skills  [i] inventory  [p] passives  [m] map  [o] social  [k] settings  [enter] chat`;
       hud.hidden = false;
     } else {
       hud.hidden = true;
