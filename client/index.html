@@ -305,6 +305,44 @@
       .buff-stacks { color: #e8c977; }
       .buff-time { color: #6b7280; }
 
+      /* Passive tree: a canvas, because several hundred nodes that pan and
+         zoom in DOM is hundreds of layout boxes recalculated on every drag. */
+      #passives {
+        position: fixed; inset: 24px; z-index: 16;
+        background: #0b0d12; border: 1px solid #2f3543; border-radius: 8px;
+        display: flex; flex-direction: column; overflow: hidden;
+      }
+      #passives[hidden] { display: none; }
+
+      .tree-header {
+        display: flex; align-items: baseline; gap: 12px;
+        padding: 10px 14px; border-bottom: 1px solid #262b36;
+        font-weight: 600; font-size: 12px;
+      }
+      .tree-points { color: #e0c04a; font-weight: 400; }
+      .tree-hint { margin-left: auto; color: #6b7280; font-size: 11px; font-weight: 400; }
+      .tree-respec {
+        font: inherit; font-size: 11px; font-weight: 400; padding: 3px 8px;
+        background: #12151c; color: #9aa3b2;
+        border: 1px solid #2f3543; border-radius: 4px; cursor: pointer;
+      }
+      .tree-respec:hover { border-color: #d05353; color: #ff9a9a; }
+
+      .tree-canvas { flex: 1; width: 100%; cursor: grab; touch-action: none; }
+      .tree-canvas:active { cursor: grabbing; }
+
+      .tree-tooltip {
+        position: absolute; pointer-events: none; z-index: 2;
+        max-width: 260px; padding: 8px 10px;
+        background: #12151c; border: 1px solid #2f3543; border-radius: 6px;
+        font-size: 11px; line-height: 1.5;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
+      }
+      .tree-tooltip[hidden] { display: none; }
+      .tip-name { font-weight: 700; margin-bottom: 3px; }
+      .tip-mod { color: #6fa8ff; }
+      .tip-status { color: #6b7280; font-size: 10px; margin-top: 4px; }
+
       /* Prompts: in-game, because a native modal blocks the render loop. */
       #prompt {
         position: fixed; top: 34%; left: 50%; transform: translate(-50%, -50%);
@@ -406,9 +444,10 @@
     <div id="prompt" hidden></div>
     <div id="skillbar" hidden></div>
     <div id="buffbar" hidden></div>
+    <div id="passives" hidden></div>
     <div id="tooltip" hidden></div>
     <div id="keys">
-      arrows or WASD to move &middot; space to jump &middot; 1-8 or X for skills &middot; Z to loot &middot; I inventory &middot; M world map &middot; O social &middot; enter to chat
+      arrows or WASD to move &middot; space to jump &middot; 1-8 or X for skills &middot; Z to loot &middot; P passives &middot; I inventory &middot; M world map &middot; O social &middot; enter to chat
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

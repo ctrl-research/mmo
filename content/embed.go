@@ -23,6 +23,7 @@ import "embed"
 //go:embed all:items
 //go:embed all:maps
 //go:embed all:mobs
+//go:embed all:passives
 //go:embed all:skills
 //go:embed all:supports
 var FS embed.FS

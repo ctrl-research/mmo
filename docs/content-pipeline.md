@@ -304,9 +304,17 @@ The tree is the one piece of content too large to hand-author. `content/passives
 }
 ```
 
-A small editor (M6) generates this; hand-editing a thousand-node graph is not a plan. The server validates on load that the graph is connected, that every class start exists, and that allocation from any start can reach every node.
+`cmd/treegen` generates this (`make tree`); hand-editing a several-hundred-node graph is not a plan, and a graphical editor is a project rather than a tool. The generator is the source, the JSON is the output, and the diff is reviewed — the same arrangement as the golden movement fixtures and the sprites.
 
-Keystones use `more` multipliers with real drawbacks — that is what makes them build-defining choices rather than strict upgrades.
+The split inside the generator is the point: the **shape** (three clusters, branches radiating out, notables at intervals, keystones at the ends, bridges between neighbours) is mechanical and lives in code, while what the nodes **do** lives in a file somebody reads. A generator that also invented the modifiers would produce a tree that was large and said nothing.
+
+The server validates on load that every edge names a real node, that every class start exists and is a start node, that no node costs a point and does nothing, that every stat named is real, and — the one that matters — that **every node is reachable from every class start**. A stranded node is one nobody can ever take, and it is silent at runtime.
+
+Keystones use `more` multipliers with real drawbacks — that is what makes them build-defining choices rather than strict upgrades, and a test asserts every keystone gives something *and* costs something. A keystone everybody takes is a keystone that should have been a notable.
+
+### Signed modifiers
+
+A drawback is a negative number, and the conversion from authored decimals to parts-per-million has to keep the sign. There are two conversions for that reason: one clamped to [0, 1] for probabilities, and one signed for stat modifiers. Using the probability one for a modifier silently discards every drawback — which it did, until a test asked whether each keystone actually traded something.
 
 ## Balance constants
 

@@ -28,6 +28,7 @@ func FS() fstest.MapFS {
 		"buffs/test.toml":      file(Buffs),
 		"supports/test.toml":   file(Supports),
 		"classes/test.toml":    file(Classes),
+		"passives/tree.json":   file(Tree),
 		"mobs/test.toml":       file(Mobs),
 		"maps/test.tmj":        file(MapTMJ),
 		"maps/annex.tmj":       file(AnnexTMJ),
@@ -128,6 +129,22 @@ description = "A test class."
 primary_stat = "strength"
 starting_skills = ["slash"]
 `
+
+// Tree is a small passive tree: a start, a branch with a notable and a
+// keystone, and a fork -- enough shape for allocation rules to be tested
+// against, and small enough to read.
+const Tree = `{
+  "nodes": [
+    {"id": 1, "kind": "start", "name": "Test Start", "pos": [0, 0]},
+    {"id": 2, "kind": "small", "pos": [80, 0], "stats": [{"stat": "strength", "flat": 8}]},
+    {"id": 3, "kind": "small", "pos": [160, 0], "stats": [{"stat": "max_life", "flat": 12}]},
+    {"id": 4, "kind": "notable", "name": "Test Notable", "pos": [240, 0], "stats": [{"stat": "attack", "increased": 0.2}]},
+    {"id": 5, "kind": "keystone", "name": "Test Keystone", "pos": [320, 0], "stats": [{"stat": "attack", "more": 0.5}, {"stat": "max_life", "more": -0.3}]},
+    {"id": 6, "kind": "small", "pos": [160, 80], "stats": [{"stat": "armour", "increased": 0.1}]}
+  ],
+  "edges": [[1, 2], [2, 3], [3, 4], [4, 5], [3, 6]],
+  "class_starts": {"warrior": 1}
+}`
 
 const Curves = `
 [main]

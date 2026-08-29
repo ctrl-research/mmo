@@ -29,6 +29,10 @@ type Content struct {
 	Buffs    map[string]*Buff
 	Supports map[string]*Support
 	Classes  map[string]*Class
+
+	// Passives is the tree. One graph, shared by every class, with each class
+	// starting somewhere different on it.
+	Passives *PassiveTree
 	Maps     map[string]*Map
 
 	// Waypoints indexes every fast-travel destination by its global ID.
@@ -83,6 +87,7 @@ func Load(fsys fs.FS) (*Content, error) {
 		{"skills", c.loadSkills},
 		{"supports", c.loadSupports},
 		{"classes", c.loadClasses},
+		{"passives", c.loadPassives},
 		{"mobs", c.loadMobs},
 		{"maps", c.loadMaps},
 	}
@@ -230,6 +235,10 @@ func (c *Content) verify() error {
 		}
 	}
 
+	if err := c.validatePassives(); err != nil {
+		return err
+	}
+
 	for id, m := range c.Maps {
 		for _, sp := range m.MobSpawns {
 			if _, ok := c.Mobs[sp.MobID]; !ok {
@@ -285,12 +294,36 @@ func listFiles(fsys fs.FS, dir, ext string) ([]string, error) {
 	return out, nil
 }
 
+// modifierToPPM converts an authored stat modifier to parts-per-million.
+//
+// Signed, unlike a probability: a keystone's drawback, a chill's slow, and a
+// support's "25% less damage" are all negative, and clamping them to zero
+// silently discards the half of the design that makes them choices. This was
+// exactly that bug -- every keystone in the tree gave its upside for free
+// until the test that asked "does each keystone trade something" was written.
+func modifierToPPM(v float64) int {
+	const ppm = 1_000_000
+
+	if v > 1 {
+		// Above +100% is legitimate and unbounded; the clamp below is only
+		// for the probability case.
+		return int(v*ppm + 0.5)
+	}
+	if v < 0 {
+		return int(v*ppm - 0.5)
+	}
+	return int(v*ppm + 0.5)
+}
+
 // ratioToPPM converts an authored probability to parts-per-million.
 //
 // Content is authored with floats because "chance = 0.15" is what a designer
 // wants to write. The simulation rolls in integers because a float comparison
 // is one more place client and server could disagree, and because replay must
-// reproduce exactly. This is the single conversion point between the two.
+// reproduce exactly.
+//
+// Clamped to [0, 1], which is right for a probability and wrong for anything
+// else -- use modifierToPPM for stat modifiers, where negatives are the point.
 func ratioToPPM(v float64) int {
 	if v <= 0 {
 		return 0

@@ -8,6 +8,7 @@ import { ChatPanel } from "@/ui/chat";
 import { PartyFrames, SocialPanel } from "@/ui/social";
 import { Prompt } from "@/ui/prompt";
 import { SkillBarPanel, BuffBar } from "@/ui/skillbar";
+import { PassivePanel } from "@/ui/passives";
 import { PartyAction_Kind, GuildAction_Kind } from "@/net/connection";
 import type { Character } from "@/ui/api";
 import { toPixels } from "@/sim/fixed";
@@ -37,6 +38,7 @@ const socialEl = document.getElementById("social") as HTMLDivElement;
 const promptEl = document.getElementById("prompt") as HTMLDivElement;
 const skillBarEl = document.getElementById("skillbar") as HTMLDivElement;
 const buffBarEl = document.getElementById("buffbar") as HTMLDivElement;
+const passivesEl = document.getElementById("passives") as HTMLDivElement;
 
 let loop: GameLoop | null = null;
 let scene: Scene | null = null;
@@ -49,6 +51,7 @@ let social: SocialPanel | null = null;
 let prompt: Prompt | null = null;
 let skillBar: SkillBarPanel | null = null;
 let buffBar: BuffBar | null = null;
+let passives: PassivePanel | null = null;
 let status = "";
 
 const shell = new Shell(overlay, {
@@ -93,12 +96,21 @@ async function main(): Promise<void> {
       e.preventDefault();
       panel?.close();
       worldMap?.close();
+      passives?.close();
       social?.toggle();
+    }
+    if (e.code === "KeyP") {
+      e.preventDefault();
+      panel?.close();
+      worldMap?.close();
+      social?.close();
+      void passives?.toggle();
     }
     if (e.code === "Escape") {
       panel?.close();
       worldMap?.close();
       social?.close();
+      passives?.close();
     }
   });
 
@@ -126,6 +138,7 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
       onSkillBar: (bar) => skillBar?.update(bar),
       onBuffs: (buffs) => buffBar?.update(buffs, performance.now()),
       onCast: (skillId) => skillBar?.cast(skillId, performance.now()),
+      onPassives: (state) => passives?.update(state),
       onSystem: (msg) => chat?.addSystem(msg),
       onParty: (state) => party?.update(state),
       onGuild: (state) => social?.updateGuild(state),
@@ -159,6 +172,7 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
         chatEl.hidden = true;
         skillBarEl.hidden = true;
         buffBarEl.hidden = true;
+        passives?.close();
         partyEl.hidden = true;
         void shell.resume(reason);
       },
@@ -179,6 +193,11 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
     });
 
     skillBar = new SkillBarPanel(skillBarEl);
+    passives = new PassivePanel(passivesEl, {
+      onAllocate: (id) => game.allocatePassive(id),
+      onRefund: (id) => game.refundPassive(id),
+      onRespec: () => game.respecPassives(),
+    });
     buffBar = new BuffBar(buffBarEl);
 
     prompt = new Prompt(promptEl, {
@@ -243,7 +262,7 @@ function startHud(): void {
         `correct  ${s.lastCorrectionPx.toFixed(2)} px  (${s.hardCorrections} hard)\n` +
         `others   ${s.entities}\n` +
         `net      ${s.snapshotsReceived} snaps, ${(s.bytesReceived / 1024).toFixed(1)} KiB\n` +
-        `\n[1-8] skills   [i] inventory   [m] world map   [o] social   [enter] chat`;
+        `\n[1-8] skills  [i] inventory  [p] passives  [m] map  [o] social  [enter] chat`;
       hud.hidden = false;
     } else {
       hud.hidden = true;

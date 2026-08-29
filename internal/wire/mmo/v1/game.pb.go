@@ -628,6 +628,7 @@ type ClientMessage struct {
 	//	*ClientMessage_Guild
 	//	*ClientMessage_Social
 	//	*ClientMessage_SkillSlot
+	//	*ClientMessage_Passive
 	Body          isClientMessage_Body `protobuf_oneof:"body"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -787,6 +788,15 @@ func (x *ClientMessage) GetSkillSlot() *SetSkillSlot {
 	return nil
 }
 
+func (x *ClientMessage) GetPassive() *PassiveAction {
+	if x != nil {
+		if x, ok := x.Body.(*ClientMessage_Passive); ok {
+			return x.Passive
+		}
+	}
+	return nil
+}
+
 type isClientMessage_Body interface {
 	isClientMessage_Body()
 }
@@ -843,6 +853,10 @@ type ClientMessage_SkillSlot struct {
 	SkillSlot *SetSkillSlot `protobuf:"bytes,13,opt,name=skill_slot,json=skillSlot,proto3,oneof"`
 }
 
+type ClientMessage_Passive struct {
+	Passive *PassiveAction `protobuf:"bytes,14,opt,name=passive,proto3,oneof"`
+}
+
 func (*ClientMessage_Hello) isClientMessage_Body() {}
 
 func (*ClientMessage_Intent) isClientMessage_Body() {}
@@ -868,6 +882,8 @@ func (*ClientMessage_Guild) isClientMessage_Body() {}
 func (*ClientMessage_Social) isClientMessage_Body() {}
 
 func (*ClientMessage_SkillSlot) isClientMessage_Body() {}
+
+func (*ClientMessage_Passive) isClientMessage_Body() {}
 
 // Cast requests a skill. The client asks; the server decides.
 //
@@ -2116,6 +2132,7 @@ type Event struct {
 	//	*Event_Shielded
 	//	*Event_Absorbed
 	//	*Event_SkillBar
+	//	*Event_Passives
 	Body          isEvent_Body `protobuf_oneof:"body"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2365,6 +2382,15 @@ func (x *Event) GetSkillBar() *SkillBar {
 	return nil
 }
 
+func (x *Event) GetPassives() *PassiveState {
+	if x != nil {
+		if x, ok := x.Body.(*Event_Passives); ok {
+			return x.Passives
+		}
+	}
+	return nil
+}
+
 type isEvent_Body interface {
 	isEvent_Body()
 }
@@ -2461,6 +2487,10 @@ type Event_SkillBar struct {
 	SkillBar *SkillBar `protobuf:"bytes,24,opt,name=skill_bar,json=skillBar,proto3,oneof"`
 }
 
+type Event_Passives struct {
+	Passives *PassiveState `protobuf:"bytes,25,opt,name=passives,proto3,oneof"`
+}
+
 func (*Event_PlayerJoined) isEvent_Body() {}
 
 func (*Event_PlayerLeft) isEvent_Body() {}
@@ -2506,6 +2536,8 @@ func (*Event_Shielded) isEvent_Body() {}
 func (*Event_Absorbed) isEvent_Body() {}
 
 func (*Event_SkillBar) isEvent_Body() {}
+
+func (*Event_Passives) isEvent_Body() {}
 
 // DamageDealt is sent rather than inferred from a falling HP number, because a
 // client deriving "took damage" from state cannot tell 200 damage from two
@@ -5025,6 +5057,187 @@ func (x *SupportInfo) GetTags() []string {
 	return nil
 }
 
+// PassiveAction changes the passive tree.
+//
+// Every rule is checked server-side. A client that could allocate anything
+// could take every keystone in the game.
+type PassiveAction struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Exactly one. Allocating and refunding in the same message would need an
+	// order between them, and the order would decide whether it was legal.
+	//
+	// Types that are valid to be assigned to Action:
+	//
+	//	*PassiveAction_Allocate
+	//	*PassiveAction_Refund
+	//	*PassiveAction_RespecAll
+	Action        isPassiveAction_Action `protobuf_oneof:"action"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PassiveAction) Reset() {
+	*x = PassiveAction{}
+	mi := &file_mmo_v1_game_proto_msgTypes[53]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PassiveAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PassiveAction) ProtoMessage() {}
+
+func (x *PassiveAction) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[53]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PassiveAction.ProtoReflect.Descriptor instead.
+func (*PassiveAction) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{53}
+}
+
+func (x *PassiveAction) GetAction() isPassiveAction_Action {
+	if x != nil {
+		return x.Action
+	}
+	return nil
+}
+
+func (x *PassiveAction) GetAllocate() uint32 {
+	if x != nil {
+		if x, ok := x.Action.(*PassiveAction_Allocate); ok {
+			return x.Allocate
+		}
+	}
+	return 0
+}
+
+func (x *PassiveAction) GetRefund() uint32 {
+	if x != nil {
+		if x, ok := x.Action.(*PassiveAction_Refund); ok {
+			return x.Refund
+		}
+	}
+	return 0
+}
+
+func (x *PassiveAction) GetRespecAll() bool {
+	if x != nil {
+		if x, ok := x.Action.(*PassiveAction_RespecAll); ok {
+			return x.RespecAll
+		}
+	}
+	return false
+}
+
+type isPassiveAction_Action interface {
+	isPassiveAction_Action()
+}
+
+type PassiveAction_Allocate struct {
+	Allocate uint32 `protobuf:"varint,1,opt,name=allocate,proto3,oneof"`
+}
+
+type PassiveAction_Refund struct {
+	Refund uint32 `protobuf:"varint,2,opt,name=refund,proto3,oneof"`
+}
+
+type PassiveAction_RespecAll struct {
+	RespecAll bool `protobuf:"varint,3,opt,name=respec_all,json=respecAll,proto3,oneof"`
+}
+
+func (*PassiveAction_Allocate) isPassiveAction_Action() {}
+
+func (*PassiveAction_Refund) isPassiveAction_Action() {}
+
+func (*PassiveAction_RespecAll) isPassiveAction_Action() {}
+
+// PassiveState is what a character holds and what they can afford.
+//
+// The tree itself is not here: it is content, identical for everybody, and the
+// client already refuses to connect on a content hash mismatch. Sending
+// several hundred nodes on every allocation would be sending the same thing
+// over and over.
+type PassiveState struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Allocated []uint32               `protobuf:"varint,1,rep,packed,name=allocated,proto3" json:"allocated,omitempty"`
+	// StartNode is allocated for free and cannot be refunded, so the client
+	// shows it differently rather than offering a refund that will be refused.
+	StartNode     uint32 `protobuf:"varint,2,opt,name=start_node,json=startNode,proto3" json:"start_node,omitempty"`
+	SpentPoints   uint32 `protobuf:"varint,3,opt,name=spent_points,json=spentPoints,proto3" json:"spent_points,omitempty"`
+	TotalPoints   uint32 `protobuf:"varint,4,opt,name=total_points,json=totalPoints,proto3" json:"total_points,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PassiveState) Reset() {
+	*x = PassiveState{}
+	mi := &file_mmo_v1_game_proto_msgTypes[54]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PassiveState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PassiveState) ProtoMessage() {}
+
+func (x *PassiveState) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[54]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PassiveState.ProtoReflect.Descriptor instead.
+func (*PassiveState) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{54}
+}
+
+func (x *PassiveState) GetAllocated() []uint32 {
+	if x != nil {
+		return x.Allocated
+	}
+	return nil
+}
+
+func (x *PassiveState) GetStartNode() uint32 {
+	if x != nil {
+		return x.StartNode
+	}
+	return 0
+}
+
+func (x *PassiveState) GetSpentPoints() uint32 {
+	if x != nil {
+		return x.SpentPoints
+	}
+	return 0
+}
+
+func (x *PassiveState) GetTotalPoints() uint32 {
+	if x != nil {
+		return x.TotalPoints
+	}
+	return 0
+}
+
 type LootTaken struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	EntityId uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
@@ -5043,7 +5256,7 @@ type LootTaken struct {
 
 func (x *LootTaken) Reset() {
 	*x = LootTaken{}
-	mi := &file_mmo_v1_game_proto_msgTypes[53]
+	mi := &file_mmo_v1_game_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5055,7 +5268,7 @@ func (x *LootTaken) String() string {
 func (*LootTaken) ProtoMessage() {}
 
 func (x *LootTaken) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[53]
+	mi := &file_mmo_v1_game_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5068,7 +5281,7 @@ func (x *LootTaken) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LootTaken.ProtoReflect.Descriptor instead.
 func (*LootTaken) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{53}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *LootTaken) GetEntityId() uint32 {
@@ -5134,7 +5347,7 @@ type Inventory struct {
 
 func (x *Inventory) Reset() {
 	*x = Inventory{}
-	mi := &file_mmo_v1_game_proto_msgTypes[54]
+	mi := &file_mmo_v1_game_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5146,7 +5359,7 @@ func (x *Inventory) String() string {
 func (*Inventory) ProtoMessage() {}
 
 func (x *Inventory) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[54]
+	mi := &file_mmo_v1_game_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5159,7 +5372,7 @@ func (x *Inventory) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Inventory.ProtoReflect.Descriptor instead.
 func (*Inventory) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{54}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *Inventory) GetCarried() []*ItemStack {
@@ -5217,7 +5430,7 @@ type ItemStack struct {
 
 func (x *ItemStack) Reset() {
 	*x = ItemStack{}
-	mi := &file_mmo_v1_game_proto_msgTypes[55]
+	mi := &file_mmo_v1_game_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5229,7 +5442,7 @@ func (x *ItemStack) String() string {
 func (*ItemStack) ProtoMessage() {}
 
 func (x *ItemStack) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[55]
+	mi := &file_mmo_v1_game_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5242,7 +5455,7 @@ func (x *ItemStack) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ItemStack.ProtoReflect.Descriptor instead.
 func (*ItemStack) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{55}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *ItemStack) GetItemId() string {
@@ -5334,7 +5547,7 @@ type ItemMod struct {
 
 func (x *ItemMod) Reset() {
 	*x = ItemMod{}
-	mi := &file_mmo_v1_game_proto_msgTypes[56]
+	mi := &file_mmo_v1_game_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5346,7 +5559,7 @@ func (x *ItemMod) String() string {
 func (*ItemMod) ProtoMessage() {}
 
 func (x *ItemMod) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[56]
+	mi := &file_mmo_v1_game_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5359,7 +5572,7 @@ func (x *ItemMod) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ItemMod.ProtoReflect.Descriptor instead.
 func (*ItemMod) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{56}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *ItemMod) GetStat() string {
@@ -5407,7 +5620,7 @@ type StatValue struct {
 
 func (x *StatValue) Reset() {
 	*x = StatValue{}
-	mi := &file_mmo_v1_game_proto_msgTypes[57]
+	mi := &file_mmo_v1_game_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5419,7 +5632,7 @@ func (x *StatValue) String() string {
 func (*StatValue) ProtoMessage() {}
 
 func (x *StatValue) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[57]
+	mi := &file_mmo_v1_game_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5432,7 +5645,7 @@ func (x *StatValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatValue.ProtoReflect.Descriptor instead.
 func (*StatValue) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{57}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *StatValue) GetStat() string {
@@ -5459,7 +5672,7 @@ type PlayerJoined struct {
 
 func (x *PlayerJoined) Reset() {
 	*x = PlayerJoined{}
-	mi := &file_mmo_v1_game_proto_msgTypes[58]
+	mi := &file_mmo_v1_game_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5471,7 +5684,7 @@ func (x *PlayerJoined) String() string {
 func (*PlayerJoined) ProtoMessage() {}
 
 func (x *PlayerJoined) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[58]
+	mi := &file_mmo_v1_game_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5484,7 +5697,7 @@ func (x *PlayerJoined) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerJoined.ProtoReflect.Descriptor instead.
 func (*PlayerJoined) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{58}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *PlayerJoined) GetEntityId() uint32 {
@@ -5510,7 +5723,7 @@ type PlayerLeft struct {
 
 func (x *PlayerLeft) Reset() {
 	*x = PlayerLeft{}
-	mi := &file_mmo_v1_game_proto_msgTypes[59]
+	mi := &file_mmo_v1_game_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5522,7 +5735,7 @@ func (x *PlayerLeft) String() string {
 func (*PlayerLeft) ProtoMessage() {}
 
 func (x *PlayerLeft) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[59]
+	mi := &file_mmo_v1_game_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5535,7 +5748,7 @@ func (x *PlayerLeft) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerLeft.ProtoReflect.Descriptor instead.
 func (*PlayerLeft) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{59}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *PlayerLeft) GetEntityId() uint32 {
@@ -5552,7 +5765,7 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\x11mmo/v1/game.proto\x12\x06mmo.v1\"h\n" +
 	"\bEnvelope\x12-\n" +
 	"\x06server\x18\x01 \x03(\v2\x15.mmo.v1.ServerMessageR\x06server\x12-\n" +
-	"\x06client\x18\x02 \x03(\v2\x15.mmo.v1.ClientMessageR\x06client\"\xe8\x04\n" +
+	"\x06client\x18\x02 \x03(\v2\x15.mmo.v1.ClientMessageR\x06client\"\x9b\x05\n" +
 	"\rClientMessage\x12%\n" +
 	"\x05hello\x18\x01 \x01(\v2\r.mmo.v1.HelloH\x00R\x05hello\x12(\n" +
 	"\x06intent\x18\x02 \x01(\v2\x0e.mmo.v1.IntentH\x00R\x06intent\x12\"\n" +
@@ -5569,7 +5782,8 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\x05guild\x18\v \x01(\v2\x13.mmo.v1.GuildActionH\x00R\x05guild\x12.\n" +
 	"\x06social\x18\f \x01(\v2\x14.mmo.v1.SocialActionH\x00R\x06social\x125\n" +
 	"\n" +
-	"skill_slot\x18\r \x01(\v2\x14.mmo.v1.SetSkillSlotH\x00R\tskillSlotB\x06\n" +
+	"skill_slot\x18\r \x01(\v2\x14.mmo.v1.SetSkillSlotH\x00R\tskillSlot\x121\n" +
+	"\apassive\x18\x0e \x01(\v2\x15.mmo.v1.PassiveActionH\x00R\apassiveB\x06\n" +
 	"\x04body\"T\n" +
 	"\x04Cast\x12\x10\n" +
 	"\x03seq\x18\x01 \x01(\rR\x03seq\x12\x19\n" +
@@ -5672,7 +5886,7 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\bentities\x18\x04 \x03(\v2\x13.mmo.v1.EntityDeltaR\bentities\x12-\n" +
 	"\aentered\x18\x05 \x03(\v2\x13.mmo.v1.EntityStateR\aentered\x12\x18\n" +
 	"\aremoved\x18\x06 \x03(\rR\aremoved\x12'\n" +
-	"\x04self\x18\a \x01(\v2\x13.mmo.v1.EntityStateR\x04self\"\x98\t\n" +
+	"\x04self\x18\a \x01(\v2\x13.mmo.v1.EntityStateR\x04self\"\xcc\t\n" +
 	"\x05Event\x12;\n" +
 	"\rplayer_joined\x18\x01 \x01(\v2\x14.mmo.v1.PlayerJoinedH\x00R\fplayerJoined\x125\n" +
 	"\vplayer_left\x18\x02 \x01(\v2\x12.mmo.v1.PlayerLeftH\x00R\n" +
@@ -5701,7 +5915,8 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\x06healed\x18\x15 \x01(\v2\x0e.mmo.v1.HealedH\x00R\x06healed\x12.\n" +
 	"\bshielded\x18\x16 \x01(\v2\x10.mmo.v1.ShieldedH\x00R\bshielded\x12.\n" +
 	"\babsorbed\x18\x17 \x01(\v2\x10.mmo.v1.AbsorbedH\x00R\babsorbed\x12/\n" +
-	"\tskill_bar\x18\x18 \x01(\v2\x10.mmo.v1.SkillBarH\x00R\bskillBarB\x06\n" +
+	"\tskill_bar\x18\x18 \x01(\v2\x10.mmo.v1.SkillBarH\x00R\bskillBar\x122\n" +
+	"\bpassives\x18\x19 \x01(\v2\x14.mmo.v1.PassiveStateH\x00R\bpassivesB\x06\n" +
 	"\x04bodyJ\x04\b\v\x10\f\"\x95\x01\n" +
 	"\vDamageDealt\x12\x1b\n" +
 	"\tsource_id\x18\x01 \x01(\rR\bsourceId\x12\x1b\n" +
@@ -5908,7 +6123,19 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\n" +
 	"support_id\x18\x01 \x01(\tR\tsupportId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
-	"\x04tags\x18\x03 \x03(\tR\x04tags\"\x97\x01\n" +
+	"\x04tags\x18\x03 \x03(\tR\x04tags\"r\n" +
+	"\rPassiveAction\x12\x1c\n" +
+	"\ballocate\x18\x01 \x01(\rH\x00R\ballocate\x12\x18\n" +
+	"\x06refund\x18\x02 \x01(\rH\x00R\x06refund\x12\x1f\n" +
+	"\n" +
+	"respec_all\x18\x03 \x01(\bH\x00R\trespecAllB\b\n" +
+	"\x06action\"\x91\x01\n" +
+	"\fPassiveState\x12\x1c\n" +
+	"\tallocated\x18\x01 \x03(\rR\tallocated\x12\x1d\n" +
+	"\n" +
+	"start_node\x18\x02 \x01(\rR\tstartNode\x12!\n" +
+	"\fspent_points\x18\x03 \x01(\rR\vspentPoints\x12!\n" +
+	"\ftotal_points\x18\x04 \x01(\rR\vtotalPoints\"\x97\x01\n" +
 	"\tLootTaken\x12\x1b\n" +
 	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12\x17\n" +
 	"\aitem_id\x18\x02 \x01(\tR\x06itemId\x12\x10\n" +
@@ -6006,7 +6233,7 @@ func file_mmo_v1_game_proto_rawDescGZIP() []byte {
 }
 
 var file_mmo_v1_game_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
-var file_mmo_v1_game_proto_msgTypes = make([]protoimpl.MessageInfo, 60)
+var file_mmo_v1_game_proto_msgTypes = make([]protoimpl.MessageInfo, 62)
 var file_mmo_v1_game_proto_goTypes = []any{
 	(InteractKind)(0),       // 0: mmo.v1.InteractKind
 	(ItemActionKind)(0),     // 1: mmo.v1.ItemActionKind
@@ -6070,13 +6297,15 @@ var file_mmo_v1_game_proto_goTypes = []any{
 	(*SkillSlot)(nil),       // 59: mmo.v1.SkillSlot
 	(*KnownSkill)(nil),      // 60: mmo.v1.KnownSkill
 	(*SupportInfo)(nil),     // 61: mmo.v1.SupportInfo
-	(*LootTaken)(nil),       // 62: mmo.v1.LootTaken
-	(*Inventory)(nil),       // 63: mmo.v1.Inventory
-	(*ItemStack)(nil),       // 64: mmo.v1.ItemStack
-	(*ItemMod)(nil),         // 65: mmo.v1.ItemMod
-	(*StatValue)(nil),       // 66: mmo.v1.StatValue
-	(*PlayerJoined)(nil),    // 67: mmo.v1.PlayerJoined
-	(*PlayerLeft)(nil),      // 68: mmo.v1.PlayerLeft
+	(*PassiveAction)(nil),   // 62: mmo.v1.PassiveAction
+	(*PassiveState)(nil),    // 63: mmo.v1.PassiveState
+	(*LootTaken)(nil),       // 64: mmo.v1.LootTaken
+	(*Inventory)(nil),       // 65: mmo.v1.Inventory
+	(*ItemStack)(nil),       // 66: mmo.v1.ItemStack
+	(*ItemMod)(nil),         // 67: mmo.v1.ItemMod
+	(*StatValue)(nil),       // 68: mmo.v1.StatValue
+	(*PlayerJoined)(nil),    // 69: mmo.v1.PlayerJoined
+	(*PlayerLeft)(nil),      // 70: mmo.v1.PlayerLeft
 }
 var file_mmo_v1_game_proto_depIdxs = []int32{
 	14, // 0: mmo.v1.Envelope.server:type_name -> mmo.v1.ServerMessage
@@ -6094,67 +6323,69 @@ var file_mmo_v1_game_proto_depIdxs = []int32{
 	45, // 12: mmo.v1.ClientMessage.guild:type_name -> mmo.v1.GuildAction
 	49, // 13: mmo.v1.ClientMessage.social:type_name -> mmo.v1.SocialAction
 	57, // 14: mmo.v1.ClientMessage.skill_slot:type_name -> mmo.v1.SetSkillSlot
-	0,  // 15: mmo.v1.Interact.kind:type_name -> mmo.v1.InteractKind
-	1,  // 16: mmo.v1.ItemAction.kind:type_name -> mmo.v1.ItemActionKind
-	16, // 17: mmo.v1.ServerMessage.welcome:type_name -> mmo.v1.Welcome
-	23, // 18: mmo.v1.ServerMessage.snapshot:type_name -> mmo.v1.Snapshot
-	24, // 19: mmo.v1.ServerMessage.event:type_name -> mmo.v1.Event
-	20, // 20: mmo.v1.ServerMessage.pong:type_name -> mmo.v1.Pong
-	17, // 21: mmo.v1.ServerMessage.kick:type_name -> mmo.v1.Kick
-	63, // 22: mmo.v1.ServerMessage.inventory:type_name -> mmo.v1.Inventory
-	21, // 23: mmo.v1.Welcome.self:type_name -> mmo.v1.EntityState
-	2,  // 24: mmo.v1.EntityState.kind:type_name -> mmo.v1.EntityKind
-	22, // 25: mmo.v1.Snapshot.entities:type_name -> mmo.v1.EntityDelta
-	21, // 26: mmo.v1.Snapshot.entered:type_name -> mmo.v1.EntityState
-	21, // 27: mmo.v1.Snapshot.self:type_name -> mmo.v1.EntityState
-	67, // 28: mmo.v1.Event.player_joined:type_name -> mmo.v1.PlayerJoined
-	68, // 29: mmo.v1.Event.player_left:type_name -> mmo.v1.PlayerLeft
-	25, // 30: mmo.v1.Event.damage:type_name -> mmo.v1.DamageDealt
-	26, // 31: mmo.v1.Event.died:type_name -> mmo.v1.EntityDied
-	27, // 32: mmo.v1.Event.skill_cast:type_name -> mmo.v1.SkillCast
-	28, // 33: mmo.v1.Event.exp_gained:type_name -> mmo.v1.ExpGained
-	29, // 34: mmo.v1.Event.level_up:type_name -> mmo.v1.LevelUp
-	62, // 35: mmo.v1.Event.loot_taken:type_name -> mmo.v1.LootTaken
-	30, // 36: mmo.v1.Event.waypoint_found:type_name -> mmo.v1.WaypointFound
-	31, // 37: mmo.v1.Event.portal_refused:type_name -> mmo.v1.PortalRefused
-	34, // 38: mmo.v1.Event.world_map:type_name -> mmo.v1.WorldMap
-	39, // 39: mmo.v1.Event.chat:type_name -> mmo.v1.ChatLine
-	40, // 40: mmo.v1.Event.system:type_name -> mmo.v1.SystemMessage
-	42, // 41: mmo.v1.Event.party:type_name -> mmo.v1.PartyState
-	44, // 42: mmo.v1.Event.party_invite:type_name -> mmo.v1.PartyInvite
-	46, // 43: mmo.v1.Event.guild:type_name -> mmo.v1.GuildState
-	48, // 44: mmo.v1.Event.guild_invite:type_name -> mmo.v1.GuildInvite
-	50, // 45: mmo.v1.Event.friends:type_name -> mmo.v1.FriendList
-	52, // 46: mmo.v1.Event.buffs:type_name -> mmo.v1.BuffState
-	54, // 47: mmo.v1.Event.healed:type_name -> mmo.v1.Healed
-	55, // 48: mmo.v1.Event.shielded:type_name -> mmo.v1.Shielded
-	56, // 49: mmo.v1.Event.absorbed:type_name -> mmo.v1.Absorbed
-	58, // 50: mmo.v1.Event.skill_bar:type_name -> mmo.v1.SkillBar
-	35, // 51: mmo.v1.WorldMap.maps:type_name -> mmo.v1.MapSummary
-	36, // 52: mmo.v1.WorldMap.waypoints:type_name -> mmo.v1.WaypointSummary
-	37, // 53: mmo.v1.WorldMap.channels:type_name -> mmo.v1.ChannelSummary
-	5,  // 54: mmo.v1.ChatSend.channel:type_name -> mmo.v1.ChatChannel
-	5,  // 55: mmo.v1.ChatLine.channel:type_name -> mmo.v1.ChatChannel
-	5,  // 56: mmo.v1.SystemMessage.channel:type_name -> mmo.v1.ChatChannel
-	6,  // 57: mmo.v1.PartyAction.kind:type_name -> mmo.v1.PartyAction.Kind
-	43, // 58: mmo.v1.PartyState.members:type_name -> mmo.v1.PartyMember
-	7,  // 59: mmo.v1.GuildAction.kind:type_name -> mmo.v1.GuildAction.Kind
-	47, // 60: mmo.v1.GuildState.members:type_name -> mmo.v1.GuildMember
-	8,  // 61: mmo.v1.SocialAction.kind:type_name -> mmo.v1.SocialAction.Kind
-	51, // 62: mmo.v1.FriendList.friends:type_name -> mmo.v1.FriendEntry
-	53, // 63: mmo.v1.BuffState.buffs:type_name -> mmo.v1.BuffInstance
-	59, // 64: mmo.v1.SkillBar.slots:type_name -> mmo.v1.SkillSlot
-	60, // 65: mmo.v1.SkillBar.known:type_name -> mmo.v1.KnownSkill
-	61, // 66: mmo.v1.SkillBar.supports:type_name -> mmo.v1.SupportInfo
-	64, // 67: mmo.v1.Inventory.carried:type_name -> mmo.v1.ItemStack
-	64, // 68: mmo.v1.Inventory.equipped:type_name -> mmo.v1.ItemStack
-	66, // 69: mmo.v1.Inventory.stats:type_name -> mmo.v1.StatValue
-	65, // 70: mmo.v1.ItemStack.mods:type_name -> mmo.v1.ItemMod
-	71, // [71:71] is the sub-list for method output_type
-	71, // [71:71] is the sub-list for method input_type
-	71, // [71:71] is the sub-list for extension type_name
-	71, // [71:71] is the sub-list for extension extendee
-	0,  // [0:71] is the sub-list for field type_name
+	62, // 15: mmo.v1.ClientMessage.passive:type_name -> mmo.v1.PassiveAction
+	0,  // 16: mmo.v1.Interact.kind:type_name -> mmo.v1.InteractKind
+	1,  // 17: mmo.v1.ItemAction.kind:type_name -> mmo.v1.ItemActionKind
+	16, // 18: mmo.v1.ServerMessage.welcome:type_name -> mmo.v1.Welcome
+	23, // 19: mmo.v1.ServerMessage.snapshot:type_name -> mmo.v1.Snapshot
+	24, // 20: mmo.v1.ServerMessage.event:type_name -> mmo.v1.Event
+	20, // 21: mmo.v1.ServerMessage.pong:type_name -> mmo.v1.Pong
+	17, // 22: mmo.v1.ServerMessage.kick:type_name -> mmo.v1.Kick
+	65, // 23: mmo.v1.ServerMessage.inventory:type_name -> mmo.v1.Inventory
+	21, // 24: mmo.v1.Welcome.self:type_name -> mmo.v1.EntityState
+	2,  // 25: mmo.v1.EntityState.kind:type_name -> mmo.v1.EntityKind
+	22, // 26: mmo.v1.Snapshot.entities:type_name -> mmo.v1.EntityDelta
+	21, // 27: mmo.v1.Snapshot.entered:type_name -> mmo.v1.EntityState
+	21, // 28: mmo.v1.Snapshot.self:type_name -> mmo.v1.EntityState
+	69, // 29: mmo.v1.Event.player_joined:type_name -> mmo.v1.PlayerJoined
+	70, // 30: mmo.v1.Event.player_left:type_name -> mmo.v1.PlayerLeft
+	25, // 31: mmo.v1.Event.damage:type_name -> mmo.v1.DamageDealt
+	26, // 32: mmo.v1.Event.died:type_name -> mmo.v1.EntityDied
+	27, // 33: mmo.v1.Event.skill_cast:type_name -> mmo.v1.SkillCast
+	28, // 34: mmo.v1.Event.exp_gained:type_name -> mmo.v1.ExpGained
+	29, // 35: mmo.v1.Event.level_up:type_name -> mmo.v1.LevelUp
+	64, // 36: mmo.v1.Event.loot_taken:type_name -> mmo.v1.LootTaken
+	30, // 37: mmo.v1.Event.waypoint_found:type_name -> mmo.v1.WaypointFound
+	31, // 38: mmo.v1.Event.portal_refused:type_name -> mmo.v1.PortalRefused
+	34, // 39: mmo.v1.Event.world_map:type_name -> mmo.v1.WorldMap
+	39, // 40: mmo.v1.Event.chat:type_name -> mmo.v1.ChatLine
+	40, // 41: mmo.v1.Event.system:type_name -> mmo.v1.SystemMessage
+	42, // 42: mmo.v1.Event.party:type_name -> mmo.v1.PartyState
+	44, // 43: mmo.v1.Event.party_invite:type_name -> mmo.v1.PartyInvite
+	46, // 44: mmo.v1.Event.guild:type_name -> mmo.v1.GuildState
+	48, // 45: mmo.v1.Event.guild_invite:type_name -> mmo.v1.GuildInvite
+	50, // 46: mmo.v1.Event.friends:type_name -> mmo.v1.FriendList
+	52, // 47: mmo.v1.Event.buffs:type_name -> mmo.v1.BuffState
+	54, // 48: mmo.v1.Event.healed:type_name -> mmo.v1.Healed
+	55, // 49: mmo.v1.Event.shielded:type_name -> mmo.v1.Shielded
+	56, // 50: mmo.v1.Event.absorbed:type_name -> mmo.v1.Absorbed
+	58, // 51: mmo.v1.Event.skill_bar:type_name -> mmo.v1.SkillBar
+	63, // 52: mmo.v1.Event.passives:type_name -> mmo.v1.PassiveState
+	35, // 53: mmo.v1.WorldMap.maps:type_name -> mmo.v1.MapSummary
+	36, // 54: mmo.v1.WorldMap.waypoints:type_name -> mmo.v1.WaypointSummary
+	37, // 55: mmo.v1.WorldMap.channels:type_name -> mmo.v1.ChannelSummary
+	5,  // 56: mmo.v1.ChatSend.channel:type_name -> mmo.v1.ChatChannel
+	5,  // 57: mmo.v1.ChatLine.channel:type_name -> mmo.v1.ChatChannel
+	5,  // 58: mmo.v1.SystemMessage.channel:type_name -> mmo.v1.ChatChannel
+	6,  // 59: mmo.v1.PartyAction.kind:type_name -> mmo.v1.PartyAction.Kind
+	43, // 60: mmo.v1.PartyState.members:type_name -> mmo.v1.PartyMember
+	7,  // 61: mmo.v1.GuildAction.kind:type_name -> mmo.v1.GuildAction.Kind
+	47, // 62: mmo.v1.GuildState.members:type_name -> mmo.v1.GuildMember
+	8,  // 63: mmo.v1.SocialAction.kind:type_name -> mmo.v1.SocialAction.Kind
+	51, // 64: mmo.v1.FriendList.friends:type_name -> mmo.v1.FriendEntry
+	53, // 65: mmo.v1.BuffState.buffs:type_name -> mmo.v1.BuffInstance
+	59, // 66: mmo.v1.SkillBar.slots:type_name -> mmo.v1.SkillSlot
+	60, // 67: mmo.v1.SkillBar.known:type_name -> mmo.v1.KnownSkill
+	61, // 68: mmo.v1.SkillBar.supports:type_name -> mmo.v1.SupportInfo
+	66, // 69: mmo.v1.Inventory.carried:type_name -> mmo.v1.ItemStack
+	66, // 70: mmo.v1.Inventory.equipped:type_name -> mmo.v1.ItemStack
+	68, // 71: mmo.v1.Inventory.stats:type_name -> mmo.v1.StatValue
+	67, // 72: mmo.v1.ItemStack.mods:type_name -> mmo.v1.ItemMod
+	73, // [73:73] is the sub-list for method output_type
+	73, // [73:73] is the sub-list for method input_type
+	73, // [73:73] is the sub-list for extension type_name
+	73, // [73:73] is the sub-list for extension extendee
+	0,  // [0:73] is the sub-list for field type_name
 }
 
 func init() { file_mmo_v1_game_proto_init() }
@@ -6176,6 +6407,7 @@ func file_mmo_v1_game_proto_init() {
 		(*ClientMessage_Guild)(nil),
 		(*ClientMessage_Social)(nil),
 		(*ClientMessage_SkillSlot)(nil),
+		(*ClientMessage_Passive)(nil),
 	}
 	file_mmo_v1_game_proto_msgTypes[5].OneofWrappers = []any{
 		(*ServerMessage_Welcome)(nil),
@@ -6209,11 +6441,17 @@ func file_mmo_v1_game_proto_init() {
 		(*Event_Shielded)(nil),
 		(*Event_Absorbed)(nil),
 		(*Event_SkillBar)(nil),
+		(*Event_Passives)(nil),
 	}
 	file_mmo_v1_game_proto_msgTypes[24].OneofWrappers = []any{
 		(*Travel_WaypointId)(nil),
 		(*Travel_ChannelInstanceId)(nil),
 		(*Travel_NewChannel)(nil),
+	}
+	file_mmo_v1_game_proto_msgTypes[53].OneofWrappers = []any{
+		(*PassiveAction_Allocate)(nil),
+		(*PassiveAction_Refund)(nil),
+		(*PassiveAction_RespecAll)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -6221,7 +6459,7 @@ func file_mmo_v1_game_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mmo_v1_game_proto_rawDesc), len(file_mmo_v1_game_proto_rawDesc)),
 			NumEnums:      9,
-			NumMessages:   60,
+			NumMessages:   62,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

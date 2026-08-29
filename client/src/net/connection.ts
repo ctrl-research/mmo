@@ -22,6 +22,7 @@ import {
   SocialActionSchema,
   SocialAction_Kind,
   SetSkillSlotSchema,
+  PassiveActionSchema,
   type Inventory,
   type Snapshot,
   type Welcome,
@@ -38,6 +39,8 @@ import {
   type FriendList,
   type SkillBar,
   type BuffState,
+  type PassiveState,
+  type PassiveAction,
 } from "@/gen/mmo/v1/game_pb";
 
 /** Bumped on any incompatible wire change; must match gateway.ProtocolVersion. */
@@ -248,6 +251,17 @@ export class Connection {
     });
   }
 
+  /**
+   * Asks to change the passive tree.
+   *
+   * Exactly one action per message: allocating and refunding together would
+   * need an order between them, and the order would decide whether it was
+   * legal.
+   */
+  sendPassive(action: PassiveAction["action"]): void {
+    this.send({ case: "passive", value: create(PassiveActionSchema, { action }) });
+  }
+
   send(body: ClientMessage["body"]): void {
     if (!this.connected) return;
     const msg = create(ClientMessageSchema, { body });
@@ -362,5 +376,6 @@ export type {
   FriendList,
   SkillBar,
   BuffState,
+  PassiveState,
 };
 export { ChatChannel, PartyAction_Kind, GuildAction_Kind, SocialAction_Kind };

@@ -97,6 +97,9 @@ type PlayerSession interface {
 	// SetBarSlot queues a change to the skill bar.
 	SetBarSlot(ctx context.Context, req LoadoutRequest) error
 
+	// Passive queues a change to the passive tree.
+	Passive(ctx context.Context, req PassiveRequest) error
+
 	// Travel moves the character without walking: to an unlocked waypoint, or
 	// to another channel of the map they are in.
 	Travel(ctx context.Context, req TravelRequest) error
@@ -139,6 +142,7 @@ type Session struct {
 	guildReqs  chan GuildRequest
 	socialReqs chan SocialRequest
 	loadouts   chan LoadoutRequest
+	passives   chan PassiveRequest
 
 	// classID is what this character is, which decides what they start with
 	// and what they may learn.
@@ -347,6 +351,7 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 		inventory:   inventory,
 		sink:        sink,
 		mapID:       mapID,
+		classID:     character.ClassID,
 		// Buffered so the tick loop never blocks handing work over; a player
 		// cannot legitimately produce these faster than this.
 		claims:    make(chan room.LootClaim, 16),
@@ -362,6 +367,7 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 		guildReqs:  make(chan GuildRequest, 4),
 		socialReqs: make(chan SocialRequest, 4),
 		loadouts:   make(chan LoadoutRequest, 4),
+		passives:   make(chan PassiveRequest, 4),
 		finished:   make(chan struct{}),
 		done:       make(chan struct{}),
 		log: n.log.With(
@@ -395,6 +401,7 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 	// observes the character.
 	s.refreshStats(ctx, character.Level)
 	s.sendLoadout(ctx, loadout)
+	s.sendPassives(ctx)
 
 	n.hold(characterID, s)
 	s.announcePresence(ctx, false)
@@ -465,6 +472,9 @@ func (s *Session) maintain() {
 
 		case req := <-s.loadouts:
 			s.handleLoadout(req)
+
+		case req := <-s.passives:
+			s.handlePassive(req)
 
 		case <-vitals.C:
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -769,6 +779,11 @@ func (s *Session) handleClaim(claim room.LootClaim) {
 // depend on the order things were equipped.
 func (s *Session) refreshStats(ctx context.Context, level int) {
 	block := s.inventory.StatBlock(level)
+
+	// The passive tree, through the same pipeline as gear. Both are just
+	// modifiers, and a tree that fed a parallel path would be a tree whose
+	// interaction with equipment nobody could predict.
+	block.AddAll(s.passiveMods(ctx))
 
 	maxLife := block.IntClampedNonNegative(stats.MaxLife)
 	if maxLife < 1 {

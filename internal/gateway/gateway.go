@@ -39,8 +39,13 @@ type PlayerSession = world.PlayerSession
 
 // Config configures a Gateway.
 type Config struct {
-	World       World
-	Maps        map[string]*content.Map
+	World World
+	Maps  map[string]*content.Map
+
+	// Passives is the tree the client draws. Optional: without it the tree
+	// screen has nothing to show, which is better than the server refusing to
+	// start over a screen.
+	Passives    *content.PassiveTree
 	Tickets     *TicketStore
 	Metrics     *metrics.Metrics
 	Logger      *slog.Logger
@@ -85,6 +90,11 @@ type Gateway struct {
 	origins     []string
 	devAuth     bool
 	clientDir   string
+
+	// passiveTree is the tree as the client draws it, rendered once at
+	// startup. Rendered rather than read from disk so it cannot disagree with
+	// the content the server validated and is simulating against.
+	passiveTree []byte
 	sessions    *auth.Sessions
 	identity    interface{ Routes(*http.ServeMux) }
 
@@ -126,6 +136,7 @@ func New(cfg Config) (*Gateway, error) {
 		origins:     cfg.AllowedOrigins,
 		devAuth:     cfg.DevAuth,
 		clientDir:   cfg.ClientDir,
+		passiveTree: renderPassiveTree(cfg.Passives),
 		identity:    cfg.Identity,
 		conns:       make(map[*session]struct{}),
 	}, nil
@@ -138,6 +149,7 @@ func (g *Gateway) Routes() http.Handler {
 	mux.HandleFunc("GET /ws", g.handleWebSocket)
 	mux.HandleFunc("GET /api/map/{id}/collision", g.handleMapCollision)
 	mux.HandleFunc("GET /api/map/{id}/source", g.handleMapSource)
+	mux.HandleFunc("GET /api/passives", g.handlePassiveTree)
 
 	if g.identity != nil {
 		g.identity.Routes(mux)
