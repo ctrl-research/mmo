@@ -412,6 +412,27 @@ func (s *Session) Resume(ctx context.Context, sink room.Sink) bool {
 		return false
 	}
 
+	// The session must talk to the *new* connection. Without this, every later
+	// inventory push goes to the socket that just dropped, and the returning
+	// player sees an empty inventory for the rest of the session.
+	s.mu.Lock()
+	s.sink = sink
+	s.mu.Unlock()
+
+	// Reloaded from the database rather than re-sent from memory: the
+	// in-memory copy is from the moment of joining, and anything that happened
+	// while the player was away -- an administrator granting an item today, a
+	// trade or mail delivery later -- would otherwise be invisible until they
+	// fully logged out.
+	if err := s.inventory.reload(ctx); err != nil {
+		s.log.Error("reloading inventory on reconnect", "err", err)
+	}
+
+	// The new connection has no state at all, so everything sent once at join
+	// has to be sent again. The room re-sends its world state on thaw; the
+	// inventory and stats are the session's to re-send.
+	s.refreshStats(ctx, s.characterLevel(ctx))
+
 	s.log.Info("player reconnected within the grace window")
 	return true
 }

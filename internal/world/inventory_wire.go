@@ -45,7 +45,14 @@ func (s *Session) pushInventory(ctx context.Context) {
 // pushInventoryWithStats sends the inventory alongside an already-computed
 // block, so a refresh does not compute it twice.
 func (s *Session) pushInventoryWithStats(_ context.Context, block *stats.Block) {
-	if s.sink == nil {
+	// Read under the lock: a reconnect replaces the sink from another
+	// goroutine, and sending to the old one means the returning player never
+	// sees their inventory.
+	s.mu.Lock()
+	sink := s.sink
+	s.mu.Unlock()
+
+	if sink == nil {
 		return
 	}
 
@@ -72,7 +79,7 @@ func (s *Session) pushInventoryWithStats(_ context.Context, block *stats.Block) 
 		})
 	}
 
-	s.sink.Send(&mmov1.ServerMessage{
+	sink.Send(&mmov1.ServerMessage{
 		Body: &mmov1.ServerMessage_Inventory{Inventory: msg},
 	})
 }

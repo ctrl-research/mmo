@@ -2,7 +2,7 @@
 
 A self-hosted, horizontally scalable 2D MMO — drawing on MapleStory's side-scrolling combat and channels, Path of Exile's passive tree and stat math, and Old School RuneScape's secondary skills.
 
-**Status: M2 complete** — sign in, create a character, play, log out, and log back in to find everything where you left it. Two players share a map, see each other, and hunt their own private mobs. Client-side prediction is verified bit-identical to the server. See `docs/roadmap.md`.
+**Status: M3 complete** — kill a mob, get a rare with tiered affixes, equip it, and watch your stats change by exactly what the tooltip predicted. Sign in, create a character, play, log out, and log back in to find everything where you left it. Two players share a map, see each other, and hunt their own private mobs. See `docs/roadmap.md`.
 
 ## Design goals
 
@@ -80,6 +80,14 @@ mmo allow jonathan          # allow a local username to register
 mmo allowlist               # list every rule
 mmo revoke jonathan         # remove one
 mmo passwd jonathan         # set a password from the terminal
+```
+
+There is also `mmo give`, for testing a drop without farming for it, or for
+making good after a genuine loss. It goes through the same generator and the
+same audit journal as a real drop:
+
+```
+mmo give Sigrun weapon.iron_sword --rarity=rare --ilvl=40
 ```
 
 They can then register at the login screen with that username. Passwords are

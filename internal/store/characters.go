@@ -241,3 +241,24 @@ func (s *Store) CountCharacters(ctx context.Context, accountID uuid.UUID) (int, 
 		accountID).Scan(&n)
 	return n, err
 }
+
+// CharacterByName looks a character up by name, for administration commands
+// where a UUID would be unusable by a person.
+func (s *Store) CharacterByName(ctx context.Context, name string) (Character, error) {
+	var c Character
+	err := s.pool.QueryRow(ctx, `
+		SELECT id, account_id, name, class_id, level, exp, gold,
+		       map_id, spawn_point, state, lease_token, created_at, updated_at
+		  FROM characters
+		 WHERE lower(name) = lower($1) AND deleted_at IS NULL`, name,
+	).Scan(&c.ID, &c.AccountID, &c.Name, &c.ClassID, &c.Level, &c.Exp, &c.Gold,
+		&c.MapID, &c.SpawnPoint, &c.State, &c.LeaseToken, &c.CreatedAt, &c.UpdatedAt)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Character{}, fmt.Errorf("no character named %q", name)
+	}
+	if err != nil {
+		return Character{}, fmt.Errorf("store: loading character by name: %w", err)
+	}
+	return c, nil
+}

@@ -1,6 +1,7 @@
 import { Connection, describeClose } from "@/net/connection";
-import type { Event, Snapshot, Welcome } from "@/net/connection";
+import type { Event, Inventory, Snapshot, Welcome } from "@/net/connection";
 import { Interpolator } from "./interpolator";
+import { InventoryState } from "./inventory";
 import { Predictor } from "./predictor";
 import { InputSource } from "./input";
 import { Sim } from "@/sim/wasm";
@@ -36,6 +37,9 @@ const LOOT_SEARCH_RADIUS = 120 * 256;
 export interface LoopCallbacks {
   onStatus(text: string): void;
   onDisconnect(reason: string): void;
+
+  /** Called when the server sends a new inventory, so the UI can redraw. */
+  onInventory?(): void;
 }
 
 export class GameLoop {
@@ -69,6 +73,9 @@ export class GameLoop {
   // can show progress without the client inferring it from state.
   #kills = 0;
 
+  /** The server's view of the inventory, cached so the UI can be drawn. */
+  readonly inventory = new InventoryState();
+
   constructor(sim: Sim, scene: Scene, cb: LoopCallbacks) {
     this.#sim = sim;
     this.#scene = scene;
@@ -79,6 +86,7 @@ export class GameLoop {
       onWelcome: (w) => void this.#onWelcome(w),
       onSnapshot: (s) => this.#onSnapshot(s),
       onEvent: (e) => this.#onEvent(e),
+      onInventory: (i) => this.#onInventory(i),
       onPong: () => {},
       onClosed: (code, reason) => this.#onClosed(code, reason),
     });
@@ -168,6 +176,21 @@ export class GameLoop {
    * health bar, because two hits of 100 and one of 200 are indistinguishable
    * in state and completely different to play.
    */
+  #onInventory(inv: Inventory): void {
+    this.inventory.apply(inv);
+    this.#cb.onInventory?.();
+  }
+
+  /** Asks the server to act on an item. */
+  itemAction(
+    kind: "move" | "equip" | "unequip" | "destroy",
+    itemId: string,
+    slot = 0,
+    equipSlot = "",
+  ): void {
+    this.#conn.sendItemAction(kind, itemId, slot, equipSlot);
+  }
+
   #onEvent(e: Event): void {
     switch (e.body.case) {
       case "damage": {
@@ -199,7 +222,15 @@ export class GameLoop {
 
       case "lootTaken": {
         const l = e.body.value;
-        this.#cb.onStatus(l.gold > 0 ? `+${l.gold} gold` : `picked up ${l.itemId}`);
+        if (l.failed) {
+          // The drop is still there. Saying why beats the keypress appearing
+          // to do nothing.
+          this.#cb.onStatus(l.reason || "could not pick that up");
+        } else if (l.gold > 0) {
+          this.#cb.onStatus(`+${l.gold} gold`);
+        } else {
+          this.#cb.onStatus("picked up an item");
+        }
         break;
       }
     }

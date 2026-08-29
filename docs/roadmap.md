@@ -115,19 +115,35 @@ Character deletion is soft, freeing the name, and nothing purges old rows yet.
 
 ---
 
-## M3 — Items, equipment, stats
+## M3 — Items, equipment, stats — **done**
 
-- Item bases, affix pools, tiers, rarity rolls
-- Item instances with rolled affixes; the exactly-one-location invariant
-- Item journal (`item_events`) — **build it now, not after the first dupe**
-- Inventory with slots, drag-and-drop, stacking
-- Equipment slots, level and class requirements
-- Full stat pipeline: base → flat → increased (summed) → more (multiplied)
-- Tooltips with affix tiers
-- Vendors, buy/sell
-- Paperdoll: equipped gear renders on the character
+- [x] Item bases, affix pools, tiers, rarity rolls
+- [x] Item instances with rolled affixes; the exactly-one-location invariant
+- [x] Item journal (`item_events`), built before the first dupe rather than after
+- [x] Inventory with slots and stacking
+- [x] Equipment slots with level requirements
+- [x] Full stat pipeline: base → flat → increased (summed) → more (multiplied)
+- [x] Tooltips with affix tiers and a predicted stat change
+- [x] Critical hits, now that equipment can grant the chance
+- [ ] Vendors, buy/sell — deferred, see below
+- [ ] Paperdoll rendering — deferred, see below
 
-**Exit:** kill a mob, get a rare sword with three affixes, equip it, watch damage change by exactly the amount the tooltip predicted.
+**Exit criterion, verified in a browser:** a rare Leather Vest with three
+affixes predicted `+13 Armour, +3 Strength, +18 Life, +15% Fire Resistance`;
+equipping it changed those stats by exactly `+13, +3, +18, +15%`.
+
+**Deferred deliberately.** Vendors need a gold sink worth having and an economy
+to balance against, neither of which exists yet; buying and selling into a
+vacuum would be numbers with no meaning. Paperdoll rendering needs sprites, and
+the client draws flat colour boxes — layered equipment on a rectangle would be
+work thrown away when art arrives. Drag-and-drop is likewise deferred: click to
+equip covers the actual need, and dragging matters once bank tabs and trade
+windows exist to drag between.
+
+**Also deferred:** stacking is modelled and stored but nothing yet merges two
+stacks of the same item into one, so twenty potions occupy twenty slots.
+
+---
 
 ---
 

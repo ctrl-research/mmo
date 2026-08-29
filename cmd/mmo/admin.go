@@ -2,16 +2,23 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"text/tabwriter"
 	"time"
 
+	gamedata "github.com/ctrl-research/mmo/content"
 	"github.com/ctrl-research/mmo/internal/auth"
+	"github.com/ctrl-research/mmo/internal/content"
+	"github.com/ctrl-research/mmo/internal/rng"
 	"github.com/ctrl-research/mmo/internal/store"
+	"github.com/ctrl-research/mmo/internal/world"
+	"github.com/ctrl-research/mmo/internal/world/items"
 )
 
 // Administration commands.
@@ -26,11 +33,13 @@ import (
 //	mmo allowlist                   list every rule
 //	mmo revoke jonathan             remove a rule
 //	mmo passwd jonathan             set a local account's password
+//	mmo give Sigrun weapon.iron_sword --rarity=rare --ilvl=40
 const adminUsage = `Usage:
   mmo allow [flags] VALUE      allow someone to sign in
   mmo revoke [flags] VALUE     remove an allowlist rule
   mmo allowlist                list allowlist rules
   mmo passwd USERNAME          set a local account's password
+  mmo give CHARACTER BASE_ID   place an item in a character's inventory
 
 Flags for allow and revoke:
   --provider   identity provider, or empty for any (default: local)
@@ -48,7 +57,7 @@ func runAdmin(args []string) (handled bool, err error) {
 	}
 
 	switch args[0] {
-	case "allow", "revoke", "allowlist", "passwd":
+	case "allow", "revoke", "allowlist", "passwd", "give":
 	default:
 		return false, nil
 	}
@@ -60,10 +69,24 @@ func runAdmin(args []string) (handled bool, err error) {
 	provider := fs.String("provider", "local", "identity provider, or empty for any")
 	kind := fs.String("kind", store.MatchSubject, "subject, email, or email_domain")
 	note := fs.String("note", "", "a reminder of why the rule exists")
+	rarity := fs.String("rarity", "", "force a rarity: normal, magic, or rare")
+	ilvl := fs.Int("ilvl", 0, "item level, deciding which affix tiers can roll")
+	seed := fs.Uint64("seed", 0, "fixed roll seed, so a given item is reproducible")
 	fs.Usage = func() { fmt.Fprint(os.Stderr, adminUsage) }
 
-	if err := fs.Parse(args[1:]); err != nil {
+	// Flags are separated from positional arguments before parsing, because
+	// Go's flag package stops at the first non-flag argument -- so
+	// "give Sigrun sword --rarity=rare" would silently ignore the flag and
+	// produce a normal item, which looks like the generator being wrong.
+	flags, positional := splitArgs(args[1:])
+	if err := fs.Parse(flags); err != nil {
 		return true, err
+	}
+	arg := func(i int) string {
+		if i < len(positional) {
+			return positional[i]
+		}
+		return ""
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -81,13 +104,15 @@ func runAdmin(args []string) (handled bool, err error) {
 
 	switch args[0] {
 	case "allow":
-		return true, adminAllow(ctx, db, fs.Arg(0), *provider, *kind, *note)
+		return true, adminAllow(ctx, db, arg(0), *provider, *kind, *note)
 	case "revoke":
-		return true, adminRevoke(ctx, db, fs.Arg(0), *provider, *kind)
+		return true, adminRevoke(ctx, db, arg(0), *provider, *kind)
 	case "allowlist":
 		return true, adminList(ctx, db)
 	case "passwd":
-		return true, adminPasswd(ctx, db, fs.Arg(0))
+		return true, adminPasswd(ctx, db, arg(0))
+	case "give":
+		return true, adminGive(ctx, db, arg(0), arg(1), *rarity, *ilvl, *seed)
 	}
 	return true, nil
 }
@@ -205,4 +230,135 @@ func adminPasswd(ctx context.Context, db *store.Store, username string) error {
 
 	fmt.Printf("password set for %q\n", cred.Username)
 	return nil
+}
+
+// adminGive places an item in a character's inventory.
+//
+// For testing a drop without farming for it, and for a server owner making
+// good after a genuine loss. It goes through the same generator and the same
+// journal as a real drop, so what it produces is indistinguishable from one --
+// and remains traceable in item_events as having come from here.
+func adminGive(ctx context.Context, db *store.Store, characterName, baseID, rarity string, itemLevel int, seed uint64) error {
+	if characterName == "" || baseID == "" {
+		return errors.New("usage: mmo give CHARACTER BASE_ID")
+	}
+
+	game, err := content.Load(gamedata.FS)
+	if err != nil {
+		return fmt.Errorf("loading content: %w", err)
+	}
+	if _, ok := game.Items[baseID]; !ok {
+		return fmt.Errorf("no item base named %q", baseID)
+	}
+
+	character, err := db.CharacterByName(ctx, characterName)
+	if err != nil {
+		return err
+	}
+
+	if itemLevel <= 0 {
+		itemLevel = character.Level
+	}
+	if seed == 0 {
+		seed = uint64(time.Now().UnixNano())
+	}
+
+	weights := items.DefaultRarityWeights
+	switch rarity {
+	case "normal":
+		weights = items.RarityWeights{Normal: 1}
+	case "magic":
+		weights = items.RarityWeights{Magic: 1}
+	case "rare":
+		weights = items.RarityWeights{Rare: 1}
+	case "":
+	default:
+		return fmt.Errorf("unknown rarity %q, want normal, magic, or rare", rarity)
+	}
+
+	gen := items.NewGenerator(game)
+	inst, err := gen.Roll(rng.New(seed), baseID, itemLevel, weights)
+	if err != nil {
+		return err
+	}
+
+	inventory, _, err := db.EnsureContainers(ctx, character.ID, world.InventorySlots, world.EquipmentSlots)
+	if err != nil {
+		return err
+	}
+
+	slot, err := db.FreeSlot(ctx, inventory.ID)
+	if errors.Is(err, store.ErrContainerFull) {
+		return fmt.Errorf("%s's inventory is full", character.Name)
+	}
+	if err != nil {
+		return err
+	}
+
+	mods, err := json.Marshal(inst)
+	if err != nil {
+		return err
+	}
+
+	if _, err := db.InsertItem(ctx, inventory.ID, slot, store.ItemRow{
+		BaseID:    inst.BaseID,
+		Rarity:    string(inst.Rarity),
+		ItemLevel: inst.ItemLevel,
+		Mods:      mods,
+		StackSize: inst.Stack,
+	}, character.ID, store.EventCreate, 0); err != nil {
+		return err
+	}
+
+	fmt.Printf("gave %s: %s (%s, item level %d)\n",
+		character.Name, gen.DisplayName(inst), inst.Rarity, inst.ItemLevel)
+	for _, m := range inst.Implicits {
+		fmt.Printf("  %s %s %v\n", m.Stat, m.Kind, m.Value)
+	}
+	for _, m := range inst.Affixes {
+		fmt.Printf("  %s %s %v (T%d)\n", m.Stat, m.Kind, m.Value, m.Tier)
+	}
+
+	if character.LeaseToken > 0 {
+		fmt.Println("\nThis character may be in play; they will see it after reconnecting.")
+	}
+	return nil
+}
+
+// splitArgs separates flags from positional arguments.
+//
+// Go's flag package stops parsing at the first non-flag argument, so a flag
+// written after a positional one is silently ignored -- and a silently ignored
+// --rarity looks like the item generator being wrong rather than like an
+// argument that never arrived.
+//
+// A flag taking a separate value ("--rarity rare" rather than "--rarity=rare")
+// consumes the next argument, which is why the known set is checked here.
+func splitArgs(args []string) (flags, positional []string) {
+	takesValue := map[string]bool{
+		"-provider": true, "--provider": true,
+		"-kind": true, "--kind": true,
+		"-note": true, "--note": true,
+		"-rarity": true, "--rarity": true,
+		"-ilvl": true, "--ilvl": true,
+		"-seed": true, "--seed": true,
+		"-database-url": true, "--database-url": true,
+	}
+
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if len(a) == 0 || a[0] != '-' {
+			positional = append(positional, a)
+			continue
+		}
+
+		flags = append(flags, a)
+
+		// "--flag=value" carries its own value; "--flag value" takes the next.
+		if !strings.Contains(a, "=") && takesValue[a] && i+1 < len(args) {
+			i++
+			flags = append(flags, args[i])
+		}
+	}
+	return flags, positional
 }
