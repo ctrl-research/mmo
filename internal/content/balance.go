@@ -99,6 +99,33 @@ type CombatBalance struct {
 	// CorpseTicks is how long a dead mob remains before being removed, giving
 	// the client time to play a death animation.
 	CorpseTicks int
+
+	// DownedTicks is how long a character lies at zero health before they may
+	// return.
+	//
+	// A delay rather than an instant respawn, because dying should cost
+	// something even where there is nothing to lose: a fight you can rejoin
+	// the moment you lose it is a fight with no stakes. Short enough not to be
+	// a punishment for its own sake.
+	DownedTicks int
+
+	// ReviveGraceTicks is how long a character who has just come back cannot
+	// be harmed.
+	//
+	// A spawn point is a fixed place, and something is often standing on it.
+	// Without this, coming back next to whatever killed you means dying again
+	// before you can move, and paying the penalty each time -- a loop the
+	// player has no way out of. It ends the moment they attack, so it buys a
+	// chance to leave rather than a free opening.
+	ReviveGraceTicks int
+
+	// DeathExpPenalty is the fraction of the progress made toward the current
+	// level that is lost on death, in stat millionths.
+	//
+	// Of progress *within* the level rather than of total experience, so a
+	// death never costs a level and never costs a high-level character
+	// disproportionately more than a low-level one. Zero disables it.
+	DeathExpPenalty int
 }
 
 type DropBalance struct {
@@ -131,6 +158,9 @@ type balanceFile struct {
 		MinDamage      int     `toml:"min_damage"`
 		HitFlashMs     int     `toml:"hit_flash_ms"`
 		CorpseMs       int     `toml:"corpse_ms"`
+		DownedMs       int     `toml:"downed_ms"`
+		ReviveGraceMs  int     `toml:"revive_grace_ms"`
+		DeathExpPct    float64 `toml:"death_exp_penalty"`
 	} `toml:"combat"`
 
 	Drops struct {
@@ -169,12 +199,15 @@ func (c *Content) loadBalance(fsys fs.FS, rec *hashRecorder) error {
 
 	c.Balance = Balance{
 		Combat: CombatBalance{
-			CritMultiplier: toFixedValue(f.Combat.CritMultiplier),
-			ResistanceCap:  toFixedValue(f.Combat.ResistanceCap),
-			ArmourDivisor:  f.Combat.ArmourDivisor,
-			MinDamage:      f.Combat.MinDamage,
-			HitFlashTicks:  msToTicks(f.Combat.HitFlashMs, TickRate),
-			CorpseTicks:    msToTicks(f.Combat.CorpseMs, TickRate),
+			CritMultiplier:   toFixedValue(f.Combat.CritMultiplier),
+			ResistanceCap:    toFixedValue(f.Combat.ResistanceCap),
+			ArmourDivisor:    f.Combat.ArmourDivisor,
+			MinDamage:        f.Combat.MinDamage,
+			HitFlashTicks:    msToTicks(f.Combat.HitFlashMs, TickRate),
+			CorpseTicks:      msToTicks(f.Combat.CorpseMs, TickRate),
+			DownedTicks:      msToTicks(f.Combat.DownedMs, TickRate),
+			ReviveGraceTicks: msToTicks(f.Combat.ReviveGraceMs, TickRate),
+			DeathExpPenalty:  ratioToPPM(f.Combat.DeathExpPct),
 		},
 		Drops: DropBalance{
 			GroundTicks:  msToTicks(f.Drops.GroundMs, TickRate),
@@ -211,6 +244,12 @@ func (b Balance) validate() error {
 		return fmt.Errorf("balance: min_damage cannot be negative")
 	case b.Combat.CorpseTicks < 0:
 		return fmt.Errorf("balance: corpse_ms cannot be negative")
+	case b.Combat.DownedTicks <= 0:
+		return fmt.Errorf("balance: downed_ms must be positive, or death would be a flicker rather than a setback")
+	case b.Combat.ReviveGraceTicks < 0:
+		return fmt.Errorf("balance: revive_grace_ms cannot be negative")
+	case b.Combat.DeathExpPenalty < 0 || b.Combat.DeathExpPenalty >= 1_000_000:
+		return fmt.Errorf("balance: death_exp_penalty must be in [0, 1); at 1.0 a death would erase the whole level")
 	case b.Drops.GroundTicks <= 0:
 		return fmt.Errorf("balance: ground_ms must be positive, or drops would vanish instantly")
 	case b.Drops.PickupRange <= 0:

@@ -450,6 +450,11 @@ func (r *Room) doTick() {
 	// After AI, so a marker put down this tick is visible in this tick's
 	// snapshot, and one whose boss just died is gone from it.
 	r.phaseTelegraphs()
+	// After everything that could have killed someone, so a character revived
+	// this tick cannot be downed again by a hit that landed before they were
+	// back -- and before the snapshot, so they are never seen standing on the
+	// spawn point at zero health.
+	r.phaseRevive()
 	r.phaseDrops()
 	r.phaseSpawns()
 	r.phaseSnapshot()
@@ -510,6 +515,22 @@ func (r *Room) phaseIngestAndMove() {
 	for _, id := range r.playerOrder {
 		p := r.players[id]
 		if p == nil || p.frozen {
+			continue
+		}
+		// A downed character still falls -- a body that hovered where it died
+		// would be worse than one that lies on the floor -- but takes no
+		// input. Stepping with an empty input rather than skipping the step
+		// keeps them subject to the same simulation as everyone else.
+		//
+		// Their inputs are still drained, and that is not a detail. Draining
+		// is what advances the acknowledgement, and the client reconciles by
+		// replaying everything the server has not acknowledged yet. A server
+		// that quietly stopped acking would leave the client replaying a queue
+		// that only ever grew -- and the body would stroll away from the spot
+		// it died on, at full speed, on the client alone.
+		if isDowned(p.entity) {
+			r.takeInputs(p)
+			sim.Step(&p.entity.Body, sim.Input{}, r.cfg.World, &r.cfg.Tuning)
 			continue
 		}
 		for _, in := range r.takeInputs(p) {

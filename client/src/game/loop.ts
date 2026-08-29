@@ -2,6 +2,7 @@ import { Connection, describeClose } from "@/net/connection";
 import type {
   BossPhase,
   ChatLine,
+  Downed,
   Event,
   FriendList,
   GuildInvite,
@@ -86,6 +87,16 @@ export interface LoopCallbacks {
 
   /** Called when a boss enters a phase or enrages. */
   onBossPhase?(phase: BossPhase): void;
+
+  /**
+   * Called when this character dies, with how long until they are back and
+   * what the death cost.
+   *
+   * There is no matching revived callback: coming back is state -- full
+   * health, standing on the spawn point -- and the client reconciles both
+   * exactly. The screen closes when health returns.
+   */
+  onDowned?(down: Downed): void;
 
   /**
    * Called every frame with the current health of the entity the boss frame is
@@ -409,6 +420,10 @@ export class GameLoop {
 
       case "bossPhase":
         this.#cb.onBossPhase?.(e.body.value);
+        break;
+
+      case "downed":
+        this.#cb.onDowned?.(e.body.value);
         break;
 
       case "lootTaken": {

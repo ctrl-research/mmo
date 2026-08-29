@@ -36,6 +36,14 @@ type PlayerState struct {
 	// state belongs where it can be written durably.
 	BaseStats *stats.Block
 
+	// ReviveAt is the tick from which a downed character may return, and zero
+	// for one who is up. See death.go.
+	ReviveAt uint64
+
+	// SafeUntil is the tick until which a character who has just come back
+	// cannot be harmed. Ends early the moment they attack.
+	SafeUntil uint64
+
 	// Stats is BaseStats with the character's buffs layered on, recomputed
 	// inside the room whenever a buff is applied or expires.
 	//

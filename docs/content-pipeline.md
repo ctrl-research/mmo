@@ -357,6 +357,26 @@ Keystones use `more` multipliers with real drawbacks — that is what makes them
 
 A drawback is a negative number, and the conversion from authored decimals to parts-per-million has to keep the sign. There are two conversions for that reason: one clamped to [0, 1] for probabilities, and one signed for stat modifiers. Using the probability one for a modifier silently discards every drawback — which it did, until a test asked whether each keystone actually traded something.
 
+## Death
+
+Four knobs in `balance.toml`, all under `[combat]`:
+
+| Key | What it decides |
+|---|---|
+| `downed_ms` | How long a character lies at zero health before returning |
+| `revive_grace_ms` | How long they cannot be harmed after coming back |
+| `death_exp_penalty` | The share of progress toward the *current level* that is lost |
+
+The penalty is deliberately a fraction of progress within the level rather than
+of total experience. A death therefore never costs a level, and never costs a
+level 90 character forty times what it costs a level 10 one — which is what a
+flat percentage of total experience does, and is how a death penalty stops
+being a setback and becomes a reason to stop playing.
+
+The grace ends the moment the character attacks. Without that it would not be a
+chance to get clear, it would be a free opening: walk into a fight
+untouchable, swing first, and only then become a target.
+
 ## Balance constants
 
 Anything a designer might tune lives in `content/balance.toml`, never as a Go literal:

@@ -10,6 +10,7 @@ import { Prompt } from "@/ui/prompt";
 import { SkillBarPanel, BuffBar } from "@/ui/skillbar";
 import { PassivePanel } from "@/ui/passives";
 import { BossFrame } from "@/ui/boss";
+import { DeathScreen } from "@/ui/death";
 import { PartyAction_Kind, GuildAction_Kind } from "@/net/connection";
 import type { Character } from "@/ui/api";
 import { toPixels } from "@/sim/fixed";
@@ -41,6 +42,7 @@ const skillBarEl = document.getElementById("skillbar") as HTMLDivElement;
 const buffBarEl = document.getElementById("buffbar") as HTMLDivElement;
 const passivesEl = document.getElementById("passives") as HTMLDivElement;
 const bossEl = document.getElementById("boss") as HTMLDivElement;
+const deathEl = document.getElementById("death") as HTMLDivElement;
 
 let loop: GameLoop | null = null;
 let scene: Scene | null = null;
@@ -55,6 +57,7 @@ let skillBar: SkillBarPanel | null = null;
 let buffBar: BuffBar | null = null;
 let passives: PassivePanel | null = null;
 let boss: BossFrame | null = null;
+let death: DeathScreen | null = null;
 let status = "";
 
 const shell = new Shell(overlay, {
@@ -144,6 +147,7 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
       onPassives: (state) => passives?.update(state),
       onSystem: (msg) => chat?.addSystem(msg),
       onParty: (state) => party?.update(state),
+      onDowned: (down) => death?.show(down, performance.now()),
       onBossPhase: (phase) => boss?.announce(phase, performance.now()),
       onBossHealth: (hp, hpMax) => boss?.track(hp, hpMax, performance.now()),
       bossEntityId: () => boss?.entityId ?? 0,
@@ -182,6 +186,7 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
         skillBarEl.hidden = true;
         buffBarEl.hidden = true;
         boss?.hide();
+        death?.hide();
         passives?.close();
         partyEl.hidden = true;
         void shell.resume(reason);
@@ -210,6 +215,7 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
     });
     buffBar = new BuffBar(buffBarEl);
     boss = new BossFrame(bossEl);
+    death = new DeathScreen(deathEl);
 
     prompt = new Prompt(promptEl, {
       onFocusChange: (focused) => game.setInputEnabled(!focused),
@@ -256,6 +262,7 @@ function startHud(): void {
       skillBar?.tick(now);
       buffBar?.render(now);
       boss?.render(now);
+      death?.render(now, loop.stats.hp);
 
       const s = loop.stats;
       const b = s.body;

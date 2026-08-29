@@ -305,6 +305,23 @@
       .buff-stacks { color: #e8c977; }
       .buff-time { color: #6b7280; }
 
+      /* The death screen. Centred and unmissable: a character who stops
+         responding with no explanation reads as the game having frozen. */
+      #death {
+        position: fixed; inset: 0; z-index: 18;
+        display: grid; place-items: center; align-content: center; gap: 6px;
+        background: rgba(11, 13, 18, 0.72); pointer-events: none;
+        text-align: center;
+      }
+      #death[hidden] { display: none; }
+      .death-title {
+        font-size: 22px; font-weight: 700; letter-spacing: 0.08em;
+        color: #ff6b6b; text-shadow: 0 2px 8px #000;
+      }
+      .death-countdown { font-size: 13px; color: #d7dce6; }
+      .death-cost { font-size: 12px; color: #9aa3b2; }
+      .death-cost[hidden] { display: none; }
+
       /* The boss frame. Top-centre and wide, because it is the one thing on
          screen that has to be readable without looking away from the fight. */
       #boss {
@@ -477,6 +494,7 @@
     <div id="inventory" hidden></div>
     <div id="worldmap" hidden></div>
     <div id="chat" hidden></div>
+    <div id="death" hidden></div>
     <div id="boss" hidden></div>
     <div id="party" hidden></div>
     <div id="social" hidden></div>

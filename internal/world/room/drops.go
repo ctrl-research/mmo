@@ -142,6 +142,12 @@ func (r *Room) tryLoot(player *Entity, dropID EntityID) {
 	if drop == nil || drop.Drop == nil || player.Player == nil {
 		return
 	}
+	// The dead do not pick things up. Their client still has the drop on
+	// screen and the key still works, so this is a real request to refuse
+	// rather than one that cannot happen.
+	if isDowned(player) {
+		return
+	}
 
 	// Layer visibility is the loot rule. Nothing else is needed: a drop in
 	// another player's layer was never sent to this client, so a request for
