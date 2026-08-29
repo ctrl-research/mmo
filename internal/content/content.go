@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/ctrl-research/mmo/internal/fixed"
+	"github.com/ctrl-research/mmo/internal/world/stats"
 )
 
 // Content is everything the game is made of, loaded and validated.
@@ -20,12 +21,15 @@ type Content struct {
 	Balance Balance
 	Curves  Curves
 
-	Items   map[string]*Item
-	Affixes map[string]*Affix
-	Mobs    map[string]*Mob
-	Drops   map[string]*DropTable
-	Skills  map[string]*Skill
-	Maps    map[string]*Map
+	Items    map[string]*Item
+	Affixes  map[string]*Affix
+	Mobs     map[string]*Mob
+	Drops    map[string]*DropTable
+	Skills   map[string]*Skill
+	Buffs    map[string]*Buff
+	Supports map[string]*Support
+	Classes  map[string]*Class
+	Maps     map[string]*Map
 
 	// Waypoints indexes every fast-travel destination by its global ID.
 	//
@@ -48,12 +52,15 @@ type Content struct {
 // reports weeks later that trace back to a warning nobody read.
 func Load(fsys fs.FS) (*Content, error) {
 	c := &Content{
-		Items:   make(map[string]*Item),
-		Affixes: make(map[string]*Affix),
-		Mobs:    make(map[string]*Mob),
-		Drops:   make(map[string]*DropTable),
-		Skills:  make(map[string]*Skill),
-		Maps:    make(map[string]*Map),
+		Items:    make(map[string]*Item),
+		Affixes:  make(map[string]*Affix),
+		Mobs:     make(map[string]*Mob),
+		Drops:    make(map[string]*DropTable),
+		Skills:   make(map[string]*Skill),
+		Buffs:    make(map[string]*Buff),
+		Supports: make(map[string]*Support),
+		Classes:  make(map[string]*Class),
+		Maps:     make(map[string]*Map),
 	}
 
 	hasher := sha256.New()
@@ -69,7 +76,13 @@ func Load(fsys fs.FS) (*Content, error) {
 		{"items", c.loadItems},
 		{"affixes", c.loadAffixes},
 		{"drop tables", c.loadDrops},
+		// Buffs before skills: a skill that applies one is checked against the
+		// buff actually existing, and an unloaded reference is exactly the
+		// kind of silent no-op the vocabulary is validated to prevent.
+		{"buffs", c.loadBuffs},
 		{"skills", c.loadSkills},
+		{"supports", c.loadSupports},
+		{"classes", c.loadClasses},
 		{"mobs", c.loadMobs},
 		{"maps", c.loadMaps},
 	}
@@ -175,6 +188,48 @@ func (c *Content) verify() error {
 		}
 	}
 
+	// Skills and buffs reference each other, and every one of those references
+	// is silent at load and baffling in play: the skill casts, the animation
+	// plays, and nothing happens.
+	for id, sk := range c.Skills {
+		if err := c.checkEffects("skill "+id, sk.Effects, map[string]bool{id: true}); err != nil {
+			return err
+		}
+		c.resolveEffects(sk.Effects)
+	}
+	for id, b := range c.Buffs {
+		if err := c.checkEffects("buff "+id, b.Effects, nil); err != nil {
+			return err
+		}
+		c.resolveEffects(b.Effects)
+		for _, mod := range b.StatMods {
+			if _, ok := stats.Parse(mod.Stat); !ok {
+				return fmt.Errorf("content: buff %q modifies unknown stat %q", id, mod.Stat)
+			}
+		}
+	}
+
+	// A class whose starting skill does not exist produces a character who
+	// cannot act, and the symptom is a button that does nothing.
+	for id, class := range c.Classes {
+		for _, skillID := range class.StartingSkills {
+			skill, ok := c.Skills[skillID]
+			if !ok {
+				return fmt.Errorf("content: class %q starts with unknown skill %q", id, skillID)
+			}
+			if skill.Class != "" && skill.Class != id {
+				return fmt.Errorf("content: class %q starts with %q, which belongs to %q",
+					id, skillID, skill.Class)
+			}
+		}
+		if class.PrimaryStat != "" {
+			if _, ok := stats.Parse(class.PrimaryStat); !ok {
+				return fmt.Errorf("content: class %q has unknown primary stat %q",
+					id, class.PrimaryStat)
+			}
+		}
+	}
+
 	for id, m := range c.Maps {
 		for _, sp := range m.MobSpawns {
 			if _, ok := c.Mobs[sp.MobID]; !ok {
@@ -274,4 +329,70 @@ func msToTicks(ms int, tickRate int) int {
 type WaypointRef struct {
 	MapID string
 	Waypoint
+}
+
+// checkEffects walks an effect tree and resolves every reference in it.
+//
+// The `casting` set is the chain of skills that led here, so a trigger loop is
+// caught at load rather than as an infinite recursion inside a tick with
+// players in the room.
+func (c *Content) checkEffects(owner string, effects []Effect, casting map[string]bool) error {
+	for i, e := range effects {
+		switch e.Kind {
+		case EffectApplyBuff, EffectRemoveBuff:
+			if _, ok := c.Buffs[e.BuffID]; !ok {
+				return fmt.Errorf("content: %s effect %d references unknown buff %q",
+					owner, i, e.BuffID)
+			}
+
+		case EffectTriggerSkill:
+			target, ok := c.Skills[e.SkillID]
+			if !ok {
+				return fmt.Errorf("content: %s effect %d triggers unknown skill %q",
+					owner, i, e.SkillID)
+			}
+			if casting[e.SkillID] {
+				return fmt.Errorf("content: %s effect %d triggers %q, which is already "+
+					"casting; a trigger loop would not terminate inside a tick",
+					owner, i, e.SkillID)
+			}
+
+			// Walk into it with this skill added to the chain, so a loop of
+			// any length is caught rather than only a skill triggering itself.
+			next := make(map[string]bool, len(casting)+1)
+			for k := range casting {
+				next[k] = true
+			}
+			next[e.SkillID] = true
+
+			if err := c.checkEffects("skill "+e.SkillID, target.Effects, next); err != nil {
+				return err
+			}
+		}
+
+		if err := c.checkEffects(owner, e.Effects, casting); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// resolveEffects fills in what an effect left implicit.
+//
+// Specifically: an apply_buff that does not name a duration inherits the
+// buff's own. Resolved here rather than at application time so that a support
+// modifying durations has a concrete number to scale -- otherwise a support
+// that lengthens buffs would silently do nothing to every skill that used a
+// buff's default duration, which is nearly all of them.
+func (c *Content) resolveEffects(effects []Effect) {
+	for i := range effects {
+		e := &effects[i]
+
+		if e.Kind == EffectApplyBuff && e.DurationTicks == 0 {
+			if buff, ok := c.Buffs[e.BuffID]; ok {
+				e.DurationTicks = buff.DurationTicks
+			}
+		}
+		c.resolveEffects(e.Effects)
+	}
 }

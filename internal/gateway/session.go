@@ -392,6 +392,13 @@ func (s *session) handleClientMessage(ctx context.Context, cm *mmov1.ClientMessa
 		}
 		s.handleSocial(ctx, cm.GetSocial())
 
+	case cm.GetSkillSlot() != nil:
+		if !limiter.allow() {
+			s.gw.metrics.InputsDropped.Inc()
+			return
+		}
+		s.handleSkillSlot(ctx, cm.GetSkillSlot())
+
 	case cm.GetPing() != nil:
 		s.Send(&mmov1.ServerMessage{
 			Body: &mmov1.ServerMessage_Pong{Pong: &mmov1.Pong{
@@ -657,6 +664,29 @@ func (s *session) handleSocial(ctx context.Context, action *mmov1.SocialAction) 
 	}
 
 	if err := s.play.Social(ctx, world.SocialRequest{Kind: kind, Target: target}); err != nil {
+		s.Send(systemMessage(mmov1.ChatChannel_CHAT_CHANNEL_UNSPECIFIED, err.Error()))
+	}
+}
+
+// handleSkillSlot forwards a skill bar change.
+func (s *session) handleSkillSlot(ctx context.Context, req *mmov1.SetSkillSlot) {
+	if s.play == nil {
+		return
+	}
+
+	// Bounded before it reaches the session, which then checks the rules that
+	// need content and the character: what they know, and what fits.
+	supports := req.GetSupports()
+	if len(supports) > world.MaxSupportsPerSkill {
+		supports = supports[:world.MaxSupportsPerSkill]
+	}
+
+	err := s.play.SetBarSlot(ctx, world.LoadoutRequest{
+		Slot:     int(req.GetSlot()),
+		SkillID:  req.GetSkillId(),
+		Supports: supports,
+	})
+	if err != nil {
 		s.Send(systemMessage(mmov1.ChatChannel_CHAT_CHANNEL_UNSPECIFIED, err.Error()))
 	}
 }

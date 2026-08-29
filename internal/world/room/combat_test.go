@@ -10,6 +10,7 @@ import (
 	"github.com/ctrl-research/mmo/internal/fixed"
 	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
 	"github.com/ctrl-research/mmo/internal/world/sim"
+	"github.com/ctrl-research/mmo/internal/world/stats"
 )
 
 // harness drives a room synchronously, without its goroutine or its ticker.
@@ -61,6 +62,10 @@ func (h *harness) join(name string) (EntityID, *recordSink) {
 			Name:        name,
 			Fresh:       true,
 			Sink:        sink,
+			// The session grants this from the character's saved bar, seeded
+			// from their class. Without one a character can cast nothing,
+			// which is correct and useless for a combat test.
+			Loadout: []LoadoutSlot{{SkillID: "slash", Rank: 1}},
 		},
 		result: result,
 	})
@@ -106,6 +111,39 @@ func (h *harness) mobs(layer LayerID, anyLayer bool) []*Entity {
 			continue
 		}
 		out = append(out, e)
+	}
+	return out
+}
+
+// giveStats pushes a base stat block in, which is what the session does from
+// level and equipment. Without one a character's every stat is zero, and a
+// percentage of zero is zero -- which makes any test about modifiers vacuous.
+func (h *harness) giveStats(id EntityID, mods ...stats.Modifier) {
+	h.t.Helper()
+
+	block := stats.NewBlock()
+	block.AddAll(mods)
+	h.room.handle(setStatsCmd{id: id, stats: block})
+}
+
+// projectiles returns every bolt in flight.
+func (h *harness) projectiles() []*Entity {
+	var out []*Entity
+	for _, e := range h.room.entities {
+		if e.Projectile != nil {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// areas returns every ground area.
+func (h *harness) areas() []*Entity {
+	var out []*Entity
+	for _, e := range h.room.entities {
+		if e.Area != nil {
+			out = append(out, e)
+		}
 	}
 	return out
 }

@@ -54,6 +54,14 @@ type Attachment struct {
 	Sink   Sink
 	Events SessionEvents
 
+	// Loadout is what this character may cast: the skills on their bar, the
+	// rank each is known at, and the supports linked to it.
+	//
+	// Sent by the session rather than looked up by the room, for the same
+	// reason the stat block is: it lives in the database, and a room that read
+	// it would be a room that knows about persistence.
+	Loadout []LoadoutSlot
+
 	// LayerKey decides which hostile-entity layer the character joins: the
 	// party ID while partied, and the character ID otherwise. Empty falls back
 	// to the character ID, so a caller that has not heard of parties still
@@ -88,6 +96,14 @@ type JoinSpec struct {
 	// Events is this player's channel back to their session, where work the
 	// tick loop must not do -- database writes, transfers -- happens.
 	Events SessionEvents
+
+	// Loadout is what this character may cast: the skills on their bar, the
+	// rank each is known at, and the supports linked to it.
+	//
+	// Sent by the session rather than looked up by the room, for the same
+	// reason the stat block is: it lives in the database, and a room that read
+	// it would be a room that knows about persistence.
+	Loadout []LoadoutSlot
 
 	// LayerKey decides which hostile-entity layer the character joins: the
 	// party ID while partied, and the character ID otherwise. Empty falls back

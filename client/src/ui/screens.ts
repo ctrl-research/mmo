@@ -2,6 +2,8 @@ import {
   ApiError,
   type Character,
   createCharacter,
+  listClasses,
+  type ClassInfo,
   localLogin,
   localRegister,
   deleteCharacter,
@@ -36,6 +38,12 @@ export class Shell {
   #contentHash = "";
   #characters: Character[] = [];
   #max = 6;
+
+  // The playable classes, from the server. A client with its own list would
+  // offer one the server does not have, which produces a character with no
+  // skills and no way to act.
+  #classes: ClassInfo[] = [];
+  #chosenClass = "";
   #busy = false;
 
   constructor(root: HTMLElement, cb: ShellCallbacks) {
@@ -218,6 +226,12 @@ export class Shell {
       const res = await listCharacters();
       this.#characters = res.characters;
       this.#max = res.max;
+
+      if (this.#classes.length === 0) {
+        // Once per session: the list changes only when content does, and
+        // content is fixed for the life of a connection.
+        this.#classes = (await listClasses()).classes;
+      }
     } catch (err) {
       await this.#showLogin(message(err));
       return;
@@ -246,6 +260,7 @@ export class Shell {
        ${
          canCreate
            ? `<input id="new-name" placeholder="new character name" maxlength="16" autocomplete="off" />
+              <div class="classes">${this.#classOptions()}</div>
               <button class="btn" id="create">Create</button>`
            : `<div class="hint">Delete one to make room for another.</div>`
        }
@@ -268,10 +283,17 @@ export class Shell {
         return;
       }
       await this.#guard(async () => {
-        await createCharacter(value);
+        await createCharacter(value, this.#chosenClass);
         await this.#showCharacters();
       });
     };
+    this.#root.querySelectorAll<HTMLButtonElement>(".class-option").forEach((b) =>
+      b.addEventListener("click", () => {
+        this.#chosenClass = b.dataset.class!;
+        void this.#showCharacters();
+      }),
+    );
+
     this.#root.querySelector("#create")?.addEventListener("click", () => void create());
     name?.addEventListener("keydown", (e) => {
       if (e.key === "Enter") void create();
@@ -285,6 +307,31 @@ export class Shell {
     );
 
     name?.focus();
+  }
+
+  /**
+   * The class picker.
+   *
+   * Shown as cards rather than a dropdown: the choice is permanent for that
+   * character, and a one-line description is the whole basis for making it.
+   */
+  #classOptions(): string {
+    if (this.#classes.length === 0) return "";
+
+    if (this.#chosenClass === "") {
+      this.#chosenClass = this.#classes[0]!.id;
+    }
+
+    return this.#classes
+      .map(
+        (c) => `<button class="class-option${
+          c.id === this.#chosenClass ? " chosen" : ""
+        }" data-class="${escapeHTML(c.id)}">
+          <span class="class-name">${escapeHTML(c.name)}</span>
+          <span class="class-desc">${escapeHTML(c.description)}</span>
+        </button>`,
+      )
+      .join("");
   }
 
   async #play(characterId: string): Promise<void> {

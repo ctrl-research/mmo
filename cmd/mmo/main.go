@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -67,6 +68,7 @@ type config struct {
 	publicURL     string
 	secureCookies bool
 	providersFile string
+	seedAllowlist string
 	localAuth     bool
 }
 
@@ -128,6 +130,10 @@ func run() error {
 		return err
 	}
 	defer db.Close()
+
+	if err := seedAllowlist(ctx, db, cfg.seedAllowlist, log); err != nil {
+		return err
+	}
 
 	allowed, err := db.AllowlistSize(ctx)
 	if err != nil {
@@ -242,6 +248,7 @@ func run() error {
 			Providers:  providers,
 			Logger:     log,
 			DevAuth:    cfg.devAuth,
+			Classes:    classInfo(game),
 			LocalAuth:  cfg.localAuth,
 			DefaultMap: cfg.defaultMap,
 		})
@@ -372,6 +379,8 @@ func parseFlags() config {
 		"mark session cookies Secure; required for HTTPS, must be off for plain-HTTP local play")
 	flag.StringVar(&cfg.providersFile, "providers", envOr("PROVIDERS_FILE", ""),
 		"TOML file describing OIDC providers")
+	flag.StringVar(&cfg.seedAllowlist, "seed-allowlist", envOr("SEED_ALLOWLIST", ""),
+		"comma-separated local usernames added to the allowlist at boot; additive, never removes")
 	flag.Uint64Var(&cfg.seed, "seed", 0,
 		"fixed simulation seed, making a session reproducible; 0 draws a fresh one")
 	flag.StringVar(&cfg.logLevel, "log-level", "info", "debug, info, warn, or error")
@@ -436,6 +445,39 @@ func newLogger(cfg config) (*slog.Logger, error) {
 	return slog.New(slog.NewTextHandler(os.Stdout, opts)), nil
 }
 
+// seedAllowlist ensures every username in a comma-separated list can sign in.
+//
+// Additive only. Making the environment authoritative would silently undo
+// `mmo revoke` on the next restart, and a revocation that comes back on its
+// own is worse than no revocation at all. Every write is INSERT ... ON
+// CONFLICT DO NOTHING, so a restart with an unchanged list is a no-op.
+//
+// Local subject entries only, matching what `mmo allow` defaults to. Seeding
+// a provider's users would mean encoding provider names in the environment,
+// which is what --providers already does properly.
+func seedAllowlist(ctx context.Context, db *store.Store, list string, log *slog.Logger) error {
+	raw := splitAndTrim(list)
+	if len(raw) == 0 {
+		return nil
+	}
+
+	names := make([]string, 0, len(raw))
+	for _, r := range raw {
+		// Normalised on the way in, because sign-in normalises too: an entry
+		// stored as "Alice" would never match a login as "alice".
+		names = append(names, auth.NormaliseUsername(r))
+	}
+
+	for _, name := range names {
+		if err := db.AddAllowlistEntry(ctx, "local", store.MatchSubject, name,
+			"seeded from SEED_ALLOWLIST"); err != nil {
+			return fmt.Errorf("seeding allowlist with %q: %w", name, err)
+		}
+	}
+	log.Info("allowlist seeded", "usernames", names)
+	return nil
+}
+
 func defaultNodeID() string {
 	if host, err := os.Hostname(); err == nil && host != "" {
 		return host
@@ -483,4 +525,24 @@ func portOf(addr string) string {
 		return addr[i:]
 	}
 	return addr
+}
+
+// classInfo flattens the content classes for the character screen.
+//
+// Flattened rather than passed through, because internal/auth has no business
+// importing the simulation's content model to render a menu -- and because the
+// screen needs a stable order, which a map does not have.
+func classInfo(game *content.Content) []auth.ClassInfo {
+	out := make([]auth.ClassInfo, 0, len(game.Classes))
+	for _, c := range game.Classes {
+		out = append(out, auth.ClassInfo{
+			ID:          c.ID,
+			Name:        c.Name,
+			Description: c.Description,
+			PrimaryStat: c.PrimaryStat,
+		})
+	}
+
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out
 }

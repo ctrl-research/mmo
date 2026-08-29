@@ -94,6 +94,9 @@ type PlayerSession interface {
 	// Social queues a change to the friends list.
 	Social(ctx context.Context, req SocialRequest) error
 
+	// SetBarSlot queues a change to the skill bar.
+	SetBarSlot(ctx context.Context, req LoadoutRequest) error
+
 	// Travel moves the character without walking: to an unlocked waypoint, or
 	// to another channel of the map they are in.
 	Travel(ctx context.Context, req TravelRequest) error
@@ -135,6 +138,11 @@ type Session struct {
 	partyReqs  chan PartyRequest
 	guildReqs  chan GuildRequest
 	socialReqs chan SocialRequest
+	loadouts   chan LoadoutRequest
+
+	// classID is what this character is, which decides what they start with
+	// and what they may learn.
+	classID string
 
 	// guildID is the guild this character belongs to, and leftGuild the one
 	// they were in a moment ago -- needed because announcing a departure means
@@ -353,6 +361,7 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 		partyReqs:  make(chan PartyRequest, 4),
 		guildReqs:  make(chan GuildRequest, 4),
 		socialReqs: make(chan SocialRequest, 4),
+		loadouts:   make(chan LoadoutRequest, 4),
 		finished:   make(chan struct{}),
 		done:       make(chan struct{}),
 		log: n.log.With(
@@ -360,6 +369,16 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 	}
 	spec.Events = s
 	spec.KnownWaypoints = knownWaypoints
+
+	// The bar, seeded from the class on a first login. Loaded before the join
+	// rather than pushed afterwards, so a character can act from their very
+	// first tick instead of standing there for a round trip.
+	loadout, err := s.loadLoadout(ctx, character.ClassID)
+	if err != nil {
+		release()
+		return nil, fmt.Errorf("world: loading the skill bar: %w", err)
+	}
+	spec.Loadout = loadout
 
 	// Placement and the join are one step: the directory decides which
 	// instance and which node, and the room is started there if it is not
@@ -372,9 +391,10 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 	}
 	s.handle, s.instance, s.entityID = handle, instance, entityID
 
-	// The stat block and the client's first inventory view, before anything
-	// else observes the character.
+	// The stat block, the inventory, and the bar, before anything else
+	// observes the character.
 	s.refreshStats(ctx, character.Level)
+	s.sendLoadout(ctx, loadout)
 
 	n.hold(characterID, s)
 	s.announcePresence(ctx, false)
@@ -442,6 +462,9 @@ func (s *Session) maintain() {
 
 		case req := <-s.socialReqs:
 			s.handleSocialRequest(req)
+
+		case req := <-s.loadouts:
+			s.handleLoadout(req)
 
 		case <-vitals.C:
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

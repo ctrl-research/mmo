@@ -1,0 +1,23 @@
+# Mob abilities.
+#
+# Mobs and players draw from the same skill system, so a mob ability is not a
+# separate concept to maintain -- and a mob that gains a debuff or a projectile
+# is a content change rather than a Go change.
+
+[skill.mob_bite]
+name = "Bite"
+max_rank = 1
+cooldown_ms = 1200
+tags = ["melee", "attack", "physical"]
+
+[skill.mob_bite.targeting]
+kind = "cone"
+range = 40.0
+half_height = 32.0
+max_targets = 1
+
+[[skill.mob_bite.effects]]
+type = "damage"
+element = "physical"
+base = { min = 3, max = 6 }
+scaling = { attack = 1.0 }

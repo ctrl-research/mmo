@@ -1,0 +1,142 @@
+# Buffs, debuffs, and damage over time.
+#
+# A buff is two things at once: effects that fire on a beat, and stat modifiers
+# that feed the same pipeline as gear and passives. That is what makes
+# "burning" and "+20% attack for ten seconds" the same mechanism rather than
+# two, and it is why a support that lengthens durations works on both without
+# knowing what either does.
+#
+# Stacking is the interesting knob. A buff that refreshes on apply is one a
+# player maintains; one that only stacks is one they build up and then spend.
+
+# --- damage over time --------------------------------------------------------
+
+[buff.burning]
+name = "Burning"
+kind = "debuff"
+duration_ms = 4000
+tick_ms = 500
+max_stacks = 5
+refresh_on_apply = true
+dispellable = true
+
+[[buff.burning.effects]]
+type = "damage"
+element = "fire"
+base = { min = 3, max = 5 }
+
+[buff.bleeding]
+name = "Bleeding"
+kind = "debuff"
+duration_ms = 6000
+tick_ms = 1000
+max_stacks = 3
+refresh_on_apply = true
+dispellable = true
+
+[[buff.bleeding.effects]]
+type = "damage"
+element = "physical"
+base = { min = 4, max = 7 }
+
+# Chill does no damage. It is a debuff made entirely of stat modifiers, which
+# is what proves the two halves are the same mechanism.
+[buff.chilled]
+name = "Chilled"
+kind = "debuff"
+duration_ms = 3000
+max_stacks = 1
+refresh_on_apply = true
+dispellable = true
+
+[[buff.chilled.stat_mods]]
+stat = "movement_speed"
+increased = -0.35
+
+[[buff.chilled.stat_mods]]
+stat = "attack_speed"
+increased = -0.20
+
+[buff.weakened]
+name = "Weakened"
+kind = "debuff"
+duration_ms = 5000
+max_stacks = 1
+refresh_on_apply = true
+dispellable = true
+
+[[buff.weakened.stat_mods]]
+stat = "attack"
+increased = -0.25
+
+# --- helpful -----------------------------------------------------------------
+
+# Rage stacks rather than refreshing: it is built up over a fight and it decays
+# if you stop, which is the opposite of a buff you keep topped up.
+[buff.rage]
+name = "Rage"
+kind = "buff"
+duration_ms = 8000
+max_stacks = 5
+refresh_on_apply = false
+
+[[buff.rage.stat_mods]]
+stat = "attack"
+increased = 0.08
+
+[[buff.rage.stat_mods]]
+stat = "attack_speed"
+increased = 0.04
+
+[buff.guard]
+name = "Guard"
+kind = "buff"
+duration_ms = 6000
+max_stacks = 1
+refresh_on_apply = true
+
+[[buff.guard.stat_mods]]
+stat = "armour"
+increased = 0.60
+
+[[buff.guard.stat_mods]]
+stat = "movement_speed"
+increased = -0.15
+
+[buff.focus]
+name = "Focus"
+kind = "buff"
+duration_ms = 6000
+max_stacks = 1
+refresh_on_apply = true
+
+[[buff.focus.stat_mods]]
+stat = "crit_chance"
+increased = 0.75
+
+[buff.haste]
+name = "Haste"
+kind = "buff"
+duration_ms = 5000
+max_stacks = 1
+refresh_on_apply = true
+
+[[buff.haste.stat_mods]]
+stat = "movement_speed"
+increased = 0.30
+
+[[buff.haste.stat_mods]]
+stat = "attack_speed"
+increased = 0.25
+
+[buff.regeneration]
+name = "Regeneration"
+kind = "buff"
+duration_ms = 6000
+tick_ms = 1000
+max_stacks = 1
+refresh_on_apply = true
+
+[[buff.regeneration.effects]]
+type = "heal"
+base = { min = 8, max = 12 }

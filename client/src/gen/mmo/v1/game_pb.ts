@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mmo/v1/game.proto.
  */
 export const file_mmo_v1_game: GenFile = /*@__PURE__*/
-  fileDesc("ChFtbW8vdjEvZ2FtZS5wcm90bxIGbW1vLnYxIlgKCEVudmVsb3BlEiUKBnNlcnZlchgBIAMoCzIVLm1tby52MS5TZXJ2ZXJNZXNzYWdlEiUKBmNsaWVudBgCIAMoCzIVLm1tby52MS5DbGllbnRNZXNzYWdlIs4DCg1DbGllbnRNZXNzYWdlEh4KBWhlbGxvGAEgASgLMg0ubW1vLnYxLkhlbGxvSAASIAoGaW50ZW50GAIgASgLMg4ubW1vLnYxLkludGVudEgAEhwKBHBpbmcYAyABKAsyDC5tbW8udjEuUGluZ0gAEhwKBGNhc3QYBCABKAsyDC5tbW8udjEuQ2FzdEgAEiQKCGludGVyYWN0GAUgASgLMhAubW1vLnYxLkludGVyYWN0SAASKQoLaXRlbV9hY3Rpb24YBiABKAsyEi5tbW8udjEuSXRlbUFjdGlvbkgAEi4KDm9wZW5fd29ybGRfbWFwGAcgASgLMhQubW1vLnYxLk9wZW5Xb3JsZE1hcEgAEiAKBnRyYXZlbBgIIAEoCzIOLm1tby52MS5UcmF2ZWxIABIgCgRjaGF0GAkgASgLMhAubW1vLnYxLkNoYXRTZW5kSAASJAoFcGFydHkYCiABKAsyEy5tbW8udjEuUGFydHlBY3Rpb25IABIkCgVndWlsZBgLIAEoCzITLm1tby52MS5HdWlsZEFjdGlvbkgAEiYKBnNvY2lhbBgMIAEoCzIULm1tby52MS5Tb2NpYWxBY3Rpb25IAEIGCgRib2R5IjoKBENhc3QSCwoDc2VxGAEgASgNEhAKCHNraWxsX2lkGAIgASgJEhMKC2ZhY2luZ19sZWZ0GAMgASgIIkEKCEludGVyYWN0EhEKCWVudGl0eV9pZBgBIAEoDRIiCgRraW5kGAIgASgOMhQubW1vLnYxLkludGVyYWN0S2luZCJlCgpJdGVtQWN0aW9uEiQKBGtpbmQYASABKA4yFi5tbW8udjEuSXRlbUFjdGlvbktpbmQSDwoHaXRlbV9pZBgCIAEoCRIMCgRzbG90GAMgASgNEhIKCmVxdWlwX3Nsb3QYBCABKAki6wEKDVNlcnZlck1lc3NhZ2USIgoHd2VsY29tZRgBIAEoCzIPLm1tby52MS5XZWxjb21lSAASJAoIc25hcHNob3QYAiABKAsyEC5tbW8udjEuU25hcHNob3RIABIeCgVldmVudBgDIAEoCzINLm1tby52MS5FdmVudEgAEhwKBHBvbmcYBCABKAsyDC5tbW8udjEuUG9uZ0gAEhwKBGtpY2sYBSABKAsyDC5tbW8udjEuS2lja0gAEiYKCWludmVudG9yeRgGIAEoCzIRLm1tby52MS5JbnZlbnRvcnlIAEIGCgRib2R5SgQIBxAKIkcKBUhlbGxvEg4KBnRpY2tldBgBIAEoCRIYChBwcm90b2NvbF92ZXJzaW9uGAIgASgNEhQKDGNvbnRlbnRfaGFzaBgDIAEoCSKDAQoHV2VsY29tZRIRCgllbnRpdHlfaWQYASABKA0SEwoLaW5zdGFuY2VfaWQYAiABKAQSDAoEdGljaxgDIAEoBBIPCgd0aWNrX21zGAQgASgNEg4KBm1hcF9pZBgFIAEoCRIhCgRzZWxmGAYgASgLMhMubW1vLnYxLkVudGl0eVN0YXRlIiQKBEtpY2sSDAoEY29kZRgBIAEoDRIOCgZyZWFzb24YAiABKAkiYwoGSW50ZW50EgsKA3NlcRgBIAEoDRIUCgxhY2tfc25hcHNob3QYAiABKAQSDgoGbW92ZV94GAMgASgREgwKBGp1bXAYBCABKAgSCgoCdXAYBSABKAgSDAoEZG93bhgGIAEoCCIeCgRQaW5nEhYKDmNsaWVudF90aW1lX21zGAEgASgEIjMKBFBvbmcSFgoOY2xpZW50X3RpbWVfbXMYASABKAQSEwoLc2VydmVyX3RpY2sYAiABKAQipQMKC0VudGl0eVN0YXRlEgoKAmlkGAEgASgNEiAKBGtpbmQYAiABKA4yEi5tbW8udjEuRW50aXR5S2luZBINCgVsYXllchgDIAEoDRIJCgF4GAQgASgREgkKAXkYBSABKBESCgoCdngYBiABKBESCgoCdnkYByABKBESCQoBdxgIIAEoERIJCgFoGAkgASgREg0KBWZsYWdzGAogASgNEgwKBGFuaW0YCyABKA0SCgoCaHAYDCABKA0SDgoGaHBfbWF4GA0gASgNEgwKBG5hbWUYDiABKAkSDgoGY295b3RlGA8gASgNEhMKC2p1bXBfYnVmZmVyGBAgASgNEhQKDGRyb3BfdGhyb3VnaBgRIAEoDRINCgVsZXZlbBgSIAEoDRILCgNleHAYEyABKAQSEwoLZXhwX3RvX25leHQYFCABKAQSCgoCbXAYFSABKA0SDgoGbXBfbWF4GBYgASgNEhEKCWRyb3BfaXRlbRgXIAEoCRIQCghkcm9wX3F0eRgYIAEoDRIRCglkcm9wX2dvbGQYGSABKA0SDgoGbW9iX2lkGBogASgJIpQBCgtFbnRpdHlEZWx0YRIKCgJpZBgBIAEoDRISCgpmaWVsZF9tYXNrGAIgASgNEgkKAXgYAyABKBESCQoBeRgEIAEoERIKCgJ2eBgFIAEoERIKCgJ2eRgGIAEoERINCgVmbGFncxgHIAEoDRIMCgRhbmltGAggASgNEgoKAmhwGAkgASgNEg4KBmhwX21heBgKIAEoDSLBAQoIU25hcHNob3QSDAoEdGljaxgBIAEoBBIVCg1iYXNlbGluZV90aWNrGAIgASgEEg8KB2Fja19zZXEYAyABKA0SJQoIZW50aXRpZXMYBCADKAsyEy5tbW8udjEuRW50aXR5RGVsdGESJAoHZW50ZXJlZBgFIAMoCzITLm1tby52MS5FbnRpdHlTdGF0ZRIPCgdyZW1vdmVkGAYgAygNEiEKBHNlbGYYByABKAsyEy5tbW8udjEuRW50aXR5U3RhdGUi/wUKBUV2ZW50Ei0KDXBsYXllcl9qb2luZWQYASABKAsyFC5tbW8udjEuUGxheWVySm9pbmVkSAASKQoLcGxheWVyX2xlZnQYAiABKAsyEi5tbW8udjEuUGxheWVyTGVmdEgAEiUKBmRhbWFnZRgDIAEoCzITLm1tby52MS5EYW1hZ2VEZWFsdEgAEiIKBGRpZWQYBCABKAsyEi5tbW8udjEuRW50aXR5RGllZEgAEicKCnNraWxsX2Nhc3QYBSABKAsyES5tbW8udjEuU2tpbGxDYXN0SAASJwoKZXhwX2dhaW5lZBgGIAEoCzIRLm1tby52MS5FeHBHYWluZWRIABIjCghsZXZlbF91cBgHIAEoCzIPLm1tby52MS5MZXZlbFVwSAASJwoKbG9vdF90YWtlbhgIIAEoCzIRLm1tby52MS5Mb290VGFrZW5IABIvCg53YXlwb2ludF9mb3VuZBgJIAEoCzIVLm1tby52MS5XYXlwb2ludEZvdW5kSAASLwoOcG9ydGFsX3JlZnVzZWQYCiABKAsyFS5tbW8udjEuUG9ydGFsUmVmdXNlZEgAEiUKCXdvcmxkX21hcBgMIAEoCzIQLm1tby52MS5Xb3JsZE1hcEgAEiAKBGNoYXQYDSABKAsyEC5tbW8udjEuQ2hhdExpbmVIABInCgZzeXN0ZW0YDiABKAsyFS5tbW8udjEuU3lzdGVtTWVzc2FnZUgAEiMKBXBhcnR5GBAgASgLMhIubW1vLnYxLlBhcnR5U3RhdGVIABIrCgxwYXJ0eV9pbnZpdGUYESABKAsyEy5tbW8udjEuUGFydHlJbnZpdGVIABIjCgVndWlsZBgSIAEoCzISLm1tby52MS5HdWlsZFN0YXRlSAASKwoMZ3VpbGRfaW52aXRlGBMgASgLMhMubW1vLnYxLkd1aWxkSW52aXRlSAASJQoHZnJpZW5kcxgUIAEoCzISLm1tby52MS5GcmllbmRMaXN0SABCBgoEYm9keUoECAsQDEoECA8QECJmCgtEYW1hZ2VEZWFsdBIRCglzb3VyY2VfaWQYASABKA0SEQoJdGFyZ2V0X2lkGAIgASgNEg4KBmFtb3VudBgDIAEoDRIQCghjcml0aWNhbBgEIAEoCBIPCgdlbGVtZW50GAUgASgJIjIKCkVudGl0eURpZWQSEQoJZW50aXR5X2lkGAEgASgNEhEKCWtpbGxlcl9pZBgCIAEoDSJFCglTa2lsbENhc3QSEQoJY2FzdGVyX2lkGAEgASgNEhAKCHNraWxsX2lkGAIgASgJEhMKC2ZhY2luZ19sZWZ0GAMgASgIIjoKCUV4cEdhaW5lZBIOCgZhbW91bnQYASABKAQSDQoFdG90YWwYAiABKAQSDgoGc2hhcmVkGAMgASgIIi0KB0xldmVsVXASDQoFbGV2ZWwYASABKA0SEwoLZXhwX3RvX25leHQYAiABKAQiQgoNV2F5cG9pbnRGb3VuZBITCgt3YXlwb2ludF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBm1hcF9pZBgDIAEoCSJLCg1Qb3J0YWxSZWZ1c2VkEhIKCnRhcmdldF9tYXAYASABKAkSFgoOcmVxdWlyZWRfbGV2ZWwYAiABKA0SDgoGcmVhc29uGAMgASgJIg4KDE9wZW5Xb3JsZE1hcCJkCgZUcmF2ZWwSFQoLd2F5cG9pbnRfaWQYASABKAlIABIdChNjaGFubmVsX2luc3RhbmNlX2lkGAIgASgESAASFQoLbmV3X2NoYW5uZWwYAyABKAhIAEINCgtkZXN0aW5hdGlvbiK3AQoIV29ybGRNYXASIAoEbWFwcxgBIAMoCzISLm1tby52MS5NYXBTdW1tYXJ5EioKCXdheXBvaW50cxgCIAMoCzIXLm1tby52MS5XYXlwb2ludFN1bW1hcnkSKAoIY2hhbm5lbHMYAyADKAsyFi5tbW8udjEuQ2hhbm5lbFN1bW1hcnkSFgoOY3VycmVudF9tYXBfaWQYBCABKAkSGwoTY3VycmVudF9pbnN0YW5jZV9pZBgFIAEoBCJhCgpNYXBTdW1tYXJ5Eg4KBm1hcF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEhEKCW1pbl9sZXZlbBgDIAEoBRIRCgltYXhfbGV2ZWwYBCABKAUSDwoHcHJpdmF0ZRgFIAEoCCJECg9XYXlwb2ludFN1bW1hcnkSEwoLd2F5cG9pbnRfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIOCgZtYXBfaWQYAyABKAkiagoOQ2hhbm5lbFN1bW1hcnkSEwoLaW5zdGFuY2VfaWQYASABKAQSDwoHY2hhbm5lbBgCIAEoDRIPCgdwbGF5ZXJzGAMgASgNEhAKCGNhcGFjaXR5GAQgASgNEg8KB2N1cnJlbnQYBSABKAgiTgoIQ2hhdFNlbmQSJAoHY2hhbm5lbBgBIAEoDjITLm1tby52MS5DaGF0Q2hhbm5lbBIMCgRib2R5GAIgASgJEg4KBnRhcmdldBgDIAEoCSJ2CghDaGF0TGluZRIkCgdjaGFubmVsGAEgASgOMhMubW1vLnYxLkNoYXRDaGFubmVsEgwKBGZyb20YAiABKAkSDAoEYm9keRgDIAEoCRIQCghvdXRnb2luZxgEIAEoCBIWCg5zZXJ2ZXJfdGltZV9tcxgFIAEoAyJDCg1TeXN0ZW1NZXNzYWdlEgwKBGJvZHkYASABKAkSJAoHY2hhbm5lbBgCIAEoDjITLm1tby52MS5DaGF0Q2hhbm5lbCLcAQoLUGFydHlBY3Rpb24SJgoEa2luZBgBIAEoDjIYLm1tby52MS5QYXJ0eUFjdGlvbi5LaW5kEg4KBnRhcmdldBgCIAEoCSKUAQoES2luZBIUChBLSU5EX1VOU1BFQ0lGSUVEEAASDwoLS0lORF9JTlZJVEUQARIPCgtLSU5EX0FDQ0VQVBACEhAKDEtJTkRfREVDTElORRADEg4KCktJTkRfTEVBVkUQBBINCglLSU5EX0tJQ0sQBRIQCgxLSU5EX1BST01PVEUQBhIRCg1LSU5EX1NFVF9MT09UEAciigEKClBhcnR5U3RhdGUSEAoIcGFydHlfaWQYASABKAkSGwoTbGVhZGVyX2NoYXJhY3Rlcl9pZBgCIAEoCRIkCgdtZW1iZXJzGAMgAygLMhMubW1vLnYxLlBhcnR5TWVtYmVyEhkKEXNlbGZfY2hhcmFjdGVyX2lkGAQgASgJEgwKBGxvb3QYBSABKAkifAoLUGFydHlNZW1iZXISFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFbGV2ZWwYAyABKA0SCgoCaHAYBCABKA0SDgoGaHBfbWF4GAUgASgNEg4KBm1hcF9pZBgGIAEoCRIOCgZvbmxpbmUYByABKAgiNwoLUGFydHlJbnZpdGUSEQoJZnJvbV9uYW1lGAEgASgJEhUKDWV4cGlyZXNfaW5fbXMYAiABKAMi/gEKC0d1aWxkQWN0aW9uEiYKBGtpbmQYASABKA4yGC5tbW8udjEuR3VpbGRBY3Rpb24uS2luZBIOCgZ0YXJnZXQYAiABKAkitgEKBEtpbmQSFAoQS0lORF9VTlNQRUNJRklFRBAAEg8KC0tJTkRfQ1JFQVRFEAESDwoLS0lORF9JTlZJVEUQAhIPCgtLSU5EX0FDQ0VQVBADEhAKDEtJTkRfREVDTElORRAEEg4KCktJTkRfTEVBVkUQBRINCglLSU5EX0tJQ0sQBhIQCgxLSU5EX1BST01PVEUQBxIPCgtLSU5EX0RFTU9URRAIEhEKDUtJTkRfU0VUX01PVEQQCSJuCgpHdWlsZFN0YXRlEhAKCGd1aWxkX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEbW90ZBgDIAEoCRIkCgdtZW1iZXJzGAQgAygLMhMubW1vLnYxLkd1aWxkTWVtYmVyEgwKBHJhbmsYBSABKA0iXgoLR3VpbGRNZW1iZXISFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEcmFuaxgDIAEoDRINCgVsZXZlbBgEIAEoDRIOCgZvbmxpbmUYBSABKAgiSwoLR3VpbGRJbnZpdGUSEgoKZ3VpbGRfbmFtZRgBIAEoCRIRCglmcm9tX25hbWUYAiABKAkSFQoNZXhwaXJlc19pbl9tcxgDIAEoAyKpAQoMU29jaWFsQWN0aW9uEicKBGtpbmQYASABKA4yGS5tbW8udjEuU29jaWFsQWN0aW9uLktpbmQSDgoGdGFyZ2V0GAIgASgJImAKBEtpbmQSFAoQS0lORF9VTlNQRUNJRklFRBAAEhMKD0tJTkRfQUREX0ZSSUVORBABEhYKEktJTkRfUkVNT1ZFX0ZSSUVORBACEhUKEUtJTkRfTElTVF9GUklFTkRTEAMiMgoKRnJpZW5kTGlzdBIkCgdmcmllbmRzGAEgAygLMhMubW1vLnYxLkZyaWVuZEVudHJ5ImAKC0ZyaWVuZEVudHJ5EhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBWxldmVsGAMgASgNEg4KBm9ubGluZRgEIAEoCBIOCgZtYXBfaWQYBSABKAkiagoJTG9vdFRha2VuEhEKCWVudGl0eV9pZBgBIAEoDRIPCgdpdGVtX2lkGAIgASgJEgsKA3F0eRgDIAEoDRIMCgRnb2xkGAQgASgNEg4KBmZhaWxlZBgFIAEoCBIOCgZyZWFzb24YBiABKAkilgEKCUludmVudG9yeRIiCgdjYXJyaWVkGAEgAygLMhEubW1vLnYxLkl0ZW1TdGFjaxIjCghlcXVpcHBlZBgCIAMoCzIRLm1tby52MS5JdGVtU3RhY2sSEAoIY2FwYWNpdHkYAyABKA0SDAoEZ29sZBgEIAEoBBIgCgVzdGF0cxgFIAMoCzIRLm1tby52MS5TdGF0VmFsdWUixwEKCUl0ZW1TdGFjaxIPCgdpdGVtX2lkGAEgASgJEg8KB2Jhc2VfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRIOCgZyYXJpdHkYBCABKAkSDAoEc2xvdBgFIAEoDRINCgVzdGFjaxgGIAEoDRISCgppdGVtX2xldmVsGAcgASgNEhIKCmVxdWlwX3Nsb3QYCCABKAkSFgoOcmVxdWlyZWRfbGV2ZWwYCSABKA0SHQoEbW9kcxgKIAMoCzIPLm1tby52MS5JdGVtTW9kIlQKB0l0ZW1Nb2QSDAoEc3RhdBgBIAEoCRIMCgRraW5kGAIgASgJEg0KBXZhbHVlGAMgASgSEgwKBHRpZXIYBCABKA0SEAoIaW1wbGljaXQYBSABKAgiKAoJU3RhdFZhbHVlEgwKBHN0YXQYASABKAkSDQoFdmFsdWUYAiABKBIiLwoMUGxheWVySm9pbmVkEhEKCWVudGl0eV9pZBgBIAEoDRIMCgRuYW1lGAIgASgJIh8KClBsYXllckxlZnQSEQoJZW50aXR5X2lkGAEgASgNKkUKDEludGVyYWN0S2luZBIdChlJTlRFUkFDVF9LSU5EX1VOU1BFQ0lGSUVEEAASFgoSSU5URVJBQ1RfS0lORF9MT09UEAEqpQEKDkl0ZW1BY3Rpb25LaW5kEiAKHElURU1fQUNUSU9OX0tJTkRfVU5TUEVDSUZJRUQQABIZChVJVEVNX0FDVElPTl9LSU5EX01PVkUQARIaChZJVEVNX0FDVElPTl9LSU5EX0VRVUlQEAISHAoYSVRFTV9BQ1RJT05fS0lORF9VTkVRVUlQEAMSHAoYSVRFTV9BQ1RJT05fS0lORF9ERVNUUk9ZEAQqgQEKCkVudGl0eUtpbmQSGwoXRU5USVRZX0tJTkRfVU5TUEVDSUZJRUQQABIWChJFTlRJVFlfS0lORF9QTEFZRVIQARITCg9FTlRJVFlfS0lORF9NT0IQAhIUChBFTlRJVFlfS0lORF9EUk9QEAMSEwoPRU5USVRZX0tJTkRfTlBDEAQqmwEKC0VudGl0eUZpZWxkEhwKGEVOVElUWV9GSUVMRF9VTlNQRUNJRklFRBAAEhQKEEVOVElUWV9GSUVMRF9QT1MQARIUChBFTlRJVFlfRklFTERfVkVMEAISFgoSRU5USVRZX0ZJRUxEX0ZMQUdTEAMSFQoRRU5USVRZX0ZJRUxEX0FOSU0QBBITCg9FTlRJVFlfRklFTERfSFAQBSqVAQoKRW50aXR5RmxhZxIbChdFTlRJVFlfRkxBR19VTlNQRUNJRklFRBAAEhgKFEVOVElUWV9GTEFHX0dST1VOREVEEAESGAoURU5USVRZX0ZMQUdfQ0xJTUJJTkcQAhIbChdFTlRJVFlfRkxBR19GQUNJTkdfTEVGVBADEhkKFUVOVElUWV9GTEFHX0pVTVBfSEVMRBAEKqYBCgtDaGF0Q2hhbm5lbBIcChhDSEFUX0NIQU5ORUxfVU5TUEVDSUZJRUQQABIWChJDSEFUX0NIQU5ORUxfTE9DQUwQARIXChNDSEFUX0NIQU5ORUxfR0xPQkFMEAISGAoUQ0hBVF9DSEFOTkVMX1dISVNQRVIQAxIWChJDSEFUX0NIQU5ORUxfUEFSVFkQBBIWChJDSEFUX0NIQU5ORUxfR1VJTEQQBUI5WjdnaXRodWIuY29tL2N0cmwtcmVzZWFyY2gvbW1vL2ludGVybmFsL3dpcmUvbW1vL3YxO21tb3YxYgZwcm90bzM");
+  fileDesc("ChFtbW8vdjEvZ2FtZS5wcm90bxIGbW1vLnYxIlgKCEVudmVsb3BlEiUKBnNlcnZlchgBIAMoCzIVLm1tby52MS5TZXJ2ZXJNZXNzYWdlEiUKBmNsaWVudBgCIAMoCzIVLm1tby52MS5DbGllbnRNZXNzYWdlIvoDCg1DbGllbnRNZXNzYWdlEh4KBWhlbGxvGAEgASgLMg0ubW1vLnYxLkhlbGxvSAASIAoGaW50ZW50GAIgASgLMg4ubW1vLnYxLkludGVudEgAEhwKBHBpbmcYAyABKAsyDC5tbW8udjEuUGluZ0gAEhwKBGNhc3QYBCABKAsyDC5tbW8udjEuQ2FzdEgAEiQKCGludGVyYWN0GAUgASgLMhAubW1vLnYxLkludGVyYWN0SAASKQoLaXRlbV9hY3Rpb24YBiABKAsyEi5tbW8udjEuSXRlbUFjdGlvbkgAEi4KDm9wZW5fd29ybGRfbWFwGAcgASgLMhQubW1vLnYxLk9wZW5Xb3JsZE1hcEgAEiAKBnRyYXZlbBgIIAEoCzIOLm1tby52MS5UcmF2ZWxIABIgCgRjaGF0GAkgASgLMhAubW1vLnYxLkNoYXRTZW5kSAASJAoFcGFydHkYCiABKAsyEy5tbW8udjEuUGFydHlBY3Rpb25IABIkCgVndWlsZBgLIAEoCzITLm1tby52MS5HdWlsZEFjdGlvbkgAEiYKBnNvY2lhbBgMIAEoCzIULm1tby52MS5Tb2NpYWxBY3Rpb25IABIqCgpza2lsbF9zbG90GA0gASgLMhQubW1vLnYxLlNldFNraWxsU2xvdEgAQgYKBGJvZHkiOgoEQ2FzdBILCgNzZXEYASABKA0SEAoIc2tpbGxfaWQYAiABKAkSEwoLZmFjaW5nX2xlZnQYAyABKAgiQQoISW50ZXJhY3QSEQoJZW50aXR5X2lkGAEgASgNEiIKBGtpbmQYAiABKA4yFC5tbW8udjEuSW50ZXJhY3RLaW5kImUKCkl0ZW1BY3Rpb24SJAoEa2luZBgBIAEoDjIWLm1tby52MS5JdGVtQWN0aW9uS2luZBIPCgdpdGVtX2lkGAIgASgJEgwKBHNsb3QYAyABKA0SEgoKZXF1aXBfc2xvdBgEIAEoCSLrAQoNU2VydmVyTWVzc2FnZRIiCgd3ZWxjb21lGAEgASgLMg8ubW1vLnYxLldlbGNvbWVIABIkCghzbmFwc2hvdBgCIAEoCzIQLm1tby52MS5TbmFwc2hvdEgAEh4KBWV2ZW50GAMgASgLMg0ubW1vLnYxLkV2ZW50SAASHAoEcG9uZxgEIAEoCzIMLm1tby52MS5Qb25nSAASHAoEa2ljaxgFIAEoCzIMLm1tby52MS5LaWNrSAASJgoJaW52ZW50b3J5GAYgASgLMhEubW1vLnYxLkludmVudG9yeUgAQgYKBGJvZHlKBAgHEAoiRwoFSGVsbG8SDgoGdGlja2V0GAEgASgJEhgKEHByb3RvY29sX3ZlcnNpb24YAiABKA0SFAoMY29udGVudF9oYXNoGAMgASgJIoMBCgdXZWxjb21lEhEKCWVudGl0eV9pZBgBIAEoDRITCgtpbnN0YW5jZV9pZBgCIAEoBBIMCgR0aWNrGAMgASgEEg8KB3RpY2tfbXMYBCABKA0SDgoGbWFwX2lkGAUgASgJEiEKBHNlbGYYBiABKAsyEy5tbW8udjEuRW50aXR5U3RhdGUiJAoES2ljaxIMCgRjb2RlGAEgASgNEg4KBnJlYXNvbhgCIAEoCSJjCgZJbnRlbnQSCwoDc2VxGAEgASgNEhQKDGFja19zbmFwc2hvdBgCIAEoBBIOCgZtb3ZlX3gYAyABKBESDAoEanVtcBgEIAEoCBIKCgJ1cBgFIAEoCBIMCgRkb3duGAYgASgIIh4KBFBpbmcSFgoOY2xpZW50X3RpbWVfbXMYASABKAQiMwoEUG9uZxIWCg5jbGllbnRfdGltZV9tcxgBIAEoBBITCgtzZXJ2ZXJfdGljaxgCIAEoBCKlAwoLRW50aXR5U3RhdGUSCgoCaWQYASABKA0SIAoEa2luZBgCIAEoDjISLm1tby52MS5FbnRpdHlLaW5kEg0KBWxheWVyGAMgASgNEgkKAXgYBCABKBESCQoBeRgFIAEoERIKCgJ2eBgGIAEoERIKCgJ2eRgHIAEoERIJCgF3GAggASgREgkKAWgYCSABKBESDQoFZmxhZ3MYCiABKA0SDAoEYW5pbRgLIAEoDRIKCgJocBgMIAEoDRIOCgZocF9tYXgYDSABKA0SDAoEbmFtZRgOIAEoCRIOCgZjb3lvdGUYDyABKA0SEwoLanVtcF9idWZmZXIYECABKA0SFAoMZHJvcF90aHJvdWdoGBEgASgNEg0KBWxldmVsGBIgASgNEgsKA2V4cBgTIAEoBBITCgtleHBfdG9fbmV4dBgUIAEoBBIKCgJtcBgVIAEoDRIOCgZtcF9tYXgYFiABKA0SEQoJZHJvcF9pdGVtGBcgASgJEhAKCGRyb3BfcXR5GBggASgNEhEKCWRyb3BfZ29sZBgZIAEoDRIOCgZtb2JfaWQYGiABKAkilAEKC0VudGl0eURlbHRhEgoKAmlkGAEgASgNEhIKCmZpZWxkX21hc2sYAiABKA0SCQoBeBgDIAEoERIJCgF5GAQgASgREgoKAnZ4GAUgASgREgoKAnZ5GAYgASgREg0KBWZsYWdzGAcgASgNEgwKBGFuaW0YCCABKA0SCgoCaHAYCSABKA0SDgoGaHBfbWF4GAogASgNIsEBCghTbmFwc2hvdBIMCgR0aWNrGAEgASgEEhUKDWJhc2VsaW5lX3RpY2sYAiABKAQSDwoHYWNrX3NlcRgDIAEoDRIlCghlbnRpdGllcxgEIAMoCzITLm1tby52MS5FbnRpdHlEZWx0YRIkCgdlbnRlcmVkGAUgAygLMhMubW1vLnYxLkVudGl0eVN0YXRlEg8KB3JlbW92ZWQYBiADKA0SIQoEc2VsZhgHIAEoCzITLm1tby52MS5FbnRpdHlTdGF0ZSKyBwoFRXZlbnQSLQoNcGxheWVyX2pvaW5lZBgBIAEoCzIULm1tby52MS5QbGF5ZXJKb2luZWRIABIpCgtwbGF5ZXJfbGVmdBgCIAEoCzISLm1tby52MS5QbGF5ZXJMZWZ0SAASJQoGZGFtYWdlGAMgASgLMhMubW1vLnYxLkRhbWFnZURlYWx0SAASIgoEZGllZBgEIAEoCzISLm1tby52MS5FbnRpdHlEaWVkSAASJwoKc2tpbGxfY2FzdBgFIAEoCzIRLm1tby52MS5Ta2lsbENhc3RIABInCgpleHBfZ2FpbmVkGAYgASgLMhEubW1vLnYxLkV4cEdhaW5lZEgAEiMKCGxldmVsX3VwGAcgASgLMg8ubW1vLnYxLkxldmVsVXBIABInCgpsb290X3Rha2VuGAggASgLMhEubW1vLnYxLkxvb3RUYWtlbkgAEi8KDndheXBvaW50X2ZvdW5kGAkgASgLMhUubW1vLnYxLldheXBvaW50Rm91bmRIABIvCg5wb3J0YWxfcmVmdXNlZBgKIAEoCzIVLm1tby52MS5Qb3J0YWxSZWZ1c2VkSAASJQoJd29ybGRfbWFwGAwgASgLMhAubW1vLnYxLldvcmxkTWFwSAASIAoEY2hhdBgNIAEoCzIQLm1tby52MS5DaGF0TGluZUgAEicKBnN5c3RlbRgOIAEoCzIVLm1tby52MS5TeXN0ZW1NZXNzYWdlSAASIwoFcGFydHkYECABKAsyEi5tbW8udjEuUGFydHlTdGF0ZUgAEisKDHBhcnR5X2ludml0ZRgRIAEoCzITLm1tby52MS5QYXJ0eUludml0ZUgAEiMKBWd1aWxkGBIgASgLMhIubW1vLnYxLkd1aWxkU3RhdGVIABIrCgxndWlsZF9pbnZpdGUYEyABKAsyEy5tbW8udjEuR3VpbGRJbnZpdGVIABIlCgdmcmllbmRzGBQgASgLMhIubW1vLnYxLkZyaWVuZExpc3RIABIiCgVidWZmcxgPIAEoCzIRLm1tby52MS5CdWZmU3RhdGVIABIgCgZoZWFsZWQYFSABKAsyDi5tbW8udjEuSGVhbGVkSAASJAoIc2hpZWxkZWQYFiABKAsyEC5tbW8udjEuU2hpZWxkZWRIABIkCghhYnNvcmJlZBgXIAEoCzIQLm1tby52MS5BYnNvcmJlZEgAEiUKCXNraWxsX2JhchgYIAEoCzIQLm1tby52MS5Ta2lsbEJhckgAQgYKBGJvZHlKBAgLEAwiZgoLRGFtYWdlRGVhbHQSEQoJc291cmNlX2lkGAEgASgNEhEKCXRhcmdldF9pZBgCIAEoDRIOCgZhbW91bnQYAyABKA0SEAoIY3JpdGljYWwYBCABKAgSDwoHZWxlbWVudBgFIAEoCSIyCgpFbnRpdHlEaWVkEhEKCWVudGl0eV9pZBgBIAEoDRIRCglraWxsZXJfaWQYAiABKA0iRQoJU2tpbGxDYXN0EhEKCWNhc3Rlcl9pZBgBIAEoDRIQCghza2lsbF9pZBgCIAEoCRITCgtmYWNpbmdfbGVmdBgDIAEoCCI6CglFeHBHYWluZWQSDgoGYW1vdW50GAEgASgEEg0KBXRvdGFsGAIgASgEEg4KBnNoYXJlZBgDIAEoCCItCgdMZXZlbFVwEg0KBWxldmVsGAEgASgNEhMKC2V4cF90b19uZXh0GAIgASgEIkIKDVdheXBvaW50Rm91bmQSEwoLd2F5cG9pbnRfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIOCgZtYXBfaWQYAyABKAkiSwoNUG9ydGFsUmVmdXNlZBISCgp0YXJnZXRfbWFwGAEgASgJEhYKDnJlcXVpcmVkX2xldmVsGAIgASgNEg4KBnJlYXNvbhgDIAEoCSIOCgxPcGVuV29ybGRNYXAiZAoGVHJhdmVsEhUKC3dheXBvaW50X2lkGAEgASgJSAASHQoTY2hhbm5lbF9pbnN0YW5jZV9pZBgCIAEoBEgAEhUKC25ld19jaGFubmVsGAMgASgISABCDQoLZGVzdGluYXRpb24itwEKCFdvcmxkTWFwEiAKBG1hcHMYASADKAsyEi5tbW8udjEuTWFwU3VtbWFyeRIqCgl3YXlwb2ludHMYAiADKAsyFy5tbW8udjEuV2F5cG9pbnRTdW1tYXJ5EigKCGNoYW5uZWxzGAMgAygLMhYubW1vLnYxLkNoYW5uZWxTdW1tYXJ5EhYKDmN1cnJlbnRfbWFwX2lkGAQgASgJEhsKE2N1cnJlbnRfaW5zdGFuY2VfaWQYBSABKAQiYQoKTWFwU3VtbWFyeRIOCgZtYXBfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIRCgltaW5fbGV2ZWwYAyABKAUSEQoJbWF4X2xldmVsGAQgASgFEg8KB3ByaXZhdGUYBSABKAgiRAoPV2F5cG9pbnRTdW1tYXJ5EhMKC3dheXBvaW50X2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDgoGbWFwX2lkGAMgASgJImoKDkNoYW5uZWxTdW1tYXJ5EhMKC2luc3RhbmNlX2lkGAEgASgEEg8KB2NoYW5uZWwYAiABKA0SDwoHcGxheWVycxgDIAEoDRIQCghjYXBhY2l0eRgEIAEoDRIPCgdjdXJyZW50GAUgASgIIk4KCENoYXRTZW5kEiQKB2NoYW5uZWwYASABKA4yEy5tbW8udjEuQ2hhdENoYW5uZWwSDAoEYm9keRgCIAEoCRIOCgZ0YXJnZXQYAyABKAkidgoIQ2hhdExpbmUSJAoHY2hhbm5lbBgBIAEoDjITLm1tby52MS5DaGF0Q2hhbm5lbBIMCgRmcm9tGAIgASgJEgwKBGJvZHkYAyABKAkSEAoIb3V0Z29pbmcYBCABKAgSFgoOc2VydmVyX3RpbWVfbXMYBSABKAMiQwoNU3lzdGVtTWVzc2FnZRIMCgRib2R5GAEgASgJEiQKB2NoYW5uZWwYAiABKA4yEy5tbW8udjEuQ2hhdENoYW5uZWwi3AEKC1BhcnR5QWN0aW9uEiYKBGtpbmQYASABKA4yGC5tbW8udjEuUGFydHlBY3Rpb24uS2luZBIOCgZ0YXJnZXQYAiABKAkilAEKBEtpbmQSFAoQS0lORF9VTlNQRUNJRklFRBAAEg8KC0tJTkRfSU5WSVRFEAESDwoLS0lORF9BQ0NFUFQQAhIQCgxLSU5EX0RFQ0xJTkUQAxIOCgpLSU5EX0xFQVZFEAQSDQoJS0lORF9LSUNLEAUSEAoMS0lORF9QUk9NT1RFEAYSEQoNS0lORF9TRVRfTE9PVBAHIooBCgpQYXJ0eVN0YXRlEhAKCHBhcnR5X2lkGAEgASgJEhsKE2xlYWRlcl9jaGFyYWN0ZXJfaWQYAiABKAkSJAoHbWVtYmVycxgDIAMoCzITLm1tby52MS5QYXJ0eU1lbWJlchIZChFzZWxmX2NoYXJhY3Rlcl9pZBgEIAEoCRIMCgRsb290GAUgASgJInwKC1BhcnR5TWVtYmVyEhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBWxldmVsGAMgASgNEgoKAmhwGAQgASgNEg4KBmhwX21heBgFIAEoDRIOCgZtYXBfaWQYBiABKAkSDgoGb25saW5lGAcgASgIIjcKC1BhcnR5SW52aXRlEhEKCWZyb21fbmFtZRgBIAEoCRIVCg1leHBpcmVzX2luX21zGAIgASgDIv4BCgtHdWlsZEFjdGlvbhImCgRraW5kGAEgASgOMhgubW1vLnYxLkd1aWxkQWN0aW9uLktpbmQSDgoGdGFyZ2V0GAIgASgJIrYBCgRLaW5kEhQKEEtJTkRfVU5TUEVDSUZJRUQQABIPCgtLSU5EX0NSRUFURRABEg8KC0tJTkRfSU5WSVRFEAISDwoLS0lORF9BQ0NFUFQQAxIQCgxLSU5EX0RFQ0xJTkUQBBIOCgpLSU5EX0xFQVZFEAUSDQoJS0lORF9LSUNLEAYSEAoMS0lORF9QUk9NT1RFEAcSDwoLS0lORF9ERU1PVEUQCBIRCg1LSU5EX1NFVF9NT1REEAkibgoKR3VpbGRTdGF0ZRIQCghndWlsZF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBG1vdGQYAyABKAkSJAoHbWVtYmVycxgEIAMoCzITLm1tby52MS5HdWlsZE1lbWJlchIMCgRyYW5rGAUgASgNIl4KC0d1aWxkTWVtYmVyEhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJhbmsYAyABKA0SDQoFbGV2ZWwYBCABKA0SDgoGb25saW5lGAUgASgIIksKC0d1aWxkSW52aXRlEhIKCmd1aWxkX25hbWUYASABKAkSEQoJZnJvbV9uYW1lGAIgASgJEhUKDWV4cGlyZXNfaW5fbXMYAyABKAMiqQEKDFNvY2lhbEFjdGlvbhInCgRraW5kGAEgASgOMhkubW1vLnYxLlNvY2lhbEFjdGlvbi5LaW5kEg4KBnRhcmdldBgCIAEoCSJgCgRLaW5kEhQKEEtJTkRfVU5TUEVDSUZJRUQQABITCg9LSU5EX0FERF9GUklFTkQQARIWChJLSU5EX1JFTU9WRV9GUklFTkQQAhIVChFLSU5EX0xJU1RfRlJJRU5EUxADIjIKCkZyaWVuZExpc3QSJAoHZnJpZW5kcxgBIAMoCzITLm1tby52MS5GcmllbmRFbnRyeSJgCgtGcmllbmRFbnRyeRIUCgxjaGFyYWN0ZXJfaWQYASABKAkSDAoEbmFtZRgCIAEoCRINCgVsZXZlbBgDIAEoDRIOCgZvbmxpbmUYBCABKAgSDgoGbWFwX2lkGAUgASgJIkMKCUJ1ZmZTdGF0ZRIRCgllbnRpdHlfaWQYASABKA0SIwoFYnVmZnMYAiADKAsyFC5tbW8udjEuQnVmZkluc3RhbmNlImQKDEJ1ZmZJbnN0YW5jZRIPCgdidWZmX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDgoGc3RhY2tzGAMgASgNEhQKDHJlbWFpbmluZ19tcxgEIAEoDRIPCgdoYXJtZnVsGAUgASgIIisKBkhlYWxlZBIRCgllbnRpdHlfaWQYASABKA0SDgoGYW1vdW50GAIgASgNIi0KCFNoaWVsZGVkEhEKCWVudGl0eV9pZBgBIAEoDRIOCgZhbW91bnQYAiABKA0iQAoIQWJzb3JiZWQSEQoJZW50aXR5X2lkGAEgASgNEg4KBmFtb3VudBgCIAEoDRIRCglyZW1haW5pbmcYAyABKA0iQAoMU2V0U2tpbGxTbG90EgwKBHNsb3QYASABKA0SEAoIc2tpbGxfaWQYAiABKAkSEAoIc3VwcG9ydHMYAyADKAkidgoIU2tpbGxCYXISIAoFc2xvdHMYASADKAsyES5tbW8udjEuU2tpbGxTbG90EiEKBWtub3duGAIgAygLMhIubW1vLnYxLktub3duU2tpbGwSJQoIc3VwcG9ydHMYAyADKAsyEy5tbW8udjEuU3VwcG9ydEluZm8icQoJU2tpbGxTbG90EhAKCHNraWxsX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEcmFuaxgDIAEoDRITCgtjb29sZG93bl9tcxgEIAEoDRIPCgdjb3N0X21wGAUgASgNEhAKCHN1cHBvcnRzGAYgAygJIloKCktub3duU2tpbGwSEAoIc2tpbGxfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIMCgRyYW5rGAMgASgNEhAKCG1heF9yYW5rGAQgASgNEgwKBHRhZ3MYBSADKAkiPQoLU3VwcG9ydEluZm8SEgoKc3VwcG9ydF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHRhZ3MYAyADKAkiagoJTG9vdFRha2VuEhEKCWVudGl0eV9pZBgBIAEoDRIPCgdpdGVtX2lkGAIgASgJEgsKA3F0eRgDIAEoDRIMCgRnb2xkGAQgASgNEg4KBmZhaWxlZBgFIAEoCBIOCgZyZWFzb24YBiABKAkilgEKCUludmVudG9yeRIiCgdjYXJyaWVkGAEgAygLMhEubW1vLnYxLkl0ZW1TdGFjaxIjCghlcXVpcHBlZBgCIAMoCzIRLm1tby52MS5JdGVtU3RhY2sSEAoIY2FwYWNpdHkYAyABKA0SDAoEZ29sZBgEIAEoBBIgCgVzdGF0cxgFIAMoCzIRLm1tby52MS5TdGF0VmFsdWUixwEKCUl0ZW1TdGFjaxIPCgdpdGVtX2lkGAEgASgJEg8KB2Jhc2VfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRIOCgZyYXJpdHkYBCABKAkSDAoEc2xvdBgFIAEoDRINCgVzdGFjaxgGIAEoDRISCgppdGVtX2xldmVsGAcgASgNEhIKCmVxdWlwX3Nsb3QYCCABKAkSFgoOcmVxdWlyZWRfbGV2ZWwYCSABKA0SHQoEbW9kcxgKIAMoCzIPLm1tby52MS5JdGVtTW9kIlQKB0l0ZW1Nb2QSDAoEc3RhdBgBIAEoCRIMCgRraW5kGAIgASgJEg0KBXZhbHVlGAMgASgSEgwKBHRpZXIYBCABKA0SEAoIaW1wbGljaXQYBSABKAgiKAoJU3RhdFZhbHVlEgwKBHN0YXQYASABKAkSDQoFdmFsdWUYAiABKBIiLwoMUGxheWVySm9pbmVkEhEKCWVudGl0eV9pZBgBIAEoDRIMCgRuYW1lGAIgASgJIh8KClBsYXllckxlZnQSEQoJZW50aXR5X2lkGAEgASgNKkUKDEludGVyYWN0S2luZBIdChlJTlRFUkFDVF9LSU5EX1VOU1BFQ0lGSUVEEAASFgoSSU5URVJBQ1RfS0lORF9MT09UEAEqpQEKDkl0ZW1BY3Rpb25LaW5kEiAKHElURU1fQUNUSU9OX0tJTkRfVU5TUEVDSUZJRUQQABIZChVJVEVNX0FDVElPTl9LSU5EX01PVkUQARIaChZJVEVNX0FDVElPTl9LSU5EX0VRVUlQEAISHAoYSVRFTV9BQ1RJT05fS0lORF9VTkVRVUlQEAMSHAoYSVRFTV9BQ1RJT05fS0lORF9ERVNUUk9ZEAQqswEKCkVudGl0eUtpbmQSGwoXRU5USVRZX0tJTkRfVU5TUEVDSUZJRUQQABIWChJFTlRJVFlfS0lORF9QTEFZRVIQARITCg9FTlRJVFlfS0lORF9NT0IQAhIUChBFTlRJVFlfS0lORF9EUk9QEAMSEwoPRU5USVRZX0tJTkRfTlBDEAQSGgoWRU5USVRZX0tJTkRfUFJPSkVDVElMRRAFEhQKEEVOVElUWV9LSU5EX0FSRUEQBiqbAQoLRW50aXR5RmllbGQSHAoYRU5USVRZX0ZJRUxEX1VOU1BFQ0lGSUVEEAASFAoQRU5USVRZX0ZJRUxEX1BPUxABEhQKEEVOVElUWV9GSUVMRF9WRUwQAhIWChJFTlRJVFlfRklFTERfRkxBR1MQAxIVChFFTlRJVFlfRklFTERfQU5JTRAEEhMKD0VOVElUWV9GSUVMRF9IUBAFKpUBCgpFbnRpdHlGbGFnEhsKF0VOVElUWV9GTEFHX1VOU1BFQ0lGSUVEEAASGAoURU5USVRZX0ZMQUdfR1JPVU5ERUQQARIYChRFTlRJVFlfRkxBR19DTElNQklORxACEhsKF0VOVElUWV9GTEFHX0ZBQ0lOR19MRUZUEAMSGQoVRU5USVRZX0ZMQUdfSlVNUF9IRUxEEAQqpgEKC0NoYXRDaGFubmVsEhwKGENIQVRfQ0hBTk5FTF9VTlNQRUNJRklFRBAAEhYKEkNIQVRfQ0hBTk5FTF9MT0NBTBABEhcKE0NIQVRfQ0hBTk5FTF9HTE9CQUwQAhIYChRDSEFUX0NIQU5ORUxfV0hJU1BFUhADEhYKEkNIQVRfQ0hBTk5FTF9QQVJUWRAEEhYKEkNIQVRfQ0hBTk5FTF9HVUlMRBAFQjlaN2dpdGh1Yi5jb20vY3RybC1yZXNlYXJjaC9tbW8vaW50ZXJuYWwvd2lyZS9tbW8vdjE7bW1vdjFiBnByb3RvMw");
 
 /**
  * Envelope is exactly one WebSocket binary frame.
@@ -119,6 +119,12 @@ export type ClientMessage = Message<"mmo.v1.ClientMessage"> & {
      */
     value: SocialAction;
     case: "social";
+  } | {
+    /**
+     * @generated from field: mmo.v1.SetSkillSlot skill_slot = 13;
+     */
+    value: SetSkillSlot;
+    case: "skillSlot";
   } | { case: undefined; value?: undefined };
 };
 
@@ -910,6 +916,36 @@ export type Event = Message<"mmo.v1.Event"> & {
      */
     value: FriendList;
     case: "friends";
+  } | {
+    /**
+     * @generated from field: mmo.v1.BuffState buffs = 15;
+     */
+    value: BuffState;
+    case: "buffs";
+  } | {
+    /**
+     * @generated from field: mmo.v1.Healed healed = 21;
+     */
+    value: Healed;
+    case: "healed";
+  } | {
+    /**
+     * @generated from field: mmo.v1.Shielded shielded = 22;
+     */
+    value: Shielded;
+    case: "shielded";
+  } | {
+    /**
+     * @generated from field: mmo.v1.Absorbed absorbed = 23;
+     */
+    value: Absorbed;
+    case: "absorbed";
+  } | {
+    /**
+     * @generated from field: mmo.v1.SkillBar skill_bar = 24;
+     */
+    value: SkillBar;
+    case: "skillBar";
   } | { case: undefined; value?: undefined };
 };
 
@@ -2002,6 +2038,344 @@ export const FriendEntrySchema: GenMessage<FriendEntry> = /*@__PURE__*/
   messageDesc(file_mmo_v1_game, 42);
 
 /**
+ * BuffState is everything currently on a character, sent whenever it changes.
+ *
+ * To the owner alone. A buff bar is the player's own business, and
+ * broadcasting every stack of every debuff on every mob in the room to
+ * everyone in it is a great deal of traffic for something nobody reads.
+ *
+ * Whole rather than incremental, for the same reason a party roster is: a
+ * client that misses one update shows a bar that is quietly wrong, and the
+ * whole thing is a handful of entries.
+ *
+ * @generated from message mmo.v1.BuffState
+ */
+export type BuffState = Message<"mmo.v1.BuffState"> & {
+  /**
+   * @generated from field: uint32 entity_id = 1;
+   */
+  entityId: number;
+
+  /**
+   * @generated from field: repeated mmo.v1.BuffInstance buffs = 2;
+   */
+  buffs: BuffInstance[];
+};
+
+/**
+ * Describes the message mmo.v1.BuffState.
+ * Use `create(BuffStateSchema)` to create a new message.
+ */
+export const BuffStateSchema: GenMessage<BuffState> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 43);
+
+/**
+ * @generated from message mmo.v1.BuffInstance
+ */
+export type BuffInstance = Message<"mmo.v1.BuffInstance"> & {
+  /**
+   * @generated from field: string buff_id = 1;
+   */
+  buffId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: uint32 stacks = 3;
+   */
+  stacks: number;
+
+  /**
+   * RemainingMs counts down client-side between updates, so a bar drains
+   * smoothly rather than stepping once a second. Zero means it does not
+   * expire on its own, which is what an aura is.
+   *
+   * @generated from field: uint32 remaining_ms = 4;
+   */
+  remainingMs: number;
+
+  /**
+   * Harmful decides which end of the bar it goes on and what colour it is.
+   * A player needs to tell "I am on fire" from "I am strong" without reading.
+   *
+   * @generated from field: bool harmful = 5;
+   */
+  harmful: boolean;
+};
+
+/**
+ * Describes the message mmo.v1.BuffInstance.
+ * Use `create(BuffInstanceSchema)` to create a new message.
+ */
+export const BuffInstanceSchema: GenMessage<BuffInstance> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 44);
+
+/**
+ * Healed is sent rather than left for the client to infer from a rising
+ * health bar, for the same reason DamageDealt is: a bar cannot distinguish one
+ * large heal from two small ones, and the difference is most of what a healer
+ * is reading.
+ *
+ * @generated from message mmo.v1.Healed
+ */
+export type Healed = Message<"mmo.v1.Healed"> & {
+  /**
+   * @generated from field: uint32 entity_id = 1;
+   */
+  entityId: number;
+
+  /**
+   * @generated from field: uint32 amount = 2;
+   */
+  amount: number;
+};
+
+/**
+ * Describes the message mmo.v1.Healed.
+ * Use `create(HealedSchema)` to create a new message.
+ */
+export const HealedSchema: GenMessage<Healed> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 45);
+
+/**
+ * Shielded announces an absorption pool, which is not visible in the health
+ * bar because it sits in front of it.
+ *
+ * @generated from message mmo.v1.Shielded
+ */
+export type Shielded = Message<"mmo.v1.Shielded"> & {
+  /**
+   * @generated from field: uint32 entity_id = 1;
+   */
+  entityId: number;
+
+  /**
+   * @generated from field: uint32 amount = 2;
+   */
+  amount: number;
+};
+
+/**
+ * Describes the message mmo.v1.Shielded.
+ * Use `create(ShieldedSchema)` to create a new message.
+ */
+export const ShieldedSchema: GenMessage<Shielded> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 46);
+
+/**
+ * Absorbed reports damage a shield soaked. Without it a hit that vanished
+ * into a pool the player cannot see reads as the attack having missed.
+ *
+ * @generated from message mmo.v1.Absorbed
+ */
+export type Absorbed = Message<"mmo.v1.Absorbed"> & {
+  /**
+   * @generated from field: uint32 entity_id = 1;
+   */
+  entityId: number;
+
+  /**
+   * @generated from field: uint32 amount = 2;
+   */
+  amount: number;
+
+  /**
+   * @generated from field: uint32 remaining = 3;
+   */
+  remaining: number;
+};
+
+/**
+ * Describes the message mmo.v1.Absorbed.
+ * Use `create(AbsorbedSchema)` to create a new message.
+ */
+export const AbsorbedSchema: GenMessage<Absorbed> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 47);
+
+/**
+ * SetSkillSlot rearranges the skill bar.
+ *
+ * Every rule about what may go where is checked server-side. A client that
+ * could put any skill in any slot with any support attached could cast a mob
+ * ability with every support in the game linked to it.
+ *
+ * @generated from message mmo.v1.SetSkillSlot
+ */
+export type SetSkillSlot = Message<"mmo.v1.SetSkillSlot"> & {
+  /**
+   * @generated from field: uint32 slot = 1;
+   */
+  slot: number;
+
+  /**
+   * Empty clears the slot.
+   *
+   * @generated from field: string skill_id = 2;
+   */
+  skillId: string;
+
+  /**
+   * Supports to link, in the order they apply. Order matters: two that both
+   * scale damage compose differently depending on which repeats first.
+   *
+   * @generated from field: repeated string supports = 3;
+   */
+  supports: string[];
+};
+
+/**
+ * Describes the message mmo.v1.SetSkillSlot.
+ * Use `create(SetSkillSlotSchema)` to create a new message.
+ */
+export const SetSkillSlotSchema: GenMessage<SetSkillSlot> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 48);
+
+/**
+ * SkillBar is the whole loadout: what is on the bar, what the character knows,
+ * and what supports exist to link.
+ *
+ * @generated from message mmo.v1.SkillBar
+ */
+export type SkillBar = Message<"mmo.v1.SkillBar"> & {
+  /**
+   * @generated from field: repeated mmo.v1.SkillSlot slots = 1;
+   */
+  slots: SkillSlot[];
+
+  /**
+   * @generated from field: repeated mmo.v1.KnownSkill known = 2;
+   */
+  known: KnownSkill[];
+
+  /**
+   * @generated from field: repeated mmo.v1.SupportInfo supports = 3;
+   */
+  supports: SupportInfo[];
+};
+
+/**
+ * Describes the message mmo.v1.SkillBar.
+ * Use `create(SkillBarSchema)` to create a new message.
+ */
+export const SkillBarSchema: GenMessage<SkillBar> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 49);
+
+/**
+ * @generated from message mmo.v1.SkillSlot
+ */
+export type SkillSlot = Message<"mmo.v1.SkillSlot"> & {
+  /**
+   * @generated from field: string skill_id = 1;
+   */
+  skillId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: uint32 rank = 3;
+   */
+  rank: number;
+
+  /**
+   * @generated from field: uint32 cooldown_ms = 4;
+   */
+  cooldownMs: number;
+
+  /**
+   * The cost after supports, because that is what will actually be charged --
+   * a bar showing the base cost is a bar that lies.
+   *
+   * @generated from field: uint32 cost_mp = 5;
+   */
+  costMp: number;
+
+  /**
+   * @generated from field: repeated string supports = 6;
+   */
+  supports: string[];
+};
+
+/**
+ * Describes the message mmo.v1.SkillSlot.
+ * Use `create(SkillSlotSchema)` to create a new message.
+ */
+export const SkillSlotSchema: GenMessage<SkillSlot> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 50);
+
+/**
+ * @generated from message mmo.v1.KnownSkill
+ */
+export type KnownSkill = Message<"mmo.v1.KnownSkill"> & {
+  /**
+   * @generated from field: string skill_id = 1;
+   */
+  skillId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: uint32 rank = 3;
+   */
+  rank: number;
+
+  /**
+   * @generated from field: uint32 max_rank = 4;
+   */
+  maxRank: number;
+
+  /**
+   * Tags decide which supports fit, so the client can grey out the ones that
+   * do not rather than offering them and being refused.
+   *
+   * @generated from field: repeated string tags = 5;
+   */
+  tags: string[];
+};
+
+/**
+ * Describes the message mmo.v1.KnownSkill.
+ * Use `create(KnownSkillSchema)` to create a new message.
+ */
+export const KnownSkillSchema: GenMessage<KnownSkill> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 51);
+
+/**
+ * @generated from message mmo.v1.SupportInfo
+ */
+export type SupportInfo = Message<"mmo.v1.SupportInfo"> & {
+  /**
+   * @generated from field: string support_id = 1;
+   */
+  supportId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: repeated string tags = 3;
+   */
+  tags: string[];
+};
+
+/**
+ * Describes the message mmo.v1.SupportInfo.
+ * Use `create(SupportInfoSchema)` to create a new message.
+ */
+export const SupportInfoSchema: GenMessage<SupportInfo> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 52);
+
+/**
  * @generated from message mmo.v1.LootTaken
  */
 export type LootTaken = Message<"mmo.v1.LootTaken"> & {
@@ -2046,7 +2420,7 @@ export type LootTaken = Message<"mmo.v1.LootTaken"> & {
  * Use `create(LootTakenSchema)` to create a new message.
  */
 export const LootTakenSchema: GenMessage<LootTaken> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 43);
+  messageDesc(file_mmo_v1_game, 53);
 
 /**
  * Inventory is the player's items, sent in full whenever they change.
@@ -2093,7 +2467,7 @@ export type Inventory = Message<"mmo.v1.Inventory"> & {
  * Use `create(InventorySchema)` to create a new message.
  */
 export const InventorySchema: GenMessage<Inventory> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 44);
+  messageDesc(file_mmo_v1_game, 54);
 
 /**
  * @generated from message mmo.v1.ItemStack
@@ -2163,7 +2537,7 @@ export type ItemStack = Message<"mmo.v1.ItemStack"> & {
  * Use `create(ItemStackSchema)` to create a new message.
  */
 export const ItemStackSchema: GenMessage<ItemStack> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 45);
+  messageDesc(file_mmo_v1_game, 55);
 
 /**
  * ItemMod is one rolled modifier, carrying enough to render a tooltip line
@@ -2209,7 +2583,7 @@ export type ItemMod = Message<"mmo.v1.ItemMod"> & {
  * Use `create(ItemModSchema)` to create a new message.
  */
 export const ItemModSchema: GenMessage<ItemMod> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 46);
+  messageDesc(file_mmo_v1_game, 56);
 
 /**
  * @generated from message mmo.v1.StatValue
@@ -2231,7 +2605,7 @@ export type StatValue = Message<"mmo.v1.StatValue"> & {
  * Use `create(StatValueSchema)` to create a new message.
  */
 export const StatValueSchema: GenMessage<StatValue> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 47);
+  messageDesc(file_mmo_v1_game, 57);
 
 /**
  * @generated from message mmo.v1.PlayerJoined
@@ -2253,7 +2627,7 @@ export type PlayerJoined = Message<"mmo.v1.PlayerJoined"> & {
  * Use `create(PlayerJoinedSchema)` to create a new message.
  */
 export const PlayerJoinedSchema: GenMessage<PlayerJoined> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 48);
+  messageDesc(file_mmo_v1_game, 58);
 
 /**
  * @generated from message mmo.v1.PlayerLeft
@@ -2270,7 +2644,7 @@ export type PlayerLeft = Message<"mmo.v1.PlayerLeft"> & {
  * Use `create(PlayerLeftSchema)` to create a new message.
  */
 export const PlayerLeftSchema: GenMessage<PlayerLeft> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 49);
+  messageDesc(file_mmo_v1_game, 59);
 
 /**
  * @generated from enum mmo.v1.InteractKind
@@ -2357,6 +2731,20 @@ export enum EntityKind {
    * @generated from enum value: ENTITY_KIND_NPC = 4;
    */
   NPC = 4,
+
+  /**
+   * What the effect vocabulary spawns: a bolt in flight, and a patch of
+   * ground that keeps applying something. Entities rather than a separate
+   * list, so they interpolate and layer like everything else.
+   *
+   * @generated from enum value: ENTITY_KIND_PROJECTILE = 5;
+   */
+  PROJECTILE = 5,
+
+  /**
+   * @generated from enum value: ENTITY_KIND_AREA = 6;
+   */
+  AREA = 6,
 }
 
 /**

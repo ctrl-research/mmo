@@ -2,6 +2,7 @@ package room
 
 import (
 	"github.com/ctrl-research/mmo/internal/content"
+	"github.com/ctrl-research/mmo/internal/fixed"
 	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
 	"github.com/ctrl-research/mmo/internal/world/stats"
 )
@@ -21,11 +22,28 @@ type PlayerState struct {
 	// Cooldowns maps a skill to the tick from which it may be cast again.
 	Cooldowns map[string]uint64
 
-	// Stats is the character's derived statistics, computed by the session
-	// from level and equipment and pushed in whenever either changes.
+	// Loadout is what this character may cast, keyed by skill id: the rank it
+	// is known at, and the supports linked to it.
 	//
-	// The room never computes it: doing so would mean the room knowing about
-	// items, and item state belongs where it can be written durably.
+	// Held here rather than looked up per cast because a cast happens inside
+	// the tick and the loadout lives in the database. The session pushes it in
+	// on login and whenever it changes, the same arrangement as stats.
+	Loadout map[string]*Linked
+
+	// BaseStats is what the session computed from level, equipment, and
+	// passives, pushed in whenever any of those change. The room never
+	// computes it: that would mean the room knowing about items, and item
+	// state belongs where it can be written durably.
+	BaseStats *stats.Block
+
+	// Stats is BaseStats with the character's buffs layered on, recomputed
+	// inside the room whenever a buff is applied or expires.
+	//
+	// Two blocks rather than one because they change on completely different
+	// clocks: equipment changes when a player equips something, and buffs
+	// change several times a second in a fight. Rebuilding the whole thing
+	// from items every time a stack of Burning ticked would mean the room
+	// asking the session for stats mid-tick.
 	Stats *stats.Block
 }
 
@@ -35,6 +53,8 @@ func newPlayerState() *PlayerState {
 		MP:        50,
 		MaxMP:     50,
 		Cooldowns: make(map[string]uint64),
+		Loadout:   make(map[string]*Linked),
+		BaseStats: stats.NewBlock(),
 		Stats:     stats.NewBlock(),
 	}
 }
@@ -213,31 +233,167 @@ func (r *Room) expToNext(p *PlayerState) int64 {
 
 // canCast validates a cast request. Every reason a cast can fail is checked
 // here, server-side, against the server's own state.
-func (r *Room) canCast(e *Entity, skill *content.Skill) bool {
+func (r *Room) canCast(e *Entity, linked *Linked) bool {
 	if e.Player == nil || !isAlive(e) {
 		return false
 	}
-	if ready, ok := e.Player.Cooldowns[skill.ID]; ok && r.tick < ready {
+	if ready, ok := e.Player.Cooldowns[linked.Skill.ID]; ok && r.tick < ready {
 		// A cast arriving a tick early is a normal consequence of latency, not
 		// an error worth reporting -- the client will try again.
 		return false
 	}
-	if e.Player.MP < uint32(skill.CostMP) {
+	// The cost after supports, not the skill's own: every support costs
+	// something, and charging the base cost would make them free.
+	if e.Player.MP < uint32(linked.CostMP) {
 		return false
 	}
 	return true
 }
 
 // beginCast pays a skill's cost and starts its cooldown.
-func (r *Room) beginCast(e *Entity, skill *content.Skill) {
-	e.Player.MP -= uint32(skill.CostMP)
-	e.Player.Cooldowns[skill.ID] = r.tick + uint64(skill.Cooldown)
+func (r *Room) beginCast(e *Entity, linked *Linked) {
+	e.Player.MP -= uint32(linked.CostMP)
+	e.Player.Cooldowns[linked.Skill.ID] = r.tick + uint64(linked.Skill.Cooldown)
 }
 
-// classSkills returns the skills a class may cast.
+// installLoadout resolves a loadout onto an entity that is being joined.
 //
-// M1 grants every character the one starter skill. The skill tree that decides
-// this properly arrives in M6.
-func starterSkill(c *content.Content) *content.Skill {
-	return c.Skills["slash"]
+// Separate from setLoadout because that one looks the player up by entity ID,
+// and during a join the player is not in the room's table yet.
+func (r *Room) installLoadout(e *Entity, slots []LoadoutSlot) {
+	if e.Player == nil {
+		return
+	}
+
+	loadout := make(map[string]*Linked, len(slots))
+	for _, slot := range slots {
+		if linked := r.resolveSlot(slot); linked != nil {
+			loadout[slot.SkillID] = linked
+		}
+	}
+	e.Player.Loadout = loadout
+}
+
+// resolveSlot turns ids into a resolved, supported skill.
+//
+// Unknown ids are skipped rather than refused: content changes under saved
+// characters, and a bar entry for a skill that no longer exists should cost a
+// player one button rather than the ability to log in.
+func (r *Room) resolveSlot(slot LoadoutSlot) *Linked {
+	skill, ok := r.content.Skills[slot.SkillID]
+	if !ok {
+		return nil
+	}
+
+	supports := make([]*content.Support, 0, len(slot.Supports))
+	for _, supportID := range slot.Supports {
+		if support, ok := r.content.Supports[supportID]; ok {
+			supports = append(supports, support)
+		}
+	}
+	return link(skill, slot.Rank, supports)
+}
+
+// setLoadout installs what a character may cast.
+//
+// Resolved here, once, rather than per cast: applying every support to every
+// effect on every swing would be real work inside the tick for an answer that
+// changes only when somebody rearranges their bar.
+func (r *Room) setLoadout(id EntityID, slots []LoadoutSlot) {
+	p, ok := r.players[id]
+	if !ok || p.entity.Player == nil {
+		return
+	}
+
+	r.installLoadout(p.entity, slots)
+}
+
+// LoadoutSlot is one entry on a character's skill bar, as the session knows
+// it: ids rather than resolved content, because the session reads it from the
+// database and the room owns the content.
+type LoadoutSlot struct {
+	SkillID  string
+	Rank     int
+	Supports []string
+}
+
+// Linked is one skill as the character has it set up.
+//
+// Effects are resolved once, when the loadout is pushed in, rather than per
+// cast: applying every support to every effect on every swing would be real
+// work inside the tick for an answer that only changes when somebody
+// rearranges their bar.
+type Linked struct {
+	Skill *content.Skill
+	Rank  int
+
+	// Supports are the modifiers linked to this skill, in the order they
+	// apply. Order matters: two supports that both scale damage compose
+	// differently depending on which repeats first.
+	Supports []*content.Support
+
+	// Effects is the skill's effect list with every support applied.
+	Effects []content.Effect
+
+	// CostMP is the skill's cost after the supports' multipliers. Every
+	// support costs something, or the choice of which to use is not a choice.
+	CostMP int
+}
+
+// link resolves a skill and its supports into what a cast actually does.
+func link(skill *content.Skill, rank int, supports []*content.Support) *Linked {
+	if rank <= 0 {
+		rank = 1
+	}
+	if rank > skill.MaxRank {
+		rank = skill.MaxRank
+	}
+
+	l := &Linked{Skill: skill, Rank: rank, Supports: supports}
+
+	// Rank first, then supports. A support that multiplies damage should
+	// multiply the ranked damage, not the rank-one damage -- otherwise a
+	// support is worth progressively less the more a skill is levelled, which
+	// is the opposite of what anybody expects.
+	effects := make([]content.Effect, len(skill.Effects))
+	copy(effects, skill.Effects)
+	for i := range effects {
+		effects[i] = applyRank(effects[i], rank)
+	}
+
+	cost := fixed.FromInt(skill.CostMP)
+	for _, support := range supports {
+		if support == nil || !support.Attaches(skill) {
+			// Refused rather than applied: a client can ask for any link, and
+			// the tags are the rule that makes a support a choice.
+			continue
+		}
+		effects = support.Apply(effects)
+		cost = cost.Mul(support.ManaMult)
+	}
+
+	l.Effects = effects
+	l.CostMP = cost.Int()
+	return l
+}
+
+// applyRank scales an effect for the rank the skill is known at.
+//
+// Recursive, so a projectile's payload gains rank with the skill that launches
+// it -- otherwise levelling a projectile skill would raise nothing at all.
+func applyRank(e content.Effect, rank int) content.Effect {
+	if rank > 1 && e.PerRankPct > 0 {
+		bonus := fixed.One + fixed.FromRatio(e.PerRankPct*(rank-1), 100)
+		e.BaseMin = fixed.FromInt(e.BaseMin).Mul(bonus).Int()
+		e.BaseMax = fixed.FromInt(e.BaseMax).Mul(bonus).Int()
+	}
+
+	if len(e.Effects) > 0 {
+		nested := make([]content.Effect, len(e.Effects))
+		for i := range e.Effects {
+			nested[i] = applyRank(e.Effects[i], rank)
+		}
+		e.Effects = nested
+	}
+	return e
 }

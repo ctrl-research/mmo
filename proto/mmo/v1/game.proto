@@ -43,6 +43,7 @@ message ClientMessage {
     PartyAction party = 10;
     GuildAction guild = 11;
     SocialAction social = 12;
+    SetSkillSlot skill_slot = 13;
   }
 }
 
@@ -187,6 +188,12 @@ enum EntityKind {
   ENTITY_KIND_MOB = 2;
   ENTITY_KIND_DROP = 3;
   ENTITY_KIND_NPC = 4;
+
+  // What the effect vocabulary spawns: a bolt in flight, and a patch of
+  // ground that keeps applying something. Entities rather than a separate
+  // list, so they interpolate and layer like everything else.
+  ENTITY_KIND_PROJECTILE = 5;
+  ENTITY_KIND_AREA = 6;
 }
 
 // Bit positions in EntityDelta.field_mask.
@@ -333,12 +340,17 @@ message Event {
     GuildState guild = 18;
     GuildInvite guild_invite = 19;
     FriendList friends = 20;
+    BuffState buffs = 15;
+    Healed healed = 21;
+    Shielded shielded = 22;
+    Absorbed absorbed = 23;
+    SkillBar skill_bar = 24;
   }
   // 11 was MapChanged, replaced by a second Welcome: it carried strictly less
   // than the Welcome the destination room already sends, and two messages
   // saying the same thing is one of them being wrong eventually.
   reserved 11;
-  reserved 15;  // buffs, party
+
 }
 
 // DamageDealt is sent rather than inferred from a falling HP number, because a
@@ -700,6 +712,113 @@ message FriendEntry {
   // MapId is where they are, so a friends list answers "can I go and find
   // them" rather than only "are they awake". Empty when offline.
   string map_id = 5;
+}
+
+// BuffState is everything currently on a character, sent whenever it changes.
+//
+// To the owner alone. A buff bar is the player's own business, and
+// broadcasting every stack of every debuff on every mob in the room to
+// everyone in it is a great deal of traffic for something nobody reads.
+//
+// Whole rather than incremental, for the same reason a party roster is: a
+// client that misses one update shows a bar that is quietly wrong, and the
+// whole thing is a handful of entries.
+message BuffState {
+  uint32 entity_id = 1;
+  repeated BuffInstance buffs = 2;
+}
+
+message BuffInstance {
+  string buff_id = 1;
+  string name = 2;
+  uint32 stacks = 3;
+
+  // RemainingMs counts down client-side between updates, so a bar drains
+  // smoothly rather than stepping once a second. Zero means it does not
+  // expire on its own, which is what an aura is.
+  uint32 remaining_ms = 4;
+
+  // Harmful decides which end of the bar it goes on and what colour it is.
+  // A player needs to tell "I am on fire" from "I am strong" without reading.
+  bool harmful = 5;
+}
+
+// Healed is sent rather than left for the client to infer from a rising
+// health bar, for the same reason DamageDealt is: a bar cannot distinguish one
+// large heal from two small ones, and the difference is most of what a healer
+// is reading.
+message Healed {
+  uint32 entity_id = 1;
+  uint32 amount = 2;
+}
+
+// Shielded announces an absorption pool, which is not visible in the health
+// bar because it sits in front of it.
+message Shielded {
+  uint32 entity_id = 1;
+  uint32 amount = 2;
+}
+
+// Absorbed reports damage a shield soaked. Without it a hit that vanished
+// into a pool the player cannot see reads as the attack having missed.
+message Absorbed {
+  uint32 entity_id = 1;
+  uint32 amount = 2;
+  uint32 remaining = 3;
+}
+
+// SetSkillSlot rearranges the skill bar.
+//
+// Every rule about what may go where is checked server-side. A client that
+// could put any skill in any slot with any support attached could cast a mob
+// ability with every support in the game linked to it.
+message SetSkillSlot {
+  uint32 slot = 1;
+
+  // Empty clears the slot.
+  string skill_id = 2;
+
+  // Supports to link, in the order they apply. Order matters: two that both
+  // scale damage compose differently depending on which repeats first.
+  repeated string supports = 3;
+}
+
+// SkillBar is the whole loadout: what is on the bar, what the character knows,
+// and what supports exist to link.
+message SkillBar {
+  repeated SkillSlot slots = 1;
+  repeated KnownSkill known = 2;
+  repeated SupportInfo supports = 3;
+}
+
+message SkillSlot {
+  string skill_id = 1;
+  string name = 2;
+  uint32 rank = 3;
+  uint32 cooldown_ms = 4;
+
+  // The cost after supports, because that is what will actually be charged --
+  // a bar showing the base cost is a bar that lies.
+  uint32 cost_mp = 5;
+
+  repeated string supports = 6;
+}
+
+message KnownSkill {
+  string skill_id = 1;
+  string name = 2;
+  uint32 rank = 3;
+  uint32 max_rank = 4;
+
+  // Tags decide which supports fit, so the client can grey out the ones that
+  // do not rather than offering them and being refused.
+  repeated string tags = 5;
+}
+
+message SupportInfo {
+  string support_id = 1;
+  string name = 2;
+  repeated string tags = 3;
 }
 
 message LootTaken {

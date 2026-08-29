@@ -40,6 +40,10 @@ type Handle interface {
 	// of it can travel in the transfer request that put them here.
 	Attach(ctx context.Context, id EntityID, a Attachment) bool
 
+	// SetLoadout installs what a character may cast: their bar, the rank of
+	// each skill, and the supports linked to it.
+	SetLoadout(ctx context.Context, id EntityID, slots []LoadoutSlot)
+
 	// SetStats pushes a recomputed stat block in. The room never computes one
 	// itself: that would mean knowing about items, and item state belongs
 	// where it can be written durably.
@@ -112,6 +116,12 @@ type attachCmd struct {
 	id     EntityID
 	attach Attachment
 	result chan bool
+}
+
+// setLoadoutCmd installs a character's skill bar.
+type setLoadoutCmd struct {
+	id    EntityID
+	slots []LoadoutSlot
 }
 
 // setStatsCmd pushes a recomputed stat block in from the session.
@@ -191,6 +201,7 @@ func (captureCmd) isCommand()       {}
 func (freezeCmd) isCommand()        {}
 func (attachCmd) isCommand()        {}
 func (setStatsCmd) isCommand()      {}
+func (setLoadoutCmd) isCommand()    {}
 func (resolveLootCmd) isCommand()   {}
 func (abortTransferCmd) isCommand() {}
 func (leaveCmd) isCommand()         {}
@@ -216,6 +227,8 @@ func (r *Room) handle(c command) {
 		cmd.result <- r.attach(cmd.id, cmd.attach)
 	case setStatsCmd:
 		r.setStats(cmd.id, cmd.stats, cmd.maxHP)
+	case setLoadoutCmd:
+		r.setLoadout(cmd.id, cmd.slots)
 	case resolveLootCmd:
 		r.resolveLoot(cmd.dropID, cmd.player, cmd.granted, cmd.reason)
 	case abortTransferCmd:
@@ -279,6 +292,7 @@ func (r *Room) join(spec JoinSpec) (EntityID, error) {
 	// entity, so the first snapshot a client receives is already correct
 	// rather than a spawn-point position corrected a tick later.
 	r.applyCharacter(e, spec)
+	r.installLoadout(e, spec.Loadout)
 
 	// The party ID while partied, the character ID otherwise. A character with
 	// no key at all would share a layer with every other keyless character,
@@ -613,30 +627,33 @@ func (h *localHandle) Attach(ctx context.Context, id EntityID, a Attachment) boo
 }
 
 // setStats installs a recomputed stat block.
-func (r *Room) setStats(id EntityID, block *stats.Block, maxHP uint32) {
+//
+// maxHP is accepted and ignored: it is part of the Handle contract from before
+// buffs existed, and the reason it is ignored is worth reading rather than
+// removing.
+func (r *Room) setStats(id EntityID, block *stats.Block, _ uint32) {
 	p, ok := r.players[id]
 	if !ok || p.entity.Player == nil {
 		return
 	}
 
-	p.entity.Player.Stats = block
+	// The session's block is the base: level, equipment, passives. Buffs are
+	// layered on top inside the room, because they change several times a
+	// second in a fight and rebuilding from items each time would mean asking
+	// the session for stats mid-tick.
+	//
+	// maxHP is deliberately ignored. The session computes it from equipment
+	// alone, and the room knows about buffs that grant maximum life too --
+	// taking the session's number would drop their contribution every time
+	// somebody equipped a ring.
+	p.entity.Player.BaseStats = block
+	r.refreshBuffStats(p.entity)
+}
 
-	if maxHP > 0 {
-		previous := p.entity.MaxHP
-		p.entity.MaxHP = maxHP
-
-		// Current health scales with the maximum rather than staying put.
-		// Unequipping a life item at full health should not leave someone
-		// above their new maximum, and equipping one should not leave them
-		// looking wounded.
-		switch {
-		case previous == 0:
-			p.entity.HP = maxHP
-		case p.entity.HP > maxHP:
-			p.entity.HP = maxHP
-		case maxHP > previous && p.entity.HP == previous:
-			p.entity.HP = maxHP
-		}
+func (h *localHandle) SetLoadout(ctx context.Context, id EntityID, slots []LoadoutSlot) {
+	select {
+	case h.room.cmds <- setLoadoutCmd{id: id, slots: slots}:
+	case <-ctx.Done():
 	}
 }
 

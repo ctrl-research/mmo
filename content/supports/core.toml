@@ -1,0 +1,106 @@
+# Support modifiers.
+#
+# A support is a transformation of a skill's effect list, applied when the
+# skill is cast rather than when it is written. Because they operate on the
+# list rather than on knowledge of particular skills, a new support works with
+# every existing compatible skill and a new skill works with every existing
+# compatible support.
+#
+# That combinatorial property is the entire appeal, and it only survives if
+# supports never name a skill. There is no field for doing so.
+#
+# Every support costs mana, because a support that costs nothing is a support
+# everybody uses and therefore not a decision.
+
+[support.multistrike]
+name = "Multistrike"
+tags = ["melee", "attack"]
+mana_mult = 1.6
+
+# Less damage, three times. A real trade, and expressible only because effects
+# are data rather than code.
+[[support.multistrike.modify]]
+kind = "damage"
+more = 0.55
+repeat = 3
+
+[support.brutality]
+name = "Brutality"
+tags = ["attack"]
+mana_mult = 1.4
+
+# More physical damage, and nothing for anything else -- which is what makes
+# it a choice against a support that helps every element.
+[[support.brutality.modify]]
+kind = "damage"
+element = "physical"
+more = 1.45
+
+[support.conflagrate]
+name = "Conflagrate"
+tags = ["fire"]
+mana_mult = 1.35
+
+[[support.conflagrate.modify]]
+kind = "damage"
+element = "fire"
+more = 1.30
+
+# It also makes the burn it applies stick for longer, which is the half that
+# makes it feel like a fire support rather than a damage number.
+[[support.conflagrate.modify]]
+kind = "apply_buff"
+duration_mult = 1.6
+add_chance = 0.25
+
+[support.chain_lightning]
+name = "Chain"
+tags = ["spell"]
+mana_mult = 1.7
+
+# Two more hops, for less per hop. A support that only added hops would be
+# strictly better than not taking it.
+[[support.chain_lightning.modify]]
+kind = "chain"
+add_jumps = 2
+
+[[support.chain_lightning.modify]]
+kind = "damage"
+more = 0.75
+
+[support.piercing]
+name = "Piercing"
+tags = ["projectile"]
+mana_mult = 1.25
+
+# Projectiles carry their pierce count in the same field a chain carries its
+# hops, so one support field serves both.
+[[support.piercing.modify]]
+kind = "spawn_projectile"
+add_jumps = 2
+
+[support.swiftness]
+name = "Swiftness"
+tags = ["buff"]
+mana_mult = 1.3
+
+# Longer buffs, on any skill that applies one. This is the support that most
+# obviously attaches to skills it was never written for.
+[[support.swiftness.modify]]
+kind = "apply_buff"
+duration_mult = 1.75
+
+[support.overwhelm]
+name = "Overwhelm"
+tags = ["attack"]
+mana_mult = 1.45
+
+# More damage, but only against something already suffering. The chance
+# increase is what makes it worth taking on a skill that applies a debuff.
+[[support.overwhelm.modify]]
+kind = "apply_buff"
+add_chance = 0.4
+
+[[support.overwhelm.modify]]
+kind = "damage"
+more = 1.15

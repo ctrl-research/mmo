@@ -130,6 +130,11 @@ const (
 	EntityKind_ENTITY_KIND_MOB         EntityKind = 2
 	EntityKind_ENTITY_KIND_DROP        EntityKind = 3
 	EntityKind_ENTITY_KIND_NPC         EntityKind = 4
+	// What the effect vocabulary spawns: a bolt in flight, and a patch of
+	// ground that keeps applying something. Entities rather than a separate
+	// list, so they interpolate and layer like everything else.
+	EntityKind_ENTITY_KIND_PROJECTILE EntityKind = 5
+	EntityKind_ENTITY_KIND_AREA       EntityKind = 6
 )
 
 // Enum value maps for EntityKind.
@@ -140,6 +145,8 @@ var (
 		2: "ENTITY_KIND_MOB",
 		3: "ENTITY_KIND_DROP",
 		4: "ENTITY_KIND_NPC",
+		5: "ENTITY_KIND_PROJECTILE",
+		6: "ENTITY_KIND_AREA",
 	}
 	EntityKind_value = map[string]int32{
 		"ENTITY_KIND_UNSPECIFIED": 0,
@@ -147,6 +154,8 @@ var (
 		"ENTITY_KIND_MOB":         2,
 		"ENTITY_KIND_DROP":        3,
 		"ENTITY_KIND_NPC":         4,
+		"ENTITY_KIND_PROJECTILE":  5,
+		"ENTITY_KIND_AREA":        6,
 	}
 )
 
@@ -618,6 +627,7 @@ type ClientMessage struct {
 	//	*ClientMessage_Party
 	//	*ClientMessage_Guild
 	//	*ClientMessage_Social
+	//	*ClientMessage_SkillSlot
 	Body          isClientMessage_Body `protobuf_oneof:"body"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -768,6 +778,15 @@ func (x *ClientMessage) GetSocial() *SocialAction {
 	return nil
 }
 
+func (x *ClientMessage) GetSkillSlot() *SetSkillSlot {
+	if x != nil {
+		if x, ok := x.Body.(*ClientMessage_SkillSlot); ok {
+			return x.SkillSlot
+		}
+	}
+	return nil
+}
+
 type isClientMessage_Body interface {
 	isClientMessage_Body()
 }
@@ -820,6 +839,10 @@ type ClientMessage_Social struct {
 	Social *SocialAction `protobuf:"bytes,12,opt,name=social,proto3,oneof"`
 }
 
+type ClientMessage_SkillSlot struct {
+	SkillSlot *SetSkillSlot `protobuf:"bytes,13,opt,name=skill_slot,json=skillSlot,proto3,oneof"`
+}
+
 func (*ClientMessage_Hello) isClientMessage_Body() {}
 
 func (*ClientMessage_Intent) isClientMessage_Body() {}
@@ -843,6 +866,8 @@ func (*ClientMessage_Party) isClientMessage_Body() {}
 func (*ClientMessage_Guild) isClientMessage_Body() {}
 
 func (*ClientMessage_Social) isClientMessage_Body() {}
+
+func (*ClientMessage_SkillSlot) isClientMessage_Body() {}
 
 // Cast requests a skill. The client asks; the server decides.
 //
@@ -2086,6 +2111,11 @@ type Event struct {
 	//	*Event_Guild
 	//	*Event_GuildInvite
 	//	*Event_Friends
+	//	*Event_Buffs
+	//	*Event_Healed
+	//	*Event_Shielded
+	//	*Event_Absorbed
+	//	*Event_SkillBar
 	Body          isEvent_Body `protobuf_oneof:"body"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2290,6 +2320,51 @@ func (x *Event) GetFriends() *FriendList {
 	return nil
 }
 
+func (x *Event) GetBuffs() *BuffState {
+	if x != nil {
+		if x, ok := x.Body.(*Event_Buffs); ok {
+			return x.Buffs
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetHealed() *Healed {
+	if x != nil {
+		if x, ok := x.Body.(*Event_Healed); ok {
+			return x.Healed
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetShielded() *Shielded {
+	if x != nil {
+		if x, ok := x.Body.(*Event_Shielded); ok {
+			return x.Shielded
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetAbsorbed() *Absorbed {
+	if x != nil {
+		if x, ok := x.Body.(*Event_Absorbed); ok {
+			return x.Absorbed
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetSkillBar() *SkillBar {
+	if x != nil {
+		if x, ok := x.Body.(*Event_SkillBar); ok {
+			return x.SkillBar
+		}
+	}
+	return nil
+}
+
 type isEvent_Body interface {
 	isEvent_Body()
 }
@@ -2366,6 +2441,26 @@ type Event_Friends struct {
 	Friends *FriendList `protobuf:"bytes,20,opt,name=friends,proto3,oneof"`
 }
 
+type Event_Buffs struct {
+	Buffs *BuffState `protobuf:"bytes,15,opt,name=buffs,proto3,oneof"`
+}
+
+type Event_Healed struct {
+	Healed *Healed `protobuf:"bytes,21,opt,name=healed,proto3,oneof"`
+}
+
+type Event_Shielded struct {
+	Shielded *Shielded `protobuf:"bytes,22,opt,name=shielded,proto3,oneof"`
+}
+
+type Event_Absorbed struct {
+	Absorbed *Absorbed `protobuf:"bytes,23,opt,name=absorbed,proto3,oneof"`
+}
+
+type Event_SkillBar struct {
+	SkillBar *SkillBar `protobuf:"bytes,24,opt,name=skill_bar,json=skillBar,proto3,oneof"`
+}
+
 func (*Event_PlayerJoined) isEvent_Body() {}
 
 func (*Event_PlayerLeft) isEvent_Body() {}
@@ -2401,6 +2496,16 @@ func (*Event_Guild) isEvent_Body() {}
 func (*Event_GuildInvite) isEvent_Body() {}
 
 func (*Event_Friends) isEvent_Body() {}
+
+func (*Event_Buffs) isEvent_Body() {}
+
+func (*Event_Healed) isEvent_Body() {}
+
+func (*Event_Shielded) isEvent_Body() {}
+
+func (*Event_Absorbed) isEvent_Body() {}
+
+func (*Event_SkillBar) isEvent_Body() {}
 
 // DamageDealt is sent rather than inferred from a falling HP number, because a
 // client deriving "took damage" from state cannot tell 200 damage from two
@@ -4252,6 +4357,674 @@ func (x *FriendEntry) GetMapId() string {
 	return ""
 }
 
+// BuffState is everything currently on a character, sent whenever it changes.
+//
+// To the owner alone. A buff bar is the player's own business, and
+// broadcasting every stack of every debuff on every mob in the room to
+// everyone in it is a great deal of traffic for something nobody reads.
+//
+// Whole rather than incremental, for the same reason a party roster is: a
+// client that misses one update shows a bar that is quietly wrong, and the
+// whole thing is a handful of entries.
+type BuffState struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	Buffs         []*BuffInstance        `protobuf:"bytes,2,rep,name=buffs,proto3" json:"buffs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BuffState) Reset() {
+	*x = BuffState{}
+	mi := &file_mmo_v1_game_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BuffState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BuffState) ProtoMessage() {}
+
+func (x *BuffState) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BuffState.ProtoReflect.Descriptor instead.
+func (*BuffState) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *BuffState) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *BuffState) GetBuffs() []*BuffInstance {
+	if x != nil {
+		return x.Buffs
+	}
+	return nil
+}
+
+type BuffInstance struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	BuffId string                 `protobuf:"bytes,1,opt,name=buff_id,json=buffId,proto3" json:"buff_id,omitempty"`
+	Name   string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Stacks uint32                 `protobuf:"varint,3,opt,name=stacks,proto3" json:"stacks,omitempty"`
+	// RemainingMs counts down client-side between updates, so a bar drains
+	// smoothly rather than stepping once a second. Zero means it does not
+	// expire on its own, which is what an aura is.
+	RemainingMs uint32 `protobuf:"varint,4,opt,name=remaining_ms,json=remainingMs,proto3" json:"remaining_ms,omitempty"`
+	// Harmful decides which end of the bar it goes on and what colour it is.
+	// A player needs to tell "I am on fire" from "I am strong" without reading.
+	Harmful       bool `protobuf:"varint,5,opt,name=harmful,proto3" json:"harmful,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BuffInstance) Reset() {
+	*x = BuffInstance{}
+	mi := &file_mmo_v1_game_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BuffInstance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BuffInstance) ProtoMessage() {}
+
+func (x *BuffInstance) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BuffInstance.ProtoReflect.Descriptor instead.
+func (*BuffInstance) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *BuffInstance) GetBuffId() string {
+	if x != nil {
+		return x.BuffId
+	}
+	return ""
+}
+
+func (x *BuffInstance) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *BuffInstance) GetStacks() uint32 {
+	if x != nil {
+		return x.Stacks
+	}
+	return 0
+}
+
+func (x *BuffInstance) GetRemainingMs() uint32 {
+	if x != nil {
+		return x.RemainingMs
+	}
+	return 0
+}
+
+func (x *BuffInstance) GetHarmful() bool {
+	if x != nil {
+		return x.Harmful
+	}
+	return false
+}
+
+// Healed is sent rather than left for the client to infer from a rising
+// health bar, for the same reason DamageDealt is: a bar cannot distinguish one
+// large heal from two small ones, and the difference is most of what a healer
+// is reading.
+type Healed struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	Amount        uint32                 `protobuf:"varint,2,opt,name=amount,proto3" json:"amount,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Healed) Reset() {
+	*x = Healed{}
+	mi := &file_mmo_v1_game_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Healed) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Healed) ProtoMessage() {}
+
+func (x *Healed) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Healed.ProtoReflect.Descriptor instead.
+func (*Healed) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *Healed) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *Healed) GetAmount() uint32 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+// Shielded announces an absorption pool, which is not visible in the health
+// bar because it sits in front of it.
+type Shielded struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	Amount        uint32                 `protobuf:"varint,2,opt,name=amount,proto3" json:"amount,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Shielded) Reset() {
+	*x = Shielded{}
+	mi := &file_mmo_v1_game_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Shielded) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Shielded) ProtoMessage() {}
+
+func (x *Shielded) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Shielded.ProtoReflect.Descriptor instead.
+func (*Shielded) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *Shielded) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *Shielded) GetAmount() uint32 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+// Absorbed reports damage a shield soaked. Without it a hit that vanished
+// into a pool the player cannot see reads as the attack having missed.
+type Absorbed struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	Amount        uint32                 `protobuf:"varint,2,opt,name=amount,proto3" json:"amount,omitempty"`
+	Remaining     uint32                 `protobuf:"varint,3,opt,name=remaining,proto3" json:"remaining,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Absorbed) Reset() {
+	*x = Absorbed{}
+	mi := &file_mmo_v1_game_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Absorbed) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Absorbed) ProtoMessage() {}
+
+func (x *Absorbed) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Absorbed.ProtoReflect.Descriptor instead.
+func (*Absorbed) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *Absorbed) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *Absorbed) GetAmount() uint32 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *Absorbed) GetRemaining() uint32 {
+	if x != nil {
+		return x.Remaining
+	}
+	return 0
+}
+
+// SetSkillSlot rearranges the skill bar.
+//
+// Every rule about what may go where is checked server-side. A client that
+// could put any skill in any slot with any support attached could cast a mob
+// ability with every support in the game linked to it.
+type SetSkillSlot struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Slot  uint32                 `protobuf:"varint,1,opt,name=slot,proto3" json:"slot,omitempty"`
+	// Empty clears the slot.
+	SkillId string `protobuf:"bytes,2,opt,name=skill_id,json=skillId,proto3" json:"skill_id,omitempty"`
+	// Supports to link, in the order they apply. Order matters: two that both
+	// scale damage compose differently depending on which repeats first.
+	Supports      []string `protobuf:"bytes,3,rep,name=supports,proto3" json:"supports,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetSkillSlot) Reset() {
+	*x = SetSkillSlot{}
+	mi := &file_mmo_v1_game_proto_msgTypes[48]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetSkillSlot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetSkillSlot) ProtoMessage() {}
+
+func (x *SetSkillSlot) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[48]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetSkillSlot.ProtoReflect.Descriptor instead.
+func (*SetSkillSlot) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *SetSkillSlot) GetSlot() uint32 {
+	if x != nil {
+		return x.Slot
+	}
+	return 0
+}
+
+func (x *SetSkillSlot) GetSkillId() string {
+	if x != nil {
+		return x.SkillId
+	}
+	return ""
+}
+
+func (x *SetSkillSlot) GetSupports() []string {
+	if x != nil {
+		return x.Supports
+	}
+	return nil
+}
+
+// SkillBar is the whole loadout: what is on the bar, what the character knows,
+// and what supports exist to link.
+type SkillBar struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Slots         []*SkillSlot           `protobuf:"bytes,1,rep,name=slots,proto3" json:"slots,omitempty"`
+	Known         []*KnownSkill          `protobuf:"bytes,2,rep,name=known,proto3" json:"known,omitempty"`
+	Supports      []*SupportInfo         `protobuf:"bytes,3,rep,name=supports,proto3" json:"supports,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SkillBar) Reset() {
+	*x = SkillBar{}
+	mi := &file_mmo_v1_game_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SkillBar) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SkillBar) ProtoMessage() {}
+
+func (x *SkillBar) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SkillBar.ProtoReflect.Descriptor instead.
+func (*SkillBar) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{49}
+}
+
+func (x *SkillBar) GetSlots() []*SkillSlot {
+	if x != nil {
+		return x.Slots
+	}
+	return nil
+}
+
+func (x *SkillBar) GetKnown() []*KnownSkill {
+	if x != nil {
+		return x.Known
+	}
+	return nil
+}
+
+func (x *SkillBar) GetSupports() []*SupportInfo {
+	if x != nil {
+		return x.Supports
+	}
+	return nil
+}
+
+type SkillSlot struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	SkillId    string                 `protobuf:"bytes,1,opt,name=skill_id,json=skillId,proto3" json:"skill_id,omitempty"`
+	Name       string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Rank       uint32                 `protobuf:"varint,3,opt,name=rank,proto3" json:"rank,omitempty"`
+	CooldownMs uint32                 `protobuf:"varint,4,opt,name=cooldown_ms,json=cooldownMs,proto3" json:"cooldown_ms,omitempty"`
+	// The cost after supports, because that is what will actually be charged --
+	// a bar showing the base cost is a bar that lies.
+	CostMp        uint32   `protobuf:"varint,5,opt,name=cost_mp,json=costMp,proto3" json:"cost_mp,omitempty"`
+	Supports      []string `protobuf:"bytes,6,rep,name=supports,proto3" json:"supports,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SkillSlot) Reset() {
+	*x = SkillSlot{}
+	mi := &file_mmo_v1_game_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SkillSlot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SkillSlot) ProtoMessage() {}
+
+func (x *SkillSlot) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SkillSlot.ProtoReflect.Descriptor instead.
+func (*SkillSlot) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *SkillSlot) GetSkillId() string {
+	if x != nil {
+		return x.SkillId
+	}
+	return ""
+}
+
+func (x *SkillSlot) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *SkillSlot) GetRank() uint32 {
+	if x != nil {
+		return x.Rank
+	}
+	return 0
+}
+
+func (x *SkillSlot) GetCooldownMs() uint32 {
+	if x != nil {
+		return x.CooldownMs
+	}
+	return 0
+}
+
+func (x *SkillSlot) GetCostMp() uint32 {
+	if x != nil {
+		return x.CostMp
+	}
+	return 0
+}
+
+func (x *SkillSlot) GetSupports() []string {
+	if x != nil {
+		return x.Supports
+	}
+	return nil
+}
+
+type KnownSkill struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	SkillId string                 `protobuf:"bytes,1,opt,name=skill_id,json=skillId,proto3" json:"skill_id,omitempty"`
+	Name    string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Rank    uint32                 `protobuf:"varint,3,opt,name=rank,proto3" json:"rank,omitempty"`
+	MaxRank uint32                 `protobuf:"varint,4,opt,name=max_rank,json=maxRank,proto3" json:"max_rank,omitempty"`
+	// Tags decide which supports fit, so the client can grey out the ones that
+	// do not rather than offering them and being refused.
+	Tags          []string `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KnownSkill) Reset() {
+	*x = KnownSkill{}
+	mi := &file_mmo_v1_game_proto_msgTypes[51]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KnownSkill) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KnownSkill) ProtoMessage() {}
+
+func (x *KnownSkill) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[51]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KnownSkill.ProtoReflect.Descriptor instead.
+func (*KnownSkill) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{51}
+}
+
+func (x *KnownSkill) GetSkillId() string {
+	if x != nil {
+		return x.SkillId
+	}
+	return ""
+}
+
+func (x *KnownSkill) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *KnownSkill) GetRank() uint32 {
+	if x != nil {
+		return x.Rank
+	}
+	return 0
+}
+
+func (x *KnownSkill) GetMaxRank() uint32 {
+	if x != nil {
+		return x.MaxRank
+	}
+	return 0
+}
+
+func (x *KnownSkill) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+type SupportInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SupportId     string                 `protobuf:"bytes,1,opt,name=support_id,json=supportId,proto3" json:"support_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Tags          []string               `protobuf:"bytes,3,rep,name=tags,proto3" json:"tags,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupportInfo) Reset() {
+	*x = SupportInfo{}
+	mi := &file_mmo_v1_game_proto_msgTypes[52]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupportInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupportInfo) ProtoMessage() {}
+
+func (x *SupportInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_game_proto_msgTypes[52]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupportInfo.ProtoReflect.Descriptor instead.
+func (*SupportInfo) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{52}
+}
+
+func (x *SupportInfo) GetSupportId() string {
+	if x != nil {
+		return x.SupportId
+	}
+	return ""
+}
+
+func (x *SupportInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *SupportInfo) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
 type LootTaken struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	EntityId uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
@@ -4270,7 +5043,7 @@ type LootTaken struct {
 
 func (x *LootTaken) Reset() {
 	*x = LootTaken{}
-	mi := &file_mmo_v1_game_proto_msgTypes[43]
+	mi := &file_mmo_v1_game_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4282,7 +5055,7 @@ func (x *LootTaken) String() string {
 func (*LootTaken) ProtoMessage() {}
 
 func (x *LootTaken) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[43]
+	mi := &file_mmo_v1_game_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4295,7 +5068,7 @@ func (x *LootTaken) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LootTaken.ProtoReflect.Descriptor instead.
 func (*LootTaken) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{43}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *LootTaken) GetEntityId() uint32 {
@@ -4361,7 +5134,7 @@ type Inventory struct {
 
 func (x *Inventory) Reset() {
 	*x = Inventory{}
-	mi := &file_mmo_v1_game_proto_msgTypes[44]
+	mi := &file_mmo_v1_game_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4373,7 +5146,7 @@ func (x *Inventory) String() string {
 func (*Inventory) ProtoMessage() {}
 
 func (x *Inventory) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[44]
+	mi := &file_mmo_v1_game_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4386,7 +5159,7 @@ func (x *Inventory) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Inventory.ProtoReflect.Descriptor instead.
 func (*Inventory) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{44}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *Inventory) GetCarried() []*ItemStack {
@@ -4444,7 +5217,7 @@ type ItemStack struct {
 
 func (x *ItemStack) Reset() {
 	*x = ItemStack{}
-	mi := &file_mmo_v1_game_proto_msgTypes[45]
+	mi := &file_mmo_v1_game_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4456,7 +5229,7 @@ func (x *ItemStack) String() string {
 func (*ItemStack) ProtoMessage() {}
 
 func (x *ItemStack) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[45]
+	mi := &file_mmo_v1_game_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4469,7 +5242,7 @@ func (x *ItemStack) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ItemStack.ProtoReflect.Descriptor instead.
 func (*ItemStack) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{45}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *ItemStack) GetItemId() string {
@@ -4561,7 +5334,7 @@ type ItemMod struct {
 
 func (x *ItemMod) Reset() {
 	*x = ItemMod{}
-	mi := &file_mmo_v1_game_proto_msgTypes[46]
+	mi := &file_mmo_v1_game_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4573,7 +5346,7 @@ func (x *ItemMod) String() string {
 func (*ItemMod) ProtoMessage() {}
 
 func (x *ItemMod) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[46]
+	mi := &file_mmo_v1_game_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4586,7 +5359,7 @@ func (x *ItemMod) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ItemMod.ProtoReflect.Descriptor instead.
 func (*ItemMod) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{46}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *ItemMod) GetStat() string {
@@ -4634,7 +5407,7 @@ type StatValue struct {
 
 func (x *StatValue) Reset() {
 	*x = StatValue{}
-	mi := &file_mmo_v1_game_proto_msgTypes[47]
+	mi := &file_mmo_v1_game_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4646,7 +5419,7 @@ func (x *StatValue) String() string {
 func (*StatValue) ProtoMessage() {}
 
 func (x *StatValue) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[47]
+	mi := &file_mmo_v1_game_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4659,7 +5432,7 @@ func (x *StatValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatValue.ProtoReflect.Descriptor instead.
 func (*StatValue) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{47}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *StatValue) GetStat() string {
@@ -4686,7 +5459,7 @@ type PlayerJoined struct {
 
 func (x *PlayerJoined) Reset() {
 	*x = PlayerJoined{}
-	mi := &file_mmo_v1_game_proto_msgTypes[48]
+	mi := &file_mmo_v1_game_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4698,7 +5471,7 @@ func (x *PlayerJoined) String() string {
 func (*PlayerJoined) ProtoMessage() {}
 
 func (x *PlayerJoined) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[48]
+	mi := &file_mmo_v1_game_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4711,7 +5484,7 @@ func (x *PlayerJoined) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerJoined.ProtoReflect.Descriptor instead.
 func (*PlayerJoined) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{48}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *PlayerJoined) GetEntityId() uint32 {
@@ -4737,7 +5510,7 @@ type PlayerLeft struct {
 
 func (x *PlayerLeft) Reset() {
 	*x = PlayerLeft{}
-	mi := &file_mmo_v1_game_proto_msgTypes[49]
+	mi := &file_mmo_v1_game_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4749,7 +5522,7 @@ func (x *PlayerLeft) String() string {
 func (*PlayerLeft) ProtoMessage() {}
 
 func (x *PlayerLeft) ProtoReflect() protoreflect.Message {
-	mi := &file_mmo_v1_game_proto_msgTypes[49]
+	mi := &file_mmo_v1_game_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4762,7 +5535,7 @@ func (x *PlayerLeft) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerLeft.ProtoReflect.Descriptor instead.
 func (*PlayerLeft) Descriptor() ([]byte, []int) {
-	return file_mmo_v1_game_proto_rawDescGZIP(), []int{49}
+	return file_mmo_v1_game_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *PlayerLeft) GetEntityId() uint32 {
@@ -4779,7 +5552,7 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\x11mmo/v1/game.proto\x12\x06mmo.v1\"h\n" +
 	"\bEnvelope\x12-\n" +
 	"\x06server\x18\x01 \x03(\v2\x15.mmo.v1.ServerMessageR\x06server\x12-\n" +
-	"\x06client\x18\x02 \x03(\v2\x15.mmo.v1.ClientMessageR\x06client\"\xb1\x04\n" +
+	"\x06client\x18\x02 \x03(\v2\x15.mmo.v1.ClientMessageR\x06client\"\xe8\x04\n" +
 	"\rClientMessage\x12%\n" +
 	"\x05hello\x18\x01 \x01(\v2\r.mmo.v1.HelloH\x00R\x05hello\x12(\n" +
 	"\x06intent\x18\x02 \x01(\v2\x0e.mmo.v1.IntentH\x00R\x06intent\x12\"\n" +
@@ -4794,7 +5567,9 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\x05party\x18\n" +
 	" \x01(\v2\x13.mmo.v1.PartyActionH\x00R\x05party\x12+\n" +
 	"\x05guild\x18\v \x01(\v2\x13.mmo.v1.GuildActionH\x00R\x05guild\x12.\n" +
-	"\x06social\x18\f \x01(\v2\x14.mmo.v1.SocialActionH\x00R\x06socialB\x06\n" +
+	"\x06social\x18\f \x01(\v2\x14.mmo.v1.SocialActionH\x00R\x06social\x125\n" +
+	"\n" +
+	"skill_slot\x18\r \x01(\v2\x14.mmo.v1.SetSkillSlotH\x00R\tskillSlotB\x06\n" +
 	"\x04body\"T\n" +
 	"\x04Cast\x12\x10\n" +
 	"\x03seq\x18\x01 \x01(\rR\x03seq\x12\x19\n" +
@@ -4897,7 +5672,7 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\bentities\x18\x04 \x03(\v2\x13.mmo.v1.EntityDeltaR\bentities\x12-\n" +
 	"\aentered\x18\x05 \x03(\v2\x13.mmo.v1.EntityStateR\aentered\x12\x18\n" +
 	"\aremoved\x18\x06 \x03(\rR\aremoved\x12'\n" +
-	"\x04self\x18\a \x01(\v2\x13.mmo.v1.EntityStateR\x04self\"\xb8\a\n" +
+	"\x04self\x18\a \x01(\v2\x13.mmo.v1.EntityStateR\x04self\"\x98\t\n" +
 	"\x05Event\x12;\n" +
 	"\rplayer_joined\x18\x01 \x01(\v2\x14.mmo.v1.PlayerJoinedH\x00R\fplayerJoined\x125\n" +
 	"\vplayer_left\x18\x02 \x01(\v2\x12.mmo.v1.PlayerLeftH\x00R\n" +
@@ -4921,8 +5696,13 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\fparty_invite\x18\x11 \x01(\v2\x13.mmo.v1.PartyInviteH\x00R\vpartyInvite\x12*\n" +
 	"\x05guild\x18\x12 \x01(\v2\x12.mmo.v1.GuildStateH\x00R\x05guild\x128\n" +
 	"\fguild_invite\x18\x13 \x01(\v2\x13.mmo.v1.GuildInviteH\x00R\vguildInvite\x12.\n" +
-	"\afriends\x18\x14 \x01(\v2\x12.mmo.v1.FriendListH\x00R\afriendsB\x06\n" +
-	"\x04bodyJ\x04\b\v\x10\fJ\x04\b\x0f\x10\x10\"\x95\x01\n" +
+	"\afriends\x18\x14 \x01(\v2\x12.mmo.v1.FriendListH\x00R\afriends\x12)\n" +
+	"\x05buffs\x18\x0f \x01(\v2\x11.mmo.v1.BuffStateH\x00R\x05buffs\x12(\n" +
+	"\x06healed\x18\x15 \x01(\v2\x0e.mmo.v1.HealedH\x00R\x06healed\x12.\n" +
+	"\bshielded\x18\x16 \x01(\v2\x10.mmo.v1.ShieldedH\x00R\bshielded\x12.\n" +
+	"\babsorbed\x18\x17 \x01(\v2\x10.mmo.v1.AbsorbedH\x00R\babsorbed\x12/\n" +
+	"\tskill_bar\x18\x18 \x01(\v2\x10.mmo.v1.SkillBarH\x00R\bskillBarB\x06\n" +
+	"\x04bodyJ\x04\b\v\x10\f\"\x95\x01\n" +
 	"\vDamageDealt\x12\x1b\n" +
 	"\tsource_id\x18\x01 \x01(\rR\bsourceId\x12\x1b\n" +
 	"\ttarget_id\x18\x02 \x01(\rR\btargetId\x12\x16\n" +
@@ -5081,7 +5861,54 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
 	"\x05level\x18\x03 \x01(\rR\x05level\x12\x16\n" +
 	"\x06online\x18\x04 \x01(\bR\x06online\x12\x15\n" +
-	"\x06map_id\x18\x05 \x01(\tR\x05mapId\"\x97\x01\n" +
+	"\x06map_id\x18\x05 \x01(\tR\x05mapId\"T\n" +
+	"\tBuffState\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12*\n" +
+	"\x05buffs\x18\x02 \x03(\v2\x14.mmo.v1.BuffInstanceR\x05buffs\"\x90\x01\n" +
+	"\fBuffInstance\x12\x17\n" +
+	"\abuff_id\x18\x01 \x01(\tR\x06buffId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
+	"\x06stacks\x18\x03 \x01(\rR\x06stacks\x12!\n" +
+	"\fremaining_ms\x18\x04 \x01(\rR\vremainingMs\x12\x18\n" +
+	"\aharmful\x18\x05 \x01(\bR\aharmful\"=\n" +
+	"\x06Healed\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12\x16\n" +
+	"\x06amount\x18\x02 \x01(\rR\x06amount\"?\n" +
+	"\bShielded\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12\x16\n" +
+	"\x06amount\x18\x02 \x01(\rR\x06amount\"]\n" +
+	"\bAbsorbed\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12\x16\n" +
+	"\x06amount\x18\x02 \x01(\rR\x06amount\x12\x1c\n" +
+	"\tremaining\x18\x03 \x01(\rR\tremaining\"Y\n" +
+	"\fSetSkillSlot\x12\x12\n" +
+	"\x04slot\x18\x01 \x01(\rR\x04slot\x12\x19\n" +
+	"\bskill_id\x18\x02 \x01(\tR\askillId\x12\x1a\n" +
+	"\bsupports\x18\x03 \x03(\tR\bsupports\"\x8e\x01\n" +
+	"\bSkillBar\x12'\n" +
+	"\x05slots\x18\x01 \x03(\v2\x11.mmo.v1.SkillSlotR\x05slots\x12(\n" +
+	"\x05known\x18\x02 \x03(\v2\x12.mmo.v1.KnownSkillR\x05known\x12/\n" +
+	"\bsupports\x18\x03 \x03(\v2\x13.mmo.v1.SupportInfoR\bsupports\"\xa4\x01\n" +
+	"\tSkillSlot\x12\x19\n" +
+	"\bskill_id\x18\x01 \x01(\tR\askillId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04rank\x18\x03 \x01(\rR\x04rank\x12\x1f\n" +
+	"\vcooldown_ms\x18\x04 \x01(\rR\n" +
+	"cooldownMs\x12\x17\n" +
+	"\acost_mp\x18\x05 \x01(\rR\x06costMp\x12\x1a\n" +
+	"\bsupports\x18\x06 \x03(\tR\bsupports\"~\n" +
+	"\n" +
+	"KnownSkill\x12\x19\n" +
+	"\bskill_id\x18\x01 \x01(\tR\askillId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04rank\x18\x03 \x01(\rR\x04rank\x12\x19\n" +
+	"\bmax_rank\x18\x04 \x01(\rR\amaxRank\x12\x12\n" +
+	"\x04tags\x18\x05 \x03(\tR\x04tags\"T\n" +
+	"\vSupportInfo\x12\x1d\n" +
+	"\n" +
+	"support_id\x18\x01 \x01(\tR\tsupportId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04tags\x18\x03 \x03(\tR\x04tags\"\x97\x01\n" +
 	"\tLootTaken\x12\x1b\n" +
 	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12\x17\n" +
 	"\aitem_id\x18\x02 \x01(\tR\x06itemId\x12\x10\n" +
@@ -5132,14 +5959,16 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\x15ITEM_ACTION_KIND_MOVE\x10\x01\x12\x1a\n" +
 	"\x16ITEM_ACTION_KIND_EQUIP\x10\x02\x12\x1c\n" +
 	"\x18ITEM_ACTION_KIND_UNEQUIP\x10\x03\x12\x1c\n" +
-	"\x18ITEM_ACTION_KIND_DESTROY\x10\x04*\x81\x01\n" +
+	"\x18ITEM_ACTION_KIND_DESTROY\x10\x04*\xb3\x01\n" +
 	"\n" +
 	"EntityKind\x12\x1b\n" +
 	"\x17ENTITY_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12ENTITY_KIND_PLAYER\x10\x01\x12\x13\n" +
 	"\x0fENTITY_KIND_MOB\x10\x02\x12\x14\n" +
 	"\x10ENTITY_KIND_DROP\x10\x03\x12\x13\n" +
-	"\x0fENTITY_KIND_NPC\x10\x04*\x9b\x01\n" +
+	"\x0fENTITY_KIND_NPC\x10\x04\x12\x1a\n" +
+	"\x16ENTITY_KIND_PROJECTILE\x10\x05\x12\x14\n" +
+	"\x10ENTITY_KIND_AREA\x10\x06*\x9b\x01\n" +
 	"\vEntityField\x12\x1c\n" +
 	"\x18ENTITY_FIELD_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10ENTITY_FIELD_POS\x10\x01\x12\x14\n" +
@@ -5177,7 +6006,7 @@ func file_mmo_v1_game_proto_rawDescGZIP() []byte {
 }
 
 var file_mmo_v1_game_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
-var file_mmo_v1_game_proto_msgTypes = make([]protoimpl.MessageInfo, 50)
+var file_mmo_v1_game_proto_msgTypes = make([]protoimpl.MessageInfo, 60)
 var file_mmo_v1_game_proto_goTypes = []any{
 	(InteractKind)(0),       // 0: mmo.v1.InteractKind
 	(ItemActionKind)(0),     // 1: mmo.v1.ItemActionKind
@@ -5231,13 +6060,23 @@ var file_mmo_v1_game_proto_goTypes = []any{
 	(*SocialAction)(nil),    // 49: mmo.v1.SocialAction
 	(*FriendList)(nil),      // 50: mmo.v1.FriendList
 	(*FriendEntry)(nil),     // 51: mmo.v1.FriendEntry
-	(*LootTaken)(nil),       // 52: mmo.v1.LootTaken
-	(*Inventory)(nil),       // 53: mmo.v1.Inventory
-	(*ItemStack)(nil),       // 54: mmo.v1.ItemStack
-	(*ItemMod)(nil),         // 55: mmo.v1.ItemMod
-	(*StatValue)(nil),       // 56: mmo.v1.StatValue
-	(*PlayerJoined)(nil),    // 57: mmo.v1.PlayerJoined
-	(*PlayerLeft)(nil),      // 58: mmo.v1.PlayerLeft
+	(*BuffState)(nil),       // 52: mmo.v1.BuffState
+	(*BuffInstance)(nil),    // 53: mmo.v1.BuffInstance
+	(*Healed)(nil),          // 54: mmo.v1.Healed
+	(*Shielded)(nil),        // 55: mmo.v1.Shielded
+	(*Absorbed)(nil),        // 56: mmo.v1.Absorbed
+	(*SetSkillSlot)(nil),    // 57: mmo.v1.SetSkillSlot
+	(*SkillBar)(nil),        // 58: mmo.v1.SkillBar
+	(*SkillSlot)(nil),       // 59: mmo.v1.SkillSlot
+	(*KnownSkill)(nil),      // 60: mmo.v1.KnownSkill
+	(*SupportInfo)(nil),     // 61: mmo.v1.SupportInfo
+	(*LootTaken)(nil),       // 62: mmo.v1.LootTaken
+	(*Inventory)(nil),       // 63: mmo.v1.Inventory
+	(*ItemStack)(nil),       // 64: mmo.v1.ItemStack
+	(*ItemMod)(nil),         // 65: mmo.v1.ItemMod
+	(*StatValue)(nil),       // 66: mmo.v1.StatValue
+	(*PlayerJoined)(nil),    // 67: mmo.v1.PlayerJoined
+	(*PlayerLeft)(nil),      // 68: mmo.v1.PlayerLeft
 }
 var file_mmo_v1_game_proto_depIdxs = []int32{
 	14, // 0: mmo.v1.Envelope.server:type_name -> mmo.v1.ServerMessage
@@ -5254,58 +6093,68 @@ var file_mmo_v1_game_proto_depIdxs = []int32{
 	41, // 11: mmo.v1.ClientMessage.party:type_name -> mmo.v1.PartyAction
 	45, // 12: mmo.v1.ClientMessage.guild:type_name -> mmo.v1.GuildAction
 	49, // 13: mmo.v1.ClientMessage.social:type_name -> mmo.v1.SocialAction
-	0,  // 14: mmo.v1.Interact.kind:type_name -> mmo.v1.InteractKind
-	1,  // 15: mmo.v1.ItemAction.kind:type_name -> mmo.v1.ItemActionKind
-	16, // 16: mmo.v1.ServerMessage.welcome:type_name -> mmo.v1.Welcome
-	23, // 17: mmo.v1.ServerMessage.snapshot:type_name -> mmo.v1.Snapshot
-	24, // 18: mmo.v1.ServerMessage.event:type_name -> mmo.v1.Event
-	20, // 19: mmo.v1.ServerMessage.pong:type_name -> mmo.v1.Pong
-	17, // 20: mmo.v1.ServerMessage.kick:type_name -> mmo.v1.Kick
-	53, // 21: mmo.v1.ServerMessage.inventory:type_name -> mmo.v1.Inventory
-	21, // 22: mmo.v1.Welcome.self:type_name -> mmo.v1.EntityState
-	2,  // 23: mmo.v1.EntityState.kind:type_name -> mmo.v1.EntityKind
-	22, // 24: mmo.v1.Snapshot.entities:type_name -> mmo.v1.EntityDelta
-	21, // 25: mmo.v1.Snapshot.entered:type_name -> mmo.v1.EntityState
-	21, // 26: mmo.v1.Snapshot.self:type_name -> mmo.v1.EntityState
-	57, // 27: mmo.v1.Event.player_joined:type_name -> mmo.v1.PlayerJoined
-	58, // 28: mmo.v1.Event.player_left:type_name -> mmo.v1.PlayerLeft
-	25, // 29: mmo.v1.Event.damage:type_name -> mmo.v1.DamageDealt
-	26, // 30: mmo.v1.Event.died:type_name -> mmo.v1.EntityDied
-	27, // 31: mmo.v1.Event.skill_cast:type_name -> mmo.v1.SkillCast
-	28, // 32: mmo.v1.Event.exp_gained:type_name -> mmo.v1.ExpGained
-	29, // 33: mmo.v1.Event.level_up:type_name -> mmo.v1.LevelUp
-	52, // 34: mmo.v1.Event.loot_taken:type_name -> mmo.v1.LootTaken
-	30, // 35: mmo.v1.Event.waypoint_found:type_name -> mmo.v1.WaypointFound
-	31, // 36: mmo.v1.Event.portal_refused:type_name -> mmo.v1.PortalRefused
-	34, // 37: mmo.v1.Event.world_map:type_name -> mmo.v1.WorldMap
-	39, // 38: mmo.v1.Event.chat:type_name -> mmo.v1.ChatLine
-	40, // 39: mmo.v1.Event.system:type_name -> mmo.v1.SystemMessage
-	42, // 40: mmo.v1.Event.party:type_name -> mmo.v1.PartyState
-	44, // 41: mmo.v1.Event.party_invite:type_name -> mmo.v1.PartyInvite
-	46, // 42: mmo.v1.Event.guild:type_name -> mmo.v1.GuildState
-	48, // 43: mmo.v1.Event.guild_invite:type_name -> mmo.v1.GuildInvite
-	50, // 44: mmo.v1.Event.friends:type_name -> mmo.v1.FriendList
-	35, // 45: mmo.v1.WorldMap.maps:type_name -> mmo.v1.MapSummary
-	36, // 46: mmo.v1.WorldMap.waypoints:type_name -> mmo.v1.WaypointSummary
-	37, // 47: mmo.v1.WorldMap.channels:type_name -> mmo.v1.ChannelSummary
-	5,  // 48: mmo.v1.ChatSend.channel:type_name -> mmo.v1.ChatChannel
-	5,  // 49: mmo.v1.ChatLine.channel:type_name -> mmo.v1.ChatChannel
-	5,  // 50: mmo.v1.SystemMessage.channel:type_name -> mmo.v1.ChatChannel
-	6,  // 51: mmo.v1.PartyAction.kind:type_name -> mmo.v1.PartyAction.Kind
-	43, // 52: mmo.v1.PartyState.members:type_name -> mmo.v1.PartyMember
-	7,  // 53: mmo.v1.GuildAction.kind:type_name -> mmo.v1.GuildAction.Kind
-	47, // 54: mmo.v1.GuildState.members:type_name -> mmo.v1.GuildMember
-	8,  // 55: mmo.v1.SocialAction.kind:type_name -> mmo.v1.SocialAction.Kind
-	51, // 56: mmo.v1.FriendList.friends:type_name -> mmo.v1.FriendEntry
-	54, // 57: mmo.v1.Inventory.carried:type_name -> mmo.v1.ItemStack
-	54, // 58: mmo.v1.Inventory.equipped:type_name -> mmo.v1.ItemStack
-	56, // 59: mmo.v1.Inventory.stats:type_name -> mmo.v1.StatValue
-	55, // 60: mmo.v1.ItemStack.mods:type_name -> mmo.v1.ItemMod
-	61, // [61:61] is the sub-list for method output_type
-	61, // [61:61] is the sub-list for method input_type
-	61, // [61:61] is the sub-list for extension type_name
-	61, // [61:61] is the sub-list for extension extendee
-	0,  // [0:61] is the sub-list for field type_name
+	57, // 14: mmo.v1.ClientMessage.skill_slot:type_name -> mmo.v1.SetSkillSlot
+	0,  // 15: mmo.v1.Interact.kind:type_name -> mmo.v1.InteractKind
+	1,  // 16: mmo.v1.ItemAction.kind:type_name -> mmo.v1.ItemActionKind
+	16, // 17: mmo.v1.ServerMessage.welcome:type_name -> mmo.v1.Welcome
+	23, // 18: mmo.v1.ServerMessage.snapshot:type_name -> mmo.v1.Snapshot
+	24, // 19: mmo.v1.ServerMessage.event:type_name -> mmo.v1.Event
+	20, // 20: mmo.v1.ServerMessage.pong:type_name -> mmo.v1.Pong
+	17, // 21: mmo.v1.ServerMessage.kick:type_name -> mmo.v1.Kick
+	63, // 22: mmo.v1.ServerMessage.inventory:type_name -> mmo.v1.Inventory
+	21, // 23: mmo.v1.Welcome.self:type_name -> mmo.v1.EntityState
+	2,  // 24: mmo.v1.EntityState.kind:type_name -> mmo.v1.EntityKind
+	22, // 25: mmo.v1.Snapshot.entities:type_name -> mmo.v1.EntityDelta
+	21, // 26: mmo.v1.Snapshot.entered:type_name -> mmo.v1.EntityState
+	21, // 27: mmo.v1.Snapshot.self:type_name -> mmo.v1.EntityState
+	67, // 28: mmo.v1.Event.player_joined:type_name -> mmo.v1.PlayerJoined
+	68, // 29: mmo.v1.Event.player_left:type_name -> mmo.v1.PlayerLeft
+	25, // 30: mmo.v1.Event.damage:type_name -> mmo.v1.DamageDealt
+	26, // 31: mmo.v1.Event.died:type_name -> mmo.v1.EntityDied
+	27, // 32: mmo.v1.Event.skill_cast:type_name -> mmo.v1.SkillCast
+	28, // 33: mmo.v1.Event.exp_gained:type_name -> mmo.v1.ExpGained
+	29, // 34: mmo.v1.Event.level_up:type_name -> mmo.v1.LevelUp
+	62, // 35: mmo.v1.Event.loot_taken:type_name -> mmo.v1.LootTaken
+	30, // 36: mmo.v1.Event.waypoint_found:type_name -> mmo.v1.WaypointFound
+	31, // 37: mmo.v1.Event.portal_refused:type_name -> mmo.v1.PortalRefused
+	34, // 38: mmo.v1.Event.world_map:type_name -> mmo.v1.WorldMap
+	39, // 39: mmo.v1.Event.chat:type_name -> mmo.v1.ChatLine
+	40, // 40: mmo.v1.Event.system:type_name -> mmo.v1.SystemMessage
+	42, // 41: mmo.v1.Event.party:type_name -> mmo.v1.PartyState
+	44, // 42: mmo.v1.Event.party_invite:type_name -> mmo.v1.PartyInvite
+	46, // 43: mmo.v1.Event.guild:type_name -> mmo.v1.GuildState
+	48, // 44: mmo.v1.Event.guild_invite:type_name -> mmo.v1.GuildInvite
+	50, // 45: mmo.v1.Event.friends:type_name -> mmo.v1.FriendList
+	52, // 46: mmo.v1.Event.buffs:type_name -> mmo.v1.BuffState
+	54, // 47: mmo.v1.Event.healed:type_name -> mmo.v1.Healed
+	55, // 48: mmo.v1.Event.shielded:type_name -> mmo.v1.Shielded
+	56, // 49: mmo.v1.Event.absorbed:type_name -> mmo.v1.Absorbed
+	58, // 50: mmo.v1.Event.skill_bar:type_name -> mmo.v1.SkillBar
+	35, // 51: mmo.v1.WorldMap.maps:type_name -> mmo.v1.MapSummary
+	36, // 52: mmo.v1.WorldMap.waypoints:type_name -> mmo.v1.WaypointSummary
+	37, // 53: mmo.v1.WorldMap.channels:type_name -> mmo.v1.ChannelSummary
+	5,  // 54: mmo.v1.ChatSend.channel:type_name -> mmo.v1.ChatChannel
+	5,  // 55: mmo.v1.ChatLine.channel:type_name -> mmo.v1.ChatChannel
+	5,  // 56: mmo.v1.SystemMessage.channel:type_name -> mmo.v1.ChatChannel
+	6,  // 57: mmo.v1.PartyAction.kind:type_name -> mmo.v1.PartyAction.Kind
+	43, // 58: mmo.v1.PartyState.members:type_name -> mmo.v1.PartyMember
+	7,  // 59: mmo.v1.GuildAction.kind:type_name -> mmo.v1.GuildAction.Kind
+	47, // 60: mmo.v1.GuildState.members:type_name -> mmo.v1.GuildMember
+	8,  // 61: mmo.v1.SocialAction.kind:type_name -> mmo.v1.SocialAction.Kind
+	51, // 62: mmo.v1.FriendList.friends:type_name -> mmo.v1.FriendEntry
+	53, // 63: mmo.v1.BuffState.buffs:type_name -> mmo.v1.BuffInstance
+	59, // 64: mmo.v1.SkillBar.slots:type_name -> mmo.v1.SkillSlot
+	60, // 65: mmo.v1.SkillBar.known:type_name -> mmo.v1.KnownSkill
+	61, // 66: mmo.v1.SkillBar.supports:type_name -> mmo.v1.SupportInfo
+	64, // 67: mmo.v1.Inventory.carried:type_name -> mmo.v1.ItemStack
+	64, // 68: mmo.v1.Inventory.equipped:type_name -> mmo.v1.ItemStack
+	66, // 69: mmo.v1.Inventory.stats:type_name -> mmo.v1.StatValue
+	65, // 70: mmo.v1.ItemStack.mods:type_name -> mmo.v1.ItemMod
+	71, // [71:71] is the sub-list for method output_type
+	71, // [71:71] is the sub-list for method input_type
+	71, // [71:71] is the sub-list for extension type_name
+	71, // [71:71] is the sub-list for extension extendee
+	0,  // [0:71] is the sub-list for field type_name
 }
 
 func init() { file_mmo_v1_game_proto_init() }
@@ -5326,6 +6175,7 @@ func file_mmo_v1_game_proto_init() {
 		(*ClientMessage_Party)(nil),
 		(*ClientMessage_Guild)(nil),
 		(*ClientMessage_Social)(nil),
+		(*ClientMessage_SkillSlot)(nil),
 	}
 	file_mmo_v1_game_proto_msgTypes[5].OneofWrappers = []any{
 		(*ServerMessage_Welcome)(nil),
@@ -5354,6 +6204,11 @@ func file_mmo_v1_game_proto_init() {
 		(*Event_Guild)(nil),
 		(*Event_GuildInvite)(nil),
 		(*Event_Friends)(nil),
+		(*Event_Buffs)(nil),
+		(*Event_Healed)(nil),
+		(*Event_Shielded)(nil),
+		(*Event_Absorbed)(nil),
+		(*Event_SkillBar)(nil),
 	}
 	file_mmo_v1_game_proto_msgTypes[24].OneofWrappers = []any{
 		(*Travel_WaypointId)(nil),
@@ -5366,7 +6221,7 @@ func file_mmo_v1_game_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mmo_v1_game_proto_rawDesc), len(file_mmo_v1_game_proto_rawDesc)),
 			NumEnums:      9,
-			NumMessages:   50,
+			NumMessages:   60,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
