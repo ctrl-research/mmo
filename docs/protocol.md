@@ -60,6 +60,9 @@ message ClientMessage {
     Ping         ping         = 7;
     OpenWorldMap world_map    = 8;   // ask for the map screen's contents
     Travel       travel       = 9;   // waypoint, or a channel of this map
+    PartyAction  party        = 10;
+    GuildAction  guild        = 11;
+    SocialAction social       = 12;  // the friends list
   }
 }
 
@@ -235,6 +238,53 @@ message Event {
   }
 }
 ```
+
+## Chat
+
+Five channels — local, global, whisper, party, guild — that differ in who hears you, not in what you can say. One message with a channel rather than five messages, and the server decides the audience:
+
+```protobuf
+message ChatSend {
+  ChatChannel channel = 1;
+  string body = 2;
+  string target = 3;   // a character name, for whispers only
+}
+```
+
+There is deliberately no recipient list. A client that could name its own audience would be deciding what other players see, which is the one thing it never gets to do. `target` is the sole exception and it names one character, whom the server then resolves through presence — a name that is not online comes back as a refusal, not silence.
+
+Every line comes back as a `ChatLine` carrying the speaker's name **as the server resolved it**. The sender gets their own copy too: a client that renders its message optimistically and then receives the real one shows it twice, and one that never receives it cannot tell delivery from a drop. A whisper's outgoing copy sets `outgoing` and names the *recipient*, so the two halves of a conversation read differently ("to Alice" against "Alice whispers").
+
+Refusals arrive as `SystemMessage`, never as a missing `ChatLine`. A message that vanishes reads as the game being broken, and most of the reasons — a typo in a name, a rate limit, a mute — are things the player can act on.
+
+### Limits
+
+Per channel, from `content/balance.toml`, because they cost different amounts to send: a global line reaches everyone online and a local one reaches a room. Buckets start full, so greeting your party on arriving is not throttled. Messages are bounded in **characters, not bytes** — a byte limit quietly gives players of some languages less to say — and control characters are stripped, since a message that could forge a line break could impersonate the server's own notices.
+
+Mutes are checked server-side per message and cached briefly. A muted player is told they are muted and, where there is one, why.
+
+## Parties and guilds
+
+Both are asked for and answered whole:
+
+```protobuf
+message PartyAction { Kind kind = 1; string target = 2; }
+message PartyState {
+  string party_id = 1;
+  string leader_character_id = 2;
+  repeated PartyMember members = 3;
+  string self_character_id = 4;
+  string loot = 5;
+}
+```
+
+The roster is sent whole rather than as a delta. A party is at most six members, the delta would be most of the message anyway, and a client that misses one incremental update shows a roster that is quietly wrong until somebody leaves. An empty member list means "you are not in a party".
+
+Member vitals are the one part that changes continuously, so they arrive on their own slower beat (once a second) rather than in the roster. A party member in another room does not appear in the snapshot at all — which is most of what a member frame is for.
+
+Guild state is shaped the same way, with ranks (1 member, 2 officer, 3 leader) and the recipient's own rank included so a client can grey out the buttons they cannot use rather than offering them and being refused. Every action is still checked server-side: a client asking to promote somebody in a guild it does not lead is asking, not doing.
+
+Invitations are questions asked in the moment. They arrive as their own event with a TTL and expire on their own, rather than sitting in a queue nobody answered.
 
 ## Moving between rooms
 

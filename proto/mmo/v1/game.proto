@@ -39,10 +39,11 @@ message ClientMessage {
     ItemAction item_action = 6;
     OpenWorldMap open_world_map = 7;
     Travel travel = 8;
+    ChatSend chat = 9;
+    PartyAction party = 10;
+    GuildAction guild = 11;
+    SocialAction social = 12;
   }
-  // Reserved for messages arriving in later milestones -- chat, party, trade
-  // -- so adding them never renumbers what is already deployed.
-  reserved 9;
 }
 
 // Cast requests a skill. The client asks; the server decides.
@@ -325,12 +326,19 @@ message Event {
     WaypointFound waypoint_found = 9;
     PortalRefused portal_refused = 10;
     WorldMap world_map = 12;
+    ChatLine chat = 13;
+    SystemMessage system = 14;
+    PartyState party = 16;
+    PartyInvite party_invite = 17;
+    GuildState guild = 18;
+    GuildInvite guild_invite = 19;
+    FriendList friends = 20;
   }
   // 11 was MapChanged, replaced by a second Welcome: it carried strictly less
   // than the Welcome the destination room already sends, and two messages
   // saying the same thing is one of them being wrong eventually.
   reserved 11;
-  reserved 13 to 15;  // chat, buffs, party
+  reserved 15;  // buffs, party
 }
 
 // DamageDealt is sent rather than inferred from a falling HP number, because a
@@ -358,6 +366,10 @@ message SkillCast {
 message ExpGained {
   uint64 amount = 1;
   uint64 total = 2;
+
+  // Shared marks experience split with a party, so a player can tell a share
+  // from a solo kill rather than concluding the numbers look wrong.
+  bool shared = 3;
 }
 
 message LevelUp {
@@ -452,6 +464,242 @@ message ChannelSummary {
   uint32 players = 3;
   uint32 capacity = 4;
   bool current = 5;
+}
+
+// Chat channels.
+//
+// They differ in who hears you, not in what you can say, so they are one
+// message with a channel rather than five messages. Local is the only one that
+// never leaves the room; everything else crosses nodes over the bus.
+enum ChatChannel {
+  CHAT_CHANNEL_UNSPECIFIED = 0;
+
+  // Everyone in the room, whether or not they share a party. This is the
+  // channel that makes a shared room feel shared.
+  CHAT_CHANNEL_LOCAL = 1;
+
+  // Everyone online, rate-limited hardest because it reaches the most people.
+  CHAT_CHANNEL_GLOBAL = 2;
+
+  // One named character.
+  CHAT_CHANNEL_WHISPER = 3;
+
+  CHAT_CHANNEL_PARTY = 4;
+  CHAT_CHANNEL_GUILD = 5;
+}
+
+// ChatSend is a player saying something.
+//
+// The server decides who hears it. A client naming its own audience -- a list
+// of recipients, a room id -- would be a client deciding what other players
+// see, which is the one thing it never gets to do.
+message ChatSend {
+  ChatChannel channel = 1;
+  string body = 2;
+
+  // Target is the recipient's character name, for whispers only. Ignored on
+  // every other channel.
+  string target = 3;
+}
+
+// ChatLine is something said, delivered.
+message ChatLine {
+  ChatChannel channel = 1;
+
+  // From is the speaker's display name, resolved by the server. A client
+  // never gets to say who a message is from.
+  string from = 2;
+  string body = 3;
+
+  // Whispered marks a whisper this player sent rather than received, so the
+  // client can render "to Alice: hello" instead of "Alice: hello". Without it
+  // the sender's own copy is indistinguishable from an incoming one.
+  bool outgoing = 4;
+
+  // ServerTimeMs is when the server accepted it, so a client can order lines
+  // that arrived out of order and show timestamps that agree between players.
+  int64 server_time_ms = 5;
+}
+
+// SystemMessage is the server talking to one player: a refusal, a notice, a
+// result. Kept separate from ChatLine because it has no speaker, and dressing
+// it up as one would mean inventing a name for the server.
+message SystemMessage {
+  string body = 1;
+
+  // Channel the message is about, so the client can show it in the tab the
+  // player was typing in rather than always in the system tab.
+  ChatChannel channel = 2;
+}
+
+// PartyAction is a request to change party membership.
+//
+// Every one of these is checked against the party's actual state on the
+// server: a client asking to kick somebody from a party it does not lead is
+// asking, not doing.
+message PartyAction {
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    KIND_INVITE = 1;
+    KIND_ACCEPT = 2;
+    KIND_DECLINE = 3;
+    KIND_LEAVE = 4;
+    KIND_KICK = 5;
+    KIND_PROMOTE = 6;
+    KIND_SET_LOOT = 7;
+  }
+
+  Kind kind = 1;
+
+  // A name rather than an ID because a name is what a player has: character
+  // IDs are never shown, so a client could only supply one it had scraped from
+  // a party it was already in.
+  // Target is a character name, for invite, kick, and promote, and the loot
+  // rule for KIND_SET_LOOT.
+  string target = 2;
+}
+
+// PartyState is the whole party, sent whenever any of it changes.
+//
+// Whole rather than incremental: a party is at most six members, the delta
+// would be most of the message anyway, and a client that misses one
+// incremental update shows a roster that is quietly wrong until somebody
+// leaves. An empty member list means "you are not in a party".
+message PartyState {
+  string party_id = 1;
+  string leader_character_id = 2;
+  repeated PartyMember members = 3;
+
+  // Self is the recipient's own character ID, so a client can find itself in
+  // the roster without matching on name.
+  string self_character_id = 4;
+
+  // Loot is how drops are assigned: "free-for-all" or "round-robin".
+  string loot = 5;
+}
+
+// PartyMember is one member frame.
+//
+// Vitals are here rather than read from the snapshot because a party member in
+// another room is not in the snapshot at all -- that is most of what a member
+// frame is for.
+message PartyMember {
+  string character_id = 1;
+  string name = 2;
+  uint32 level = 3;
+  uint32 hp = 4;
+  uint32 hp_max = 5;
+
+  // MapId is where they are, which is what tells a player whether their party
+  // is together.
+  string map_id = 6;
+
+  // Online is false for a member inside their reconnect window: still in the
+  // party, temporarily not in the world.
+  bool online = 7;
+}
+
+message PartyInvite {
+  string from_name = 1;
+
+  // ExpiresInMs is how long the invitation stands, so the client can show a
+  // prompt that goes away by itself rather than one that lingers after the
+  // answer stopped mattering.
+  int64 expires_in_ms = 2;
+}
+
+// GuildAction is a request to change a guild.
+//
+// Every one is checked against the requester's actual rank. A client asking to
+// promote somebody in a guild it is not an officer of is asking, not doing.
+message GuildAction {
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    KIND_CREATE = 1;
+    KIND_INVITE = 2;
+    KIND_ACCEPT = 3;
+    KIND_DECLINE = 4;
+    KIND_LEAVE = 5;
+    KIND_KICK = 6;
+    KIND_PROMOTE = 7;
+    KIND_DEMOTE = 8;
+    KIND_SET_MOTD = 9;
+  }
+
+  Kind kind = 1;
+
+  // Target is a guild name for create, a character name for invite, kick,
+  // promote, and demote, and the message itself for set_motd.
+  string target = 2;
+}
+
+// GuildState is the whole guild, sent whenever any of it changes.
+//
+// An empty guild_id means "you are not in a guild". The roster is sent whole
+// for the same reason a party's is: a client that misses one incremental
+// update holds a roster that is quietly wrong.
+message GuildState {
+  string guild_id = 1;
+  string name = 2;
+  string motd = 3;
+  repeated GuildMember members = 4;
+
+  // Rank is the recipient's own rank, so a client can grey out the buttons
+  // they cannot use rather than offering them and being refused.
+  uint32 rank = 5;
+}
+
+message GuildMember {
+  string character_id = 1;
+  string name = 2;
+  uint32 rank = 3;
+  uint32 level = 4;
+
+  // Online is filled from presence, so a roster shows who is around now. A
+  // guild roster is mostly people who are not.
+  bool online = 5;
+}
+
+message GuildInvite {
+  string guild_name = 1;
+  string from_name = 2;
+  int64 expires_in_ms = 3;
+}
+
+// SocialAction manages the friends list.
+message SocialAction {
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    KIND_ADD_FRIEND = 1;
+    KIND_REMOVE_FRIEND = 2;
+    KIND_LIST_FRIENDS = 3;
+  }
+
+  Kind kind = 1;
+
+  // Target is a character name.
+  string target = 2;
+}
+
+// FriendList is the whole list, sent when it changes or is asked for.
+//
+// Requested rather than pushed on every change in presence: a client that
+// wants live status can ask again, and broadcasting every login to everybody
+// who has ever added that character is a fan-out nobody needs.
+message FriendList {
+  repeated FriendEntry friends = 1;
+}
+
+message FriendEntry {
+  string character_id = 1;
+  string name = 2;
+  uint32 level = 3;
+
+  bool online = 4;
+
+  // MapId is where they are, so a friends list answers "can I go and find
+  // them" rather than only "are they awake". Empty when offline.
+  string map_id = 5;
 }
 
 message LootTaken {

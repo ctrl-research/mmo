@@ -56,8 +56,14 @@ func (r *Room) rollDrops(killer, victim *Entity) {
 	bal := r.content.Balance.Drops
 
 	spawn := func(d DropState) {
-		d.Owner = killer.ID
+		// Free-for-all leaves this as the killer with no lock, which is what a
+		// solo player and a party of friends both want. Round-robin hands it
+		// to the next member in turn and reserves it for them briefly.
+		d.Owner = r.nextLooter(victim.Layer, killer.ID)
 		d.UnlockAt = r.tick
+		if d.Owner != killer.ID {
+			d.UnlockAt = r.tick + uint64(r.content.Balance.Party.LootLockTicks)
+		}
 		d.ExpiresAt = r.tick + uint64(bal.GroundTicks)
 
 		at := victim.Body.FeetCenter()

@@ -93,7 +93,7 @@ func (s *Store) CreateCharacter(ctx context.Context, accountID uuid.UUID, name, 
 		// The unique index is the authority on name collisions, not a prior
 		// SELECT: two simultaneous creates would both pass a check-then-insert.
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		if errors.As(err, &pgErr) && pgErr.Code == uniqueViolation {
 			return Character{}, ErrNameTaken
 		}
 		return Character{}, fmt.Errorf("store: creating character: %w", err)
@@ -255,10 +255,30 @@ func (s *Store) CharacterByName(ctx context.Context, name string) (Character, er
 		&c.MapID, &c.SpawnPoint, &c.State, &c.LeaseToken, &c.CreatedAt, &c.UpdatedAt)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Character{}, fmt.Errorf("no character named %q", name)
+		// Wrapped rather than returned bare, so a caller can tell "no such
+		// character" from a database problem while a command-line user still
+		// gets a sentence naming what was not found.
+		return Character{}, fmt.Errorf("no character named %q: %w", name, ErrNotFound)
 	}
 	if err != nil {
 		return Character{}, fmt.Errorf("store: loading character by name: %w", err)
 	}
 	return c, nil
+}
+
+// HighestLeaseToken returns the largest fencing token any character carries.
+//
+// It exists for one reason: the in-process lease table counts from zero, and a
+// server that has run before must not hand out tokens below the ones already
+// written, or every returning character's first checkpoint is rejected as a
+// stale write. Reading the high-water mark at startup restores the property
+// Redis gets for free by keeping the counter outside the process.
+func (s *Store) HighestLeaseToken(ctx context.Context) (int64, error) {
+	var highest int64
+	err := s.pool.QueryRow(ctx,
+		`SELECT coalesce(max(lease_token), 0) FROM characters`).Scan(&highest)
+	if err != nil {
+		return 0, fmt.Errorf("store: reading the lease high-water mark: %w", err)
+	}
+	return highest, nil
 }

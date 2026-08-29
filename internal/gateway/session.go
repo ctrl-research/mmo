@@ -365,6 +365,33 @@ func (s *session) handleClientMessage(ctx context.Context, cm *mmov1.ClientMessa
 		}
 		s.handleTravel(ctx, cm.GetTravel())
 
+	case cm.GetChat() != nil:
+		// Deliberately not behind the intent limiter: chat has its own budget
+		// per channel, and spending an input token on a message would let a
+		// chatty player lose movement inputs.
+		s.handleChat(ctx, cm.GetChat())
+
+	case cm.GetParty() != nil:
+		if !limiter.allow() {
+			s.gw.metrics.InputsDropped.Inc()
+			return
+		}
+		s.handleParty(ctx, cm.GetParty())
+
+	case cm.GetGuild() != nil:
+		if !limiter.allow() {
+			s.gw.metrics.InputsDropped.Inc()
+			return
+		}
+		s.handleGuild(ctx, cm.GetGuild())
+
+	case cm.GetSocial() != nil:
+		if !limiter.allow() {
+			s.gw.metrics.InputsDropped.Inc()
+			return
+		}
+		s.handleSocial(ctx, cm.GetSocial())
+
 	case cm.GetPing() != nil:
 		s.Send(&mmov1.ServerMessage{
 			Body: &mmov1.ServerMessage_Pong{Pong: &mmov1.Pong{
@@ -520,6 +547,130 @@ func (s *session) handleTravel(ctx context.Context, req *mmov1.Travel) {
 				}},
 			}},
 		})
+	}
+}
+
+// handleChat forwards a chat message to the session, which decides who hears
+// it.
+//
+// The gateway does not route chat. Deciding who hears a message needs presence,
+// party membership, and the bus, none of which belong at the socket -- and a
+// client that could name its own audience would be deciding what other players
+// see.
+func (s *session) handleChat(ctx context.Context, msg *mmov1.ChatSend) {
+	if s.play == nil {
+		return
+	}
+	if err := s.play.SendChat(ctx, msg); err != nil {
+		s.Send(systemMessage(msg.GetChannel(), "slow down"))
+	}
+}
+
+// handleParty forwards a party request.
+func (s *session) handleParty(ctx context.Context, action *mmov1.PartyAction) {
+	if s.play == nil {
+		return
+	}
+
+	kinds := map[mmov1.PartyAction_Kind]world.PartyActionKind{
+		mmov1.PartyAction_KIND_INVITE:   world.PartyInvite,
+		mmov1.PartyAction_KIND_ACCEPT:   world.PartyAccept,
+		mmov1.PartyAction_KIND_DECLINE:  world.PartyDecline,
+		mmov1.PartyAction_KIND_LEAVE:    world.PartyLeave,
+		mmov1.PartyAction_KIND_KICK:     world.PartyKick,
+		mmov1.PartyAction_KIND_PROMOTE:  world.PartyPromote,
+		mmov1.PartyAction_KIND_SET_LOOT: world.PartySetLoot,
+	}
+
+	kind, ok := kinds[action.GetKind()]
+	if !ok {
+		return
+	}
+
+	// Names come from a text field, so they are bounded here rather than
+	// travelling into a presence lookup at whatever length a client sent.
+	target := action.GetTarget()
+	if len(target) > maxNameLength {
+		target = target[:maxNameLength]
+	}
+
+	if err := s.play.Party(ctx, world.PartyRequest{Kind: kind, Target: target}); err != nil {
+		s.Send(systemMessage(mmov1.ChatChannel_CHAT_CHANNEL_PARTY, err.Error()))
+	}
+}
+
+// handleGuild forwards a guild request.
+func (s *session) handleGuild(ctx context.Context, action *mmov1.GuildAction) {
+	if s.play == nil {
+		return
+	}
+
+	kinds := map[mmov1.GuildAction_Kind]world.GuildActionKind{
+		mmov1.GuildAction_KIND_CREATE:   world.GuildCreate,
+		mmov1.GuildAction_KIND_INVITE:   world.GuildInvite,
+		mmov1.GuildAction_KIND_ACCEPT:   world.GuildAccept,
+		mmov1.GuildAction_KIND_DECLINE:  world.GuildDecline,
+		mmov1.GuildAction_KIND_LEAVE:    world.GuildLeave,
+		mmov1.GuildAction_KIND_KICK:     world.GuildKick,
+		mmov1.GuildAction_KIND_PROMOTE:  world.GuildPromote,
+		mmov1.GuildAction_KIND_DEMOTE:   world.GuildDemote,
+		mmov1.GuildAction_KIND_SET_MOTD: world.GuildSetMOTD,
+	}
+
+	kind, ok := kinds[action.GetKind()]
+	if !ok {
+		return
+	}
+
+	// A message of the day is longer than a name, so the bound is the larger
+	// of the two rather than a name-sized truncation of a notice board.
+	target := action.GetTarget()
+	if len(target) > world.MaxMOTDLength {
+		target = target[:world.MaxMOTDLength]
+	}
+
+	if err := s.play.Guild(ctx, world.GuildRequest{Kind: kind, Target: target}); err != nil {
+		s.Send(systemMessage(mmov1.ChatChannel_CHAT_CHANNEL_GUILD, err.Error()))
+	}
+}
+
+// handleSocial forwards a friends-list request.
+func (s *session) handleSocial(ctx context.Context, action *mmov1.SocialAction) {
+	if s.play == nil {
+		return
+	}
+
+	kinds := map[mmov1.SocialAction_Kind]world.SocialActionKind{
+		mmov1.SocialAction_KIND_ADD_FRIEND:    world.FriendAdd,
+		mmov1.SocialAction_KIND_REMOVE_FRIEND: world.FriendRemove,
+		mmov1.SocialAction_KIND_LIST_FRIENDS:  world.FriendList,
+	}
+
+	kind, ok := kinds[action.GetKind()]
+	if !ok {
+		return
+	}
+
+	target := action.GetTarget()
+	if len(target) > maxNameLength {
+		target = target[:maxNameLength]
+	}
+
+	if err := s.play.Social(ctx, world.SocialRequest{Kind: kind, Target: target}); err != nil {
+		s.Send(systemMessage(mmov1.ChatChannel_CHAT_CHANNEL_UNSPECIFIED, err.Error()))
+	}
+}
+
+// maxNameLength bounds a character name arriving from a client.
+const maxNameLength = 64
+
+func systemMessage(channel mmov1.ChatChannel, body string) *mmov1.ServerMessage {
+	return &mmov1.ServerMessage{
+		Body: &mmov1.ServerMessage_Event{Event: &mmov1.Event{
+			Body: &mmov1.Event_System{System: &mmov1.SystemMessage{
+				Body: body, Channel: channel,
+			}},
+		}},
 	}
 }
 

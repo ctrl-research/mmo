@@ -11,6 +11,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/ctrl-research/mmo/internal/auth"
 	"github.com/ctrl-research/mmo/internal/directory"
+	"github.com/ctrl-research/mmo/internal/store"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -24,11 +25,27 @@ import (
 // It becomes required with several gateways, because a login can start on one
 // and its callback land on another, and because two processes cannot share an
 // in-memory lease table.
-func openCoordination(ctx context.Context, cfg config, log *slog.Logger) (directory.Leases, auth.Ephemeral, func(), error) {
+func openCoordination(ctx context.Context, cfg config, db *store.Store, log *slog.Logger) (directory.Leases, auth.Ephemeral, func(), error) {
 	if cfg.redisAddr == "" {
 		log.Info("using in-process leases and token storage; " +
 			"set --redis-addr before running more than one process")
+
 		leases := directory.NewMemoryLeases()
+
+		// Seeded above the tokens already in the database. Without this the
+		// counter restarts at one after every restart, and every character
+		// that played before it fails its first checkpoint -- the fencing
+		// predicate cannot tell a restarted counter from a stale writer, and
+		// it is right not to.
+		highest, err := db.HighestLeaseToken(ctx)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		leases.Seed(highest)
+		if highest > 0 {
+			log.Info("lease tokens resume above the stored high-water mark", "from", highest)
+		}
+
 		ephemeral := auth.NewMemoryEphemeral()
 		return leases, ephemeral, func() {}, nil
 	}

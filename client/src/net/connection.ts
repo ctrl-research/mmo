@@ -13,6 +13,14 @@ import {
   ItemActionKind,
   OpenWorldMapSchema,
   TravelSchema,
+  ChatSendSchema,
+  ChatChannel,
+  PartyActionSchema,
+  PartyAction_Kind,
+  GuildActionSchema,
+  GuildAction_Kind,
+  SocialActionSchema,
+  SocialAction_Kind,
   type Inventory,
   type Snapshot,
   type Welcome,
@@ -20,6 +28,13 @@ import {
   type EntityState,
   type Travel,
   type WorldMap,
+  type ChatLine,
+  type SystemMessage,
+  type PartyState,
+  type PartyInvite,
+  type GuildState,
+  type GuildInvite,
+  type FriendList,
 } from "@/gen/mmo/v1/game_pb";
 
 /** Bumped on any incompatible wire change; must match gateway.ProtocolVersion. */
@@ -196,6 +211,32 @@ export class Connection {
     this.send({ case: "travel", value: create(TravelSchema, { destination: dest }) });
   }
 
+  /**
+   * Says something on a channel.
+   *
+   * The client never names its own audience. It says which channel and, for a
+   * whisper, who -- and the server decides who hears it, because a client that
+   * could list recipients would be deciding what other players see.
+   */
+  sendChat(channel: ChatChannel, body: string, target = ""): void {
+    this.send({ case: "chat", value: create(ChatSendSchema, { channel, body, target }) });
+  }
+
+  /** Asks to change party membership. */
+  sendParty(kind: PartyAction_Kind, target = ""): void {
+    this.send({ case: "party", value: create(PartyActionSchema, { kind, target }) });
+  }
+
+  /** Asks to change a guild. */
+  sendGuild(kind: GuildAction_Kind, target = ""): void {
+    this.send({ case: "guild", value: create(GuildActionSchema, { kind, target }) });
+  }
+
+  /** Asks to change the friends list. */
+  sendSocial(kind: SocialAction_Kind, target = ""): void {
+    this.send({ case: "social", value: create(SocialActionSchema, { kind, target }) });
+  }
+
   send(body: ClientMessage["body"]): void {
     if (!this.connected) return;
     const msg = create(ClientMessageSchema, { body });
@@ -294,4 +335,19 @@ export function isRetryable(code: number): boolean {
   );
 }
 
-export type { Snapshot, Welcome, Event, EntityState, Inventory, WorldMap };
+export type {
+  Snapshot,
+  Welcome,
+  Event,
+  EntityState,
+  Inventory,
+  WorldMap,
+  ChatLine,
+  SystemMessage,
+  PartyState,
+  PartyInvite,
+  GuildState,
+  GuildInvite,
+  FriendList,
+};
+export { ChatChannel, PartyAction_Kind, GuildAction_Kind, SocialAction_Kind };

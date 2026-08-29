@@ -54,6 +54,12 @@ type Attachment struct {
 	Sink   Sink
 	Events SessionEvents
 
+	// LayerKey decides which hostile-entity layer the character joins: the
+	// party ID while partied, and the character ID otherwise. Empty falls back
+	// to the character ID, so a caller that has not heard of parties still
+	// gets a layer of its own rather than sharing one with everybody.
+	LayerKey string
+
 	// KnownWaypoints are the ones already unlocked, so standing on one does
 	// not generate a database write every tick. Nil leaves the room's existing
 	// set alone.
@@ -82,6 +88,12 @@ type JoinSpec struct {
 	// Events is this player's channel back to their session, where work the
 	// tick loop must not do -- database writes, transfers -- happens.
 	Events SessionEvents
+
+	// LayerKey decides which hostile-entity layer the character joins: the
+	// party ID while partied, and the character ID otherwise. Empty falls back
+	// to the character ID, so a caller that has not heard of parties still
+	// gets a layer of its own rather than sharing one with everybody.
+	LayerKey string
 
 	// KnownWaypoints are the ones already unlocked, so standing on one does
 	// not generate a write every tick.

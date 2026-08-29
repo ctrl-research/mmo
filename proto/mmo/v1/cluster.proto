@@ -54,6 +54,12 @@ message TransferRequest {
   uint64 instance_id = 6;
   string waypoint_id = 12;
 
+  // Which hostile-entity layer to join: the party ID while partied, the
+  // character ID otherwise. Sent rather than looked up at the destination,
+  // because arriving in the character's own layer and being re-keyed a moment
+  // later would spawn a whole mob population nobody ever sees.
+  string layer_key = 13;
+
   // Progression, which has its own database columns.
   uint32 level = 7;
   int64 exp = 8;
@@ -104,4 +110,84 @@ message HostReply {
   bool hosting = 1;
   string node_id = 2;
   string error = 3;
+}
+
+// ChatDelivery carries one line of chat between nodes.
+//
+// Everything but local chat crosses node boundaries: the recipients of a
+// global line, a whisper, or a party message are wherever they happen to be
+// logged in, and the sender's node has no way to reach them except through the
+// bus. Local chat never appears here -- it is delivered inside the room, which
+// is the whole meaning of the channel.
+message ChatDelivery {
+  // Channel is the game's ChatChannel, carried as an int so cluster.proto does
+  // not have to import the client-facing schema. The gateway is the only thing
+  // that turns it back into a typed value.
+  uint32 channel = 1;
+
+  string from_character_id = 2;
+  string from_name = 3;
+  string body = 4;
+  int64 server_time_ms = 5;
+
+  // ToCharacterId addresses a whisper. Empty on broadcast channels.
+  string to_character_id = 6;
+}
+
+// PartyUpdate announces that a party changed, to every node holding a member.
+//
+// It carries the whole party rather than a delta for the same reason the
+// client-facing PartyState does: it is at most six members, and a node that
+// misses one incremental update would hold a roster that is quietly wrong.
+message PartyUpdate {
+  string party_id = 1;
+  string leader_character_id = 2;
+  repeated PartyMemberInfo members = 3;
+
+  // Disbanded marks the last update a party will ever send, so a node can drop
+  // its subscription rather than waiting to notice nothing arrives.
+  bool disbanded = 4;
+
+  // Notice is what to tell the members happened, already phrased: "Alice
+  // joined the party". Composed by the node that made the change, because it
+  // is the only one that knows which change it was.
+  string notice = 5;
+
+  // Loot is how drops are assigned: "free-for-all" or "round-robin".
+  string loot = 6;
+}
+
+message PartyMemberInfo {
+  string character_id = 1;
+  string name = 2;
+}
+
+// PartyVitals is one member's health and whereabouts, pushed on a slow beat so
+// member frames are useful for somebody in another room.
+//
+// Separate from PartyUpdate because it is the only part that changes
+// continuously: folding it in would mean a roster broadcast every second.
+message PartyVitals {
+  string character_id = 1;
+  uint32 level = 2;
+  uint32 hp = 3;
+  uint32 hp_max = 4;
+  string map_id = 5;
+  bool online = 6;
+}
+
+// GuildUpdate tells every node holding a member that a guild changed.
+//
+// It carries no roster: unlike a party, a guild can have hundreds of members,
+// and broadcasting the whole thing on every join would be a lot of bytes for
+// something each node can read from Postgres. It says what changed and lets
+// the nodes that care reload.
+message GuildUpdate {
+  string guild_id = 1;
+
+  // Notice is what to tell the members, already phrased.
+  string notice = 2;
+
+  // Disbanded marks the last update a guild will send.
+  bool disbanded = 3;
 }

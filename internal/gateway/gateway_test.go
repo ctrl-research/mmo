@@ -279,15 +279,25 @@ func (ts *testServer) dial(t *testing.T) *client {
 
 func (c *client) send(msgs ...*mmov1.ClientMessage) {
 	c.t.Helper()
-	payload, err := proto.Marshal(&mmov1.Envelope{Client: msgs})
-	if err != nil {
-		c.t.Fatalf("marshal: %v", err)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := c.conn.Write(ctx, websocket.MessageBinary, payload); err != nil {
+	if err := c.trySend(msgs...); err != nil {
 		c.t.Fatalf("write: %v", err)
 	}
+}
+
+// trySend writes and reports the error rather than failing the test.
+//
+// For anything driving input from a background goroutine: t.Fatal outside the
+// test goroutine only stops that goroutine, and a driver still writing while
+// the connection is being torn down would fail a test that had already passed.
+func (c *client) trySend(msgs ...*mmov1.ClientMessage) error {
+	payload, err := proto.Marshal(&mmov1.Envelope{Client: msgs})
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return c.conn.Write(ctx, websocket.MessageBinary, payload)
 }
 
 func (c *client) hello(ticket string, version uint32) {

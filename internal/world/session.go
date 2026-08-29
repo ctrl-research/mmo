@@ -82,6 +82,18 @@ type PlayerSession interface {
 	// where an item is.
 	ApplyItemAction(ctx context.Context, action ItemAction) error
 
+	// SendChat queues a chat message. The session decides who hears it.
+	SendChat(ctx context.Context, msg *mmov1.ChatSend) error
+
+	// Party queues a change to party membership.
+	Party(ctx context.Context, req PartyRequest) error
+
+	// Guild queues a change to guild membership.
+	Guild(ctx context.Context, req GuildRequest) error
+
+	// Social queues a change to the friends list.
+	Social(ctx context.Context, req SocialRequest) error
+
 	// Travel moves the character without walking: to an unlocked waypoint, or
 	// to another channel of the map they are in.
 	Travel(ctx context.Context, req TravelRequest) error
@@ -115,10 +127,41 @@ type Session struct {
 
 	// claims, portals, and waypoints carry work from the tick loop to this
 	// session's goroutine, where the database and the bus can be reached.
-	claims    chan room.LootClaim
-	portals   chan room.PortalRequest
-	waypoints chan string
-	travels   chan TravelRequest
+	claims     chan room.LootClaim
+	portals    chan room.PortalRequest
+	waypoints  chan string
+	travels    chan TravelRequest
+	chats      chan *mmov1.ChatSend
+	partyReqs  chan PartyRequest
+	guildReqs  chan GuildRequest
+	socialReqs chan SocialRequest
+
+	// guildID is the guild this character belongs to, and leftGuild the one
+	// they were in a moment ago -- needed because announcing a departure means
+	// publishing to a subject this session has already unsubscribed from.
+	guildID   uuid.UUID
+	leftGuild uuid.UUID
+
+	// guildInvite is the guild this character was last invited to. One at a
+	// time: an invitation is a question, and a queue of them is a list of
+	// questions nobody answered.
+	guildInvite        uuid.UUID
+	guildInviteExpires time.Time
+
+	// partyID is the party this character is in, or empty. It decides the
+	// layer key, so changing it changes which mobs they can see and hit.
+	partyID directory.PartyID
+
+	// partyLoot is the party's loot rule, mirrored here because it has to
+	// travel into the room with the layer key.
+	partyLoot string
+
+	// partyVitals is the last health each other member published, which is
+	// what a member frame for somebody in another room is made of.
+	partyVitals map[string]*mmov1.PartyVitals
+
+	// chatState holds the rate-limit buckets and the cached mute.
+	chatState
 
 	// finished is closed when the session's own goroutine has returned.
 	//
@@ -303,9 +346,15 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 		waypoints: make(chan string, 8),
 		// Depth one: a second travel request while one is in flight is a
 		// double-click, not an instruction to move twice.
-		travels:  make(chan TravelRequest, 1),
-		finished: make(chan struct{}),
-		done:     make(chan struct{}),
+		travels: make(chan TravelRequest, 1),
+		// Deeper than the rate limit allows, so a legitimate burst queues and
+		// only a client ignoring the limits outright is refused.
+		chats:      make(chan *mmov1.ChatSend, 8),
+		partyReqs:  make(chan PartyRequest, 4),
+		guildReqs:  make(chan GuildRequest, 4),
+		socialReqs: make(chan SocialRequest, 4),
+		finished:   make(chan struct{}),
+		done:       make(chan struct{}),
 		log: n.log.With(
 			"character", characterID.String(), "name", character.Name, "account", accountID.String()),
 	}
@@ -328,6 +377,19 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 	s.refreshStats(ctx, character.Level)
 
 	n.hold(characterID, s)
+	s.announcePresence(ctx, false)
+
+	// A character who was in a party before they logged out is still in it:
+	// party membership outlives a session, so the layer key and the
+	// subscription have to be restored rather than assumed absent.
+	s.restoreParty(ctx)
+
+	// A guild outlives everything: the session, the party, and the character
+	// being logged out for a month. Picking it back up is a subscription and
+	// a roster, not a decision.
+	s.syncGuildMembership(ctx)
+	s.sendGuildState(ctx)
+
 	go s.maintain()
 
 	s.log.Info("character entered the world", "map", mapID, "lease", lease.Token)
@@ -347,6 +409,11 @@ func (s *Session) maintain() {
 	checkpoint := time.NewTicker(CheckpointInterval)
 	defer checkpoint.Stop()
 
+	// Party member frames for somebody in another room have to come from
+	// somewhere, and this is it. It only publishes while in a party.
+	vitals := time.NewTicker(PartyVitalsInterval)
+	defer vitals.Stop()
+
 	for {
 		select {
 		case <-s.done:
@@ -363,6 +430,23 @@ func (s *Session) maintain() {
 
 		case req := <-s.travels:
 			s.handleTravel(req)
+
+		case req := <-s.chats:
+			s.handleChat(req)
+
+		case req := <-s.partyReqs:
+			s.handlePartyRequest(req)
+
+		case req := <-s.guildReqs:
+			s.handleGuildRequest(req)
+
+		case req := <-s.socialReqs:
+			s.handleSocialRequest(req)
+
+		case <-vitals.C:
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			s.publishVitals(ctx)
+			cancel()
 
 		case <-renew.C:
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -470,6 +554,10 @@ func (s *Session) Disconnect(ctx context.Context) {
 		s.log.Error("checkpoint on disconnect failed", "err", err)
 	}
 
+	// Still online as far as the party is concerned -- they are in the world,
+	// frozen -- but a whisper must not be delivered to a socket that has gone.
+	s.announcePresence(ctx, true)
+
 	s.mu.Lock()
 	s.disconnected = true
 	s.graceTimer = time.AfterFunc(s.node.grace, func() {
@@ -572,7 +660,19 @@ func (s *Session) Close(ctx context.Context) {
 		s.log.Error("final checkpoint failed", "err", err)
 	}
 
+	s.leaveParty(ctx)
+
+	if id := s.GuildID(); id != uuid.Nil {
+		s.node.unwatch(guildPattern(id))
+	}
+
 	s.detach()
+
+	if s.node.presence != nil {
+		if err := s.node.presence.Forget(ctx, s.characterID.String()); err != nil {
+			s.log.Error("clearing presence", "err", err)
+		}
+	}
 
 	releaseCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

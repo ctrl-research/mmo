@@ -105,10 +105,30 @@ type MemoryLeases struct {
 }
 
 // NewMemoryLeases returns an empty lease table.
+//
+// Tokens start at one. That is wrong for a server that has run before: the
+// characters in the database carry tokens from the last run, and handing out
+// lower ones makes every returning character's first checkpoint fail the
+// fencing predicate -- correctly, since the predicate cannot tell a restarted
+// counter from a stale writer. Seed it with the highest token already stored.
 func NewMemoryLeases() *MemoryLeases {
 	return &MemoryLeases{
 		held: make(map[string]Lease),
 		now:  time.Now,
+	}
+}
+
+// Seed raises the token counter above tokens already issued.
+//
+// Called at startup with the high-water mark from the database. The Redis
+// implementation does not need this: its counter lives in Redis and outlives
+// the process, which is the same property being restored here.
+func (m *MemoryLeases) Seed(highest int64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if highest > m.nextID {
+		m.nextID = highest
 	}
 }
 

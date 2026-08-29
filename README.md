@@ -2,7 +2,7 @@
 
 A self-hosted, horizontally scalable 2D MMO — drawing on MapleStory's side-scrolling combat and channels, Path of Exile's passive tree and stat math, and Old School RuneScape's secondary skills.
 
-**Status: M4 complete** — a world of three connected zones. Walk through a portal and the character is handed to a room on a different world node, over the bus, with the same protocol that will carry it between processes. Switch channels, unlock waypoints by walking over them, and fast-travel from the world map. Empty rooms tear themselves down; distant spawn points stay empty. Kill a mob, get a rare with tiered affixes, equip it, and watch your stats change by exactly what the tooltip predicted. Log out and back in to find everything where you left it. See `docs/roadmap.md`.
+**Status: M5 complete** — a world of three connected zones, with people in it. Chat on five channels, parties that merge their members' mob layers and share experience, guilds with ranks and a message of the day, and a friends list. Walk through a portal and the character is handed to a room on a different world node, over the bus, with the same protocol that will carry it between processes. Switch channels, unlock waypoints by walking over them, and fast-travel from the world map. Kill a mob, get a rare with tiered affixes, equip it, and watch your stats change by exactly what the tooltip predicted. Log out and back in to find everything where you left it. See `docs/roadmap.md`.
 
 ## Design goals
 

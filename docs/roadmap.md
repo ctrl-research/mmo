@@ -205,17 +205,65 @@ checking for one in the tick loop.
 
 ---
 
-## M5 — Social
+## M5 — Social — **done**
 
-- Chat: global, local (room), whisper, party, guild — with rate limits and mutes
-- Party: invite, join, leave, kick, leader transfer, member frames
-- Layer key follows party membership: partying merges mob views, leaving splits them (carried over from M4)
-- Party exp sharing by radius, and configurable loot rules
-- Guild: create, roster, ranks and permissions, MOTD, guild chat
-- Friends and presence
-- Cross-room delivery entirely over the bus (no direct room-to-room calls)
+- [x] Chat: global, local (room), whisper, party, guild — with rate limits and mutes
+- [x] Party: invite, join, leave, kick, leader transfer, member frames
+- [x] Layer key follows party membership: partying merges mob views, leaving splits them
+- [x] Party exp sharing by radius, and configurable loot rules
+- [x] Guild: create, roster, ranks and permissions, MOTD, guild chat
+- [x] Friends and presence
+- [x] Cross-room delivery entirely over the bus (no direct room-to-room calls)
 
-**Exit:** six players in a party across two rooms, chatting on every channel, sharing exp and loot correctly.
+**Exit criterion, verified by test and in a browser.** Every cross-node claim is
+tested with the two characters on *different* nodes, because a single-node test
+would pass with a shared pointer: a whisper, a party invitation, a roster
+change, and guild chat all have to find somebody whose session is somewhere
+else. The whisper-privacy test was mutation-checked by routing whispers to the
+global subject and dropping the recipient filter; it fails.
+
+| Claim | How it was checked |
+| --- | --- |
+| Global, party, and guild chat reach another node | Three tests in `internal/world/social_test.go`, and two browser clients |
+| A whisper reaches only its recipient | `TestWhisperReachesOnlyItsRecipient`, with a third character on the recipient's own node; mutation-checked |
+| Local chat never leaves the room | `TestLocalChatStaysInTheRoom`, speaker and listener in different maps |
+| Rate limits and mutes bite, and say why | `TestGlobalChatIsRateLimited`, `TestAMutedCharacterIsToldWhy` |
+| Partying merges the mob layer; leaving splits it | `TestPartyingMergesTheMobLayer`, `TestLeavingAPartySplitsTheLayerAgain`, plus room-level population counts |
+| Experience is shared in-layer and in-range only | Three tests, mutation-checked by disabling each guard in turn |
+| Round-robin assigns drops in turn, skipping absent members | Three tests in `internal/world/room/social_test.go` |
+| Only the leader kicks, promotes, or sets the loot rule | `TestOnlyTheLeaderCanKick`, `TestLootRuleIsTheLeadersToSet` |
+| Only the leader changes guild ranks; officers set the MOTD | `TestOnlyTheLeaderChangesRanks`, `TestGuildMOTDNeedsRank` |
+| One guild per character, and names are unique | `TestACharacterCanOnlyBeInOneGuild`, `TestGuildNamesAreUnique` — both enforced by an index, not a check-then-insert |
+| Party and guild membership survive a logout | Two tests; the returning member is back in their party's layer |
+| Friends show live status without the list being live | `TestFriendsListShowsWhoIsOnline` |
+
+**Two bugs worth recording, both found in a browser.**
+
+A player's own party frame had an empty health bar. Every other member's frame
+is filled from the vitals they publish once a second, and nobody publishes to
+themselves — so the one frame that is always on screen was the one with no
+data. `publishVitals` now keeps a copy as well as sending one.
+
+The second was not M5's at all, but M5 was the first thing to trip over it. The
+in-process lease table counts tokens from one, so a server that had run before
+handed out tokens *below* the ones already in the database — and the fencing
+predicate correctly rejected every returning character's first checkpoint as a
+stale write. It looked like "your character was claimed elsewhere" seconds
+after logging in. The counter is now seeded from the stored high-water mark at
+startup, which is the property Redis gets for free by keeping the counter
+outside the process.
+
+**A UI decision worth naming.** Party invitations first used `window.confirm`.
+A native modal blocks the event loop, which stops rendering *and* stops the
+simulation stepping — so an invitation arriving mid-fight froze the character
+in place while the mobs kept hitting them on the server. Prompts are in-game
+now, and they take the keyboard the same way the chat line does.
+
+**Deferred deliberately.** There is no block list and no chat history: both are
+moderation features that want a moderation surface, and there is no admin UI to
+put one in. Mutes are set from the command line (`mmo mute`), which is the
+honest minimum — the server enforces them, and an operator can apply one
+without writing SQL by hand.
 
 ---
 

@@ -4,6 +4,10 @@ import { Sim } from "@/sim/wasm";
 import { Shell } from "@/ui/screens";
 import { InventoryPanel } from "@/ui/inventory";
 import { WorldMapPanel } from "@/ui/worldmap";
+import { ChatPanel } from "@/ui/chat";
+import { PartyFrames, SocialPanel } from "@/ui/social";
+import { Prompt } from "@/ui/prompt";
+import { PartyAction_Kind, GuildAction_Kind } from "@/net/connection";
 import type { Character } from "@/ui/api";
 import { toPixels } from "@/sim/fixed";
 import { isClimbing, isGrounded } from "@/sim/body";
@@ -26,12 +30,20 @@ const stage = document.getElementById("stage") as HTMLDivElement;
 const inventoryEl = document.getElementById("inventory") as HTMLDivElement;
 const tooltipEl = document.getElementById("tooltip") as HTMLDivElement;
 const worldMapEl = document.getElementById("worldmap") as HTMLDivElement;
+const chatEl = document.getElementById("chat") as HTMLDivElement;
+const partyEl = document.getElementById("party") as HTMLDivElement;
+const socialEl = document.getElementById("social") as HTMLDivElement;
+const promptEl = document.getElementById("prompt") as HTMLDivElement;
 
 let loop: GameLoop | null = null;
 let scene: Scene | null = null;
 let sim: Sim | null = null;
 let panel: InventoryPanel | null = null;
 let worldMap: WorldMapPanel | null = null;
+let chat: ChatPanel | null = null;
+let party: PartyFrames | null = null;
+let social: SocialPanel | null = null;
+let prompt: Prompt | null = null;
 let status = "";
 
 const shell = new Shell(overlay, {
@@ -44,6 +56,17 @@ async function main(): Promise<void> {
   // it from a log.
   window.addEventListener("keydown", (e) => {
     if (!loop) return;
+
+    // Enter opens the chat line. While it holds the keyboard nothing else
+    // does: every other shortcut here is a letter, and a player writing a
+    // sentence would otherwise open four panels doing it.
+    if (chat?.focused || prompt?.isOpen) return;
+
+    if (e.code === "Enter") {
+      e.preventDefault();
+      chat?.focus();
+      return;
+    }
 
     if (e.code === "KeyG") {
       setStatus(loop.toggleGhost() ? "server ghost on" : "server ghost off");
@@ -58,11 +81,19 @@ async function main(): Promise<void> {
     if (e.code === "KeyM") {
       e.preventDefault();
       panel?.close();
+      social?.close();
       worldMap?.toggle();
+    }
+    if (e.code === "KeyO") {
+      e.preventDefault();
+      panel?.close();
+      worldMap?.close();
+      social?.toggle();
     }
     if (e.code === "Escape") {
       panel?.close();
       worldMap?.close();
+      social?.close();
     }
   });
 
@@ -86,6 +117,26 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
       onStatus: setStatus,
       onInventory: () => panel?.render(),
       onWorldMap: (m) => worldMap?.update(m),
+      onChat: (line) => chat?.add(line),
+      onSystem: (msg) => chat?.addSystem(msg),
+      onParty: (state) => party?.update(state),
+      onGuild: (state) => social?.updateGuild(state),
+      onFriends: (list) => social?.updateFriends(list),
+
+      // An invitation is a question asked in the moment, so it is asked in the
+      // moment: a prompt that interrupts, not a badge to notice later.
+      onPartyInvite: (invite) => {
+        chat?.note(`${invite.fromName} invited you to their party`);
+        void prompt?.confirm(`Join ${invite.fromName}'s party?`).then((yes) => {
+          game.party(yes ? PartyAction_Kind.ACCEPT : PartyAction_Kind.DECLINE);
+        });
+      },
+      onGuildInvite: (invite) => {
+        chat?.note(`${invite.fromName} invited you to ${invite.guildName}`);
+        void prompt?.confirm(`Join ${invite.guildName}?`).then((yes) => {
+          game.guild(yes ? GuildAction_Kind.ACCEPT : GuildAction_Kind.DECLINE);
+        });
+      },
       onMapChanged: () => {
         // The channel list and "you are here" both belong to the map that was
         // just left. Refetching beats showing a screen that is quietly wrong.
@@ -95,6 +146,10 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
         loop = null;
         panel?.close();
         worldMap?.close();
+        social?.close();
+        prompt?.cancel();
+        chatEl.hidden = true;
+        partyEl.hidden = true;
         void shell.resume(reason);
       },
     });
@@ -112,6 +167,28 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
       onSwitchChannel: (id) => game.switchChannel(id),
       onNewChannel: () => game.newChannel(),
     });
+
+    prompt = new Prompt(promptEl, {
+      onFocusChange: (focused) => game.setInputEnabled(!focused),
+    });
+
+    chat = new ChatPanel(chatEl, {
+      onSend: (channel, body, target) => game.chat(channel, body, target),
+      // The game stops reading the keyboard while the chat line has it.
+      onFocusChange: (focused) => game.setInputEnabled(!focused),
+    });
+    chatEl.hidden = false;
+
+    const socialCallbacks = {
+      onParty: (kind: PartyAction_Kind, target = "") => game.party(kind, target),
+      onGuild: (kind: GuildAction_Kind, target = "") => game.guild(kind, target),
+      onFriends: (kind: Parameters<typeof game.friends>[0], target = "") =>
+        game.friends(kind, target),
+      prompt: (question: string) => prompt!.ask(question),
+    };
+    party = new PartyFrames(partyEl, socialCallbacks);
+    party.render();
+    social = new SocialPanel(socialEl, socialCallbacks);
 
     setStatus(`connecting as ${character.name}...`);
     await loop.connect(character.name, ticket, contentHash);
@@ -146,7 +223,7 @@ function startHud(): void {
         `correct  ${s.lastCorrectionPx.toFixed(2)} px  (${s.hardCorrections} hard)\n` +
         `others   ${s.entities}\n` +
         `net      ${s.snapshotsReceived} snaps, ${(s.bytesReceived / 1024).toFixed(1)} KiB\n` +
-        `\n[i] inventory   [m] world map   [g] server ghost`;
+        `\n[i] inventory   [m] world map   [o] social   [enter] chat   [g] ghost`;
       hud.hidden = false;
     } else {
       hud.hidden = true;

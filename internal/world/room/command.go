@@ -65,6 +65,23 @@ type Handle interface {
 
 	// Interact queues a request to act on a nearby entity.
 	Interact(ctx context.Context, id EntityID, target EntityID, kind InteractKind)
+
+	// Say delivers a local chat line to everyone in the room.
+	//
+	// The only chat channel the room knows about: everyone who can hear it is
+	// already here. Every other channel crosses rooms and belongs to the
+	// session, which can reach the bus.
+	Say(ctx context.Context, id EntityID, body string, atMillis int64)
+
+	// SetLayer moves a player's hostile-entity layer, which is what partying
+	// up means concretely: the members' mob populations merge.
+	//
+	// The key is a party ID, or a character ID when unpartied. The room maps
+	// it to its own numbering; nothing outside needs to know what that is.
+	//
+	// The loot rule travels with it because it is a property of the same
+	// thing: who shares this layer decides who may pick up what it drops.
+	SetLayer(ctx context.Context, id EntityID, key string, loot LootRule)
 }
 
 // command is one message to the room goroutine.
@@ -124,6 +141,20 @@ type joinResult struct {
 
 type leaveCmd struct{ id EntityID }
 
+// sayCmd is a local chat line.
+type sayCmd struct {
+	id   EntityID
+	body string
+	at   int64
+}
+
+// setLayerCmd moves a player between hostile-entity layers.
+type setLayerCmd struct {
+	id   EntityID
+	key  string
+	loot LootRule
+}
+
 type inputCmd struct {
 	id  EntityID
 	seq uint32
@@ -163,6 +194,8 @@ func (setStatsCmd) isCommand()      {}
 func (resolveLootCmd) isCommand()   {}
 func (abortTransferCmd) isCommand() {}
 func (leaveCmd) isCommand()         {}
+func (sayCmd) isCommand()           {}
+func (setLayerCmd) isCommand()      {}
 func (inputCmd) isCommand()         {}
 func (castCmd) isCommand()          {}
 func (interactCmd) isCommand()      {}
@@ -189,6 +222,11 @@ func (r *Room) handle(c command) {
 		r.abortTransfer(cmd.id, cmd.reason)
 	case leaveCmd:
 		r.leave(cmd.id)
+	case sayCmd:
+		r.say(cmd.id, cmd.body, cmd.at)
+	case setLayerCmd:
+		r.moveToLayer(cmd.id, cmd.key)
+		r.setLootRule(cmd.key, cmd.loot)
 	case inputCmd:
 		r.input(cmd.id, cmd.seq, cmd.in)
 	case castCmd:
@@ -242,8 +280,14 @@ func (r *Room) join(spec JoinSpec) (EntityID, error) {
 	// rather than a spawn-point position corrected a tick later.
 	r.applyCharacter(e, spec)
 
-	r.nextLayer++
-	layer := r.nextLayer
+	// The party ID while partied, the character ID otherwise. A character with
+	// no key at all would share a layer with every other keyless character,
+	// so the character ID is the floor rather than a default.
+	key := spec.LayerKey
+	if key == "" {
+		key = spec.CharacterID
+	}
+	layer := r.layerIDFor(key)
 	r.layerFor(layer)
 	e.HuntLayer = layer
 
@@ -529,6 +573,20 @@ func (r *Room) attach(id EntityID, a Attachment) bool {
 
 	r.log.Info("session attached", "entity", uint32(id), "name", p.entity.Name)
 	return true
+}
+
+func (h *localHandle) Say(ctx context.Context, id EntityID, body string, atMillis int64) {
+	select {
+	case h.room.cmds <- sayCmd{id: id, body: body, at: atMillis}:
+	case <-ctx.Done():
+	}
+}
+
+func (h *localHandle) SetLayer(ctx context.Context, id EntityID, key string, loot LootRule) {
+	select {
+	case h.room.cmds <- setLayerCmd{id: id, key: key, loot: loot}:
+	case <-ctx.Done():
+	}
 }
 
 func (h *localHandle) Freeze(ctx context.Context, id EntityID) {

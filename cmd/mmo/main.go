@@ -149,12 +149,22 @@ func run() error {
 	msgBus := bus.NewInProc()
 	defer msgBus.Close()
 
+	// Presence answers "where is this character", which is what a whisper
+	// needs; parties own membership, which spans rooms and nodes. Both are
+	// ephemeral: losing them costs a regroup, never data, which is what makes
+	// them Redis's problem at scale rather than Postgres's.
+	presence := directory.NewMemoryPresence()
+	defer presence.Close()
+
+	parties := directory.NewMemoryParties(game.Balance.Party.MaxSize)
+	defer parties.Close()
+
 	// Redis is optional at hobby scale: with one process, in-memory leases and
 	// token storage are correct, and the fencing check in Postgres -- which is
 	// what actually enforces single-writer -- is identical either way. With
 	// several gateways it becomes required, because a login can start on one
 	// and its callback land on another.
-	leases, ephemeral, closeRedis, err := openCoordination(ctx, cfg, log)
+	leases, ephemeral, closeRedis, err := openCoordination(ctx, cfg, db, log)
 	if err != nil {
 		return err
 	}
@@ -167,6 +177,8 @@ func run() error {
 			Leases:     leases,
 			Store:      db,
 			Bus:        msgBus,
+			Presence:   presence,
+			Parties:    parties,
 			NodeID:     cfg.nodeID,
 			Content:    game,
 			DefaultMap: cfg.defaultMap,

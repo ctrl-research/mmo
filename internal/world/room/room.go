@@ -279,7 +279,10 @@ type Room struct {
 	// sharedSpawns are the spawn points every player in the room shares.
 	sharedSpawns []*spawnState
 
-	// nextLayer allocates layer keys. From M5 the key is the party ID.
+	// layerKeys maps a layer key -- a party ID, or a character ID when
+	// unpartied -- to this room's internal numbering, and nextLayer allocates
+	// the numbers.
+	layerKeys map[string]LayerID
 	nextLayer LayerID
 
 	// pending accumulates events produced during a tick, flushed with the
@@ -319,15 +322,16 @@ func New(cfg Config) *Room {
 		cfg.Capacity = 30
 	}
 	r := &Room{
-		cfg:     cfg,
-		log:     cfg.Logger.With("instance", uint64(cfg.InstanceID), "map", cfg.MapID),
-		index:   make(map[EntityID]int),
-		players: make(map[EntityID]*player),
-		content: cfg.Content,
-		mapDef:  cfg.Map,
-		items:   items.NewGenerator(cfg.Content),
-		rand:    rng.New(cfg.Seed),
-		layers:  make(map[LayerID]*layerState),
+		cfg:       cfg,
+		log:       cfg.Logger.With("instance", uint64(cfg.InstanceID), "map", cfg.MapID),
+		index:     make(map[EntityID]int),
+		players:   make(map[EntityID]*player),
+		content:   cfg.Content,
+		mapDef:    cfg.Map,
+		items:     items.NewGenerator(cfg.Content),
+		rand:      rng.New(cfg.Seed),
+		layers:    make(map[LayerID]*layerState),
+		layerKeys: make(map[string]LayerID),
 		// Buffered so a burst of input from many clients never blocks a
 		// gateway goroutine while the room is mid-tick.
 		cmds: make(chan command, 1024),
