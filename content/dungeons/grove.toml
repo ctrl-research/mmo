@@ -1,0 +1,41 @@
+# Dungeons.
+#
+# A dungeon is a private map with a shape: you go in as a party, you clear it
+# in order, and you come out. Everything that makes it different from an
+# ordinary map is here.
+#
+# Progression is spawning, not doors. A stage's mobs do not exist until the
+# stage before it is cleared, so "kill the guards, then the king" needs no
+# keys and no geometry that changes underfoot -- which also means the client's
+# collision is never told anything, and prediction cannot drift over a wall
+# that is solid on one side and not the other.
+
+[dungeon.slime_grove]
+name = "Slime Grove"
+map = "grove"
+
+# The same gate the portal into the grove already enforces. Stated here too
+# because the dungeon is the thing being entered: a second way in later should
+# not be a second place to remember the requirement.
+min_level = 10
+
+# Half an hour between clears.
+#
+# Per character rather than per party, so a group carrying a friend through
+# does not spend the friend's lockout, and so leaving a party cannot launder
+# one. Short, because at this scale the point is that a lockout exists and
+# works, not that it keeps anybody out for long.
+lockout_ms = 1800000
+
+# Where a run ends, cleared or wiped. Back at the forest end of the portal
+# that leads here, so leaving reads as walking back out.
+exit_map = "forest"
+exit_spawn = "from-grove"
+
+[[dungeon.slime_grove.stages]]
+name = "The Guards"
+spawns = ["guards"]
+
+[[dungeon.slime_grove.stages]]
+name = "The Slime King"
+spawns = ["king"]

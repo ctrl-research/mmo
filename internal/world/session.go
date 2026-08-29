@@ -135,6 +135,7 @@ type Session struct {
 	// session's goroutine, where the database and the bus can be reached.
 	claims     chan room.LootClaim
 	portals    chan room.PortalRequest
+	runEnds    chan room.RunResult
 	waypoints  chan string
 	travels    chan TravelRequest
 	chats      chan *mmov1.ChatSend
@@ -356,6 +357,7 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 		// cannot legitimately produce these faster than this.
 		claims:    make(chan room.LootClaim, 16),
 		portals:   make(chan room.PortalRequest, 4),
+		runEnds:   make(chan room.RunResult, 4),
 		waypoints: make(chan string, 8),
 		// Depth one: a second travel request while one is in flight is a
 		// double-click, not an instruction to move twice.
@@ -386,11 +388,23 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 	}
 	spec.Loadout = loadout
 
+	// The party is read before placement, not after, because it decides both
+	// where this character goes and who they hunt alongside. Reading it
+	// afterwards -- which is what restoreParty below does for everything else
+	// -- would put somebody logging back in inside a dungeon into a fresh
+	// instance of their own, next to the party still running it.
+	if n.parties != nil {
+		if party, ok := n.parties.Of(ctx, characterID.String()); ok {
+			s.partyID = party.ID
+		}
+	}
+	spec.LayerKey = s.layerKey()
+
 	// Placement and the join are one step: the directory decides which
 	// instance and which node, and the room is started there if it is not
 	// already running -- which may be a node other than this one.
 	handle, instance, entityID, err := n.placeAndJoin(ctx,
-		roomKey(n.content.Maps[mapID], characterID.String()), spec)
+		roomKey(n.content.Maps[mapID], s.layerKey()), spec)
 	if err != nil {
 		release()
 		return nil, err
@@ -451,6 +465,9 @@ func (s *Session) maintain() {
 
 		case req := <-s.portals:
 			s.handlePortal(req)
+
+		case res := <-s.runEnds:
+			s.handleRunEnd(res)
 
 		case waypointID := <-s.waypoints:
 			s.recordWaypoint(waypointID)

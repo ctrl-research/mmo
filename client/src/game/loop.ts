@@ -3,6 +3,7 @@ import type {
   BossPhase,
   ChatLine,
   Downed,
+  DungeonState,
   Event,
   FriendList,
   GuildInvite,
@@ -97,6 +98,9 @@ export interface LoopCallbacks {
    * exactly. The screen closes when health returns.
    */
   onDowned?(down: Downed): void;
+
+  /** Called when a dungeon run opens a stage, is cleared, or wipes. */
+  onDungeon?(state: DungeonState): void;
 
   /**
    * Called every frame with the current health of the entity the boss frame is
@@ -424,6 +428,10 @@ export class GameLoop {
 
       case "downed":
         this.#cb.onDowned?.(e.body.value);
+        break;
+
+      case "dungeon":
+        this.#cb.onDungeon?.(e.body.value);
         break;
 
       case "lootTaken": {

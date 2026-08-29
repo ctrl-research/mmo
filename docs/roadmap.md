@@ -387,11 +387,11 @@ work on a path a player waits on is extra work on a path a player waits on.
 - [x] Boss AI with phases, telegraphed attacks, enrage
 - [x] Team-play mechanics that require coordination — a hit divided among everyone it lands on, so what one player cannot survive six can
 - [x] Boss health UI, telegraph rendering
-- [ ] Instanced dungeon flow: entry requirements, lockouts, progression, completion
+- [x] Instanced dungeon flow: entry requirements, lockouts, progression, completion
 - [ ] Enhanced mobs: champion and rare tiers rolling elite modifiers
 - [ ] Zone events: interactive triggers, timed spawns, mini-bosses
 - [x] Death and recovery: a downed state, a revive clock, a penalty, and spawn protection
-- [ ] Wipe flow (a whole party down at once inside an instance)
+- [x] Wipe flow (a whole party down at once inside an instance)
 
 **Exit:** a six-player party clears a dungeon and kills a boss whose mechanics genuinely require coordination.
 
@@ -420,6 +420,25 @@ the encounter stays authorable.
 | Dying costs something and is over | `TestADownedCharacterStaysDownForTheClock`, `TestDeathCostsProgressTowardTheCurrentLevel` — of progress *within* the level, so a death never costs a level |
 | A body is not a character | `TestADownedCharacterDoesNotWalk`, `…DoesNotTakeAPortal`, `…CannotLoot`, `TestMobsIgnoreADownedCharacter` |
 | Coming back is not a death loop | `TestComingBackIsBrieflySafe`, `TestAttackingEndsTheReviveGrace` — found in play: reviving next to the slime that killed me killed me again |
+| A dungeon has an order | `TestADungeonOpensOneStageAtATime`, `TestClearingAStageOpensTheNext` — progression is spawning, not doors |
+| A stage is not clear early or twice | `TestAStageIsNotClearBeforeItHasSpawned`, `TestAStageWithMobsAliveIsNotClear`, `TestADungeonStageDoesNotRespawn` |
+| Both endings end it | `TestClearingTheLastStageEndsTheRun`, `TestAPartyAllDownAtOnceWipes`, and a wipe writes no lockout |
+| A dropped connection is not a death | `TestADisconnectedPlayerDoesNotWipeTheRun` and its inverse |
+| **A party shares one instance** | `TestAPartySharesOneDungeonInstance`, `TestAPartyWalkingIntoADungeonLandsTogether`, `TestLoggingBackInRejoinsThePartysInstance` |
+
+Progression is **spawning, not doors**. A stage's mobs do not exist until the
+stage before it is cleared, so "kill the guards, then the king" needs no keys
+and no geometry that changes underfoot — which also means the client's
+collision is never told anything, and prediction cannot drift over a wall that
+is solid on one side and not the other.
+
+Private placement turned out to be keyed by **character**, not party — M4 built
+it with a comment saying the owner would become the party ID "from M5", and M5
+never came back to it. Every member of a party got their own copy of the
+instance: nothing errored, nobody saw anyone else, and the dungeon quietly
+stopped being one. That is now fixed at all four routing sites, including
+login, where the party has to be read *before* placement rather than restored
+after it.
 
 Player death had been a stub since M2 (*"restored in place, lands with
 persistence"*). It is a prerequisite rather than a nicety: a party cannot wipe

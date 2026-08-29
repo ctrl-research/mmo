@@ -245,6 +245,16 @@ type Map struct {
 	Source []byte
 }
 
+// HasMobSpawn reports whether the map declares a mob spawn point by that name.
+func (m *Map) HasMobSpawn(name string) bool {
+	for _, sp := range m.MobSpawns {
+		if sp.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 // DefaultSpawn returns the spawn point marked default, or the first one.
 func (m *Map) DefaultSpawn() SpawnPoint {
 	for _, s := range m.Spawns {

@@ -43,6 +43,7 @@ import {
   type PassiveAction,
   type BossPhase,
   type Downed,
+  type DungeonState,
 } from "@/gen/mmo/v1/game_pb";
 
 /** Bumped on any incompatible wire change; must match gateway.ProtocolVersion. */
@@ -381,5 +382,6 @@ export type {
   PassiveState,
   BossPhase,
   Downed,
+  DungeonState,
 };
 export { ChatChannel, PartyAction_Kind, GuildAction_Kind, SocialAction_Kind };

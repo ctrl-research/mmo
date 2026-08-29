@@ -355,6 +355,7 @@ message Event {
     PassiveState passives = 25;
     BossPhase boss_phase = 26;
     Downed downed = 27;
+    DungeonState dungeon = 28;
   }
   // 11 was MapChanged, replaced by a second Welcome: it carried strictly less
   // than the Welcome the destination room already sends, and two messages
@@ -377,6 +378,29 @@ message DamageDealt {
 message EntityDied {
   uint32 entity_id = 1;
   uint32 killer_id = 2;
+}
+
+// DungeonState is where a run stands: which stage, and whether it is over.
+//
+// Sent to the whole instance on every change rather than derived from what is
+// alive. A client counting corpses cannot tell "the stage is clearing" from
+// "the stage has not started", and the difference is whether the party should
+// be pushing forward or holding.
+message DungeonState {
+  string dungeon_id = 1;
+  string name = 2;
+
+  // One-based, for display: "stage 2 of 2" rather than "stage 1 of 2".
+  uint32 stage = 3;
+  uint32 stages = 4;
+  string stage_name = 5;
+
+  // "active", "cleared", or "wiped".
+  string state = 6;
+
+  // How long before the party is sent home, once the run is over. Zero while
+  // it is still running.
+  uint32 ends_in_ms = 7;
 }
 
 // Downed is sent to a character who has just died, carrying the two things

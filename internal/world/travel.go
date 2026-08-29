@@ -138,7 +138,7 @@ func (s *Session) travelToWaypoint(ctx context.Context, waypointID string) error
 	return s.transfer(ctx, target, arrival{waypoint: waypointID},
 		func(ctx context.Context) (directory.Instance, error) {
 			return s.node.dir.Join(ctx,
-				roomKey(target, s.characterID.String()), target.Capacity)
+				roomKey(target, s.layerKey()), target.Capacity)
 		})
 }
 

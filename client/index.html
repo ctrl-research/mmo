@@ -305,6 +305,33 @@
       .buff-stacks { color: #e8c977; }
       .buff-time { color: #6b7280; }
 
+      /* The dungeon frame: which stage, and whether the run is still
+         winnable.
+         Bottom-right rather than top-right, which is the party panel's corner
+         -- and a party is exactly who is in a dungeon, so the two would have
+         collided every time either mattered. */
+      #dungeon {
+        position: fixed; bottom: 74px; right: 10px; z-index: 12;
+        width: 190px; pointer-events: none;
+        background: rgba(11, 13, 18, 0.86); border: 1px solid #2f3543;
+        border-radius: 6px; padding: 6px 9px 7px;
+      }
+      #dungeon[hidden] { display: none; }
+      #dungeon.cleared { border-color: #3d6b4a; }
+      #dungeon.wiped { border-color: #6b3d3d; }
+
+      .dungeon-name {
+        font-size: 11px; font-weight: 600; color: #d7dce6;
+        letter-spacing: 0.04em; margin-bottom: 2px;
+      }
+      .dungeon-stage { font-size: 10px; color: #6b7280; }
+      /* A stage change is lit while it is news, then settles back. */
+      .dungeon-stage.fresh { color: #ffd280; }
+      #dungeon.cleared .dungeon-stage { color: #8fe3a8; }
+      #dungeon.wiped .dungeon-stage { color: #ff9a9a; }
+      .dungeon-note { font-size: 10px; color: #9aa3b2; margin-top: 3px; }
+      .dungeon-note[hidden] { display: none; }
+
       /* The death screen. Centred and unmissable: a character who stops
          responding with no explanation reads as the game having frozen. */
       #death {
@@ -494,6 +521,7 @@
     <div id="inventory" hidden></div>
     <div id="worldmap" hidden></div>
     <div id="chat" hidden></div>
+    <div id="dungeon" hidden></div>
     <div id="death" hidden></div>
     <div id="boss" hidden></div>
     <div id="party" hidden></div>
