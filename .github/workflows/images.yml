@@ -5,17 +5,27 @@
 # matters more here than in most projects: the client predicts using a WASM
 # build of internal/world/sim and the server simulates with the Go build of
 # the same package, and the two must agree bit for bit.
+#
+# Called by release.yml rather than triggered by the tag it creates. A tag
+# pushed with GITHUB_TOKEN does not fire `on: push: tags` -- GitHub suppresses
+# it to stop workflows triggering each other recursively -- so a tags trigger
+# here would leave every automated release tagged and never built.
 
 name: Images
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      # Bare SemVer, no v prefix, per AGENTS.md.
-      - "[0-9]+.[0-9]+.[0-9]+"
+  workflow_call:
+    inputs:
+      version:
+        description: SemVer to publish, without a v prefix.
+        type: string
+        required: true
   workflow_dispatch:
+    inputs:
+      version:
+        description: SemVer to publish. Leave empty to publish only a sha- tag.
+        type: string
+        required: false
 
 env:
   REGISTRY: ghcr.io
@@ -60,11 +70,14 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.component }}
+          # type=semver reads the git ref, which is the branch here rather
+          # than the tag, so the version is passed in explicitly instead.
+          # Every image gets a sha- tag; the SemVer and latest tags only
+          # appear when a version was supplied.
           tags: |
             type=sha,prefix=sha-,format=short
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ inputs.version }},enable=${{ inputs.version != '' }}
+            type=raw,value=latest,enable=${{ inputs.version != '' }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
