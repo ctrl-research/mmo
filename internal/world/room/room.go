@@ -220,6 +220,23 @@ type SessionEvents interface {
 	// DiscoverWaypoint reports that a player touched a waypoint, so the
 	// session can record the unlock.
 	DiscoverWaypoint(player EntityID, characterID, waypointID string)
+
+	// EndRun reports that a dungeon run has finished and this player should be
+	// sent home. The session writes the lockout and runs the transfer, neither
+	// of which a tick can wait for.
+	EndRun(res RunResult)
+}
+
+// RunResult is one player's outcome from a finished dungeon run.
+type RunResult struct {
+	Player      EntityID
+	CharacterID string
+	Dungeon     *content.Dungeon
+
+	// Cleared separates a win from a wipe. Only a win writes a lockout: being
+	// beaten by a dungeon is punishment enough without also being barred from
+	// trying again.
+	Cleared bool
 }
 
 // PortalRequest is a player standing in a portal.
@@ -275,6 +292,10 @@ type Room struct {
 	// different sequence would break replay.
 	layers     map[LayerID]*layerState
 	layerOrder []LayerID
+
+	// dungeon is the run this room is hosting, or nil for an ordinary map.
+	// See dungeon.go.
+	dungeon *dungeonRun
 
 	// sharedSpawns are the spawn points every player in the room shares.
 	sharedSpawns []*spawnState
@@ -345,6 +366,15 @@ func New(cfg Config) *Room {
 			if sp.Layer == content.LayerShared {
 				r.sharedSpawns = append(r.sharedSpawns, newSpawnState(sp, SharedLayer))
 			}
+		}
+	}
+
+	// A room on a dungeon's map is that dungeon's run. There is exactly one
+	// instance per party by placement, so the room and the run have the same
+	// lifetime and there is nothing to start or stop separately.
+	if cfg.Content != nil && cfg.Map != nil {
+		if d := cfg.Content.DungeonForMap(cfg.Map.ID); d != nil {
+			r.startDungeon(d)
 		}
 	}
 	return r
@@ -455,6 +485,10 @@ func (r *Room) doTick() {
 	// back -- and before the snapshot, so they are never seen standing on the
 	// spawn point at zero health.
 	r.phaseRevive()
+	// After revive, so a character who came back this tick is not counted
+	// among the fallen -- a party wiping on the tick its first member stood
+	// up would be the fight taken away from them.
+	r.phaseDungeon()
 	r.phaseDrops()
 	r.phaseSpawns()
 	r.phaseSnapshot()

@@ -114,10 +114,22 @@ func (s *Session) handlePortal(req room.PortalRequest) {
 		return
 	}
 
+	// A dungeon's own rules, checked at the door. Both answers live outside
+	// the tick -- the level on the session, the lockout in the database --
+	// which is why the room lets the character walk into the portal and this
+	// is where they are turned back.
+	if d := s.node.content.DungeonForMap(target.ID); d != nil {
+		if err := s.checkDungeonEntry(ctx, d); err != nil {
+			s.log.Info("dungeon entry refused", "dungeon", d.ID, "err", err)
+			handle.AbortTransfer(ctx, entityID, err.Error())
+			return
+		}
+	}
+
 	err := s.transfer(ctx, target, arrival{spawnPoint: req.Portal.TargetSpawn},
 		func(ctx context.Context) (directory.Instance, error) {
 			return s.node.dir.Join(ctx,
-				roomKey(target, s.characterID.String()), target.Capacity)
+				roomKey(target, s.layerKey()), target.Capacity)
 		})
 	if err != nil {
 		s.log.Warn("transfer failed", "target", target.ID, "err", err)

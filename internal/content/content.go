@@ -35,6 +35,10 @@ type Content struct {
 	Passives *PassiveTree
 	Maps     map[string]*Map
 
+	// Dungeons are the instanced encounters, keyed by dungeon id. At most one
+	// runs on any map, and every privately placed map has one.
+	Dungeons map[string]*Dungeon
+
 	// Waypoints indexes every fast-travel destination by its global ID.
 	//
 	// Fast travel names a waypoint without naming its map -- that is the point
@@ -65,6 +69,7 @@ func Load(fsys fs.FS) (*Content, error) {
 		Supports: make(map[string]*Support),
 		Classes:  make(map[string]*Class),
 		Maps:     make(map[string]*Map),
+		Dungeons: make(map[string]*Dungeon),
 	}
 
 	hasher := sha256.New()
@@ -90,6 +95,9 @@ func Load(fsys fs.FS) (*Content, error) {
 		{"passives", c.loadPassives},
 		{"mobs", c.loadMobs},
 		{"maps", c.loadMaps},
+		// Dungeons last: every one of them is checked against the map it runs
+		// on and the spawn points that map declares.
+		{"dungeons", c.loadDungeons},
 	}
 
 	rec := &hashRecorder{h: hasher, fsys: fsys}
@@ -272,7 +280,7 @@ func (c *Content) verify() error {
 		}
 	}
 
-	return nil
+	return c.validateDungeons()
 }
 
 // hashRecorder accumulates a stable hash over every file that is read.

@@ -158,9 +158,11 @@ func (n *Node) placeAndJoin(ctx context.Context, key directory.RoomKey, spec roo
 
 // roomKey names the logical room for a map.
 //
-// A private map is one instance per owner. Until parties exist that owner is
-// the character; from M5 it becomes the party ID, and the same key gives a
-// group one shared dungeon rather than one each.
+// A private map is one instance per owner, and the owner is the *party*,
+// falling back to the character when unpartied -- the same key that decides
+// hostile-entity layering. Keying it by character would give every member of a
+// party their own copy of a dungeon and they would never see each other, which
+// is not an instance, it is six solo runs.
 func roomKey(m *content.Map, ownerKey string) directory.RoomKey {
 	key := directory.RoomKey{
 		MapID:     m.ID,

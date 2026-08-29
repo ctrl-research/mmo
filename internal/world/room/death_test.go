@@ -366,11 +366,13 @@ func TestDowningACharacterTwiceIsOneDeath(t *testing.T) {
 // whatever the room did.
 type recordEvents struct {
 	portals []PortalRequest
+	runEnds []RunResult
 }
 
 func (e *recordEvents) ClaimLoot(LootClaim)                       {}
 func (e *recordEvents) EnterPortal(req PortalRequest)             { e.portals = append(e.portals, req) }
 func (e *recordEvents) DiscoverWaypoint(EntityID, string, string) {}
+func (e *recordEvents) EndRun(res RunResult)                      { e.runEnds = append(e.runEnds, res) }
 
 // standingInAPortal joins a character and puts them in the map's first portal.
 func standingInAPortal(t *testing.T, h *harness, name string) (EntityID, *recordEvents) {

@@ -32,6 +32,8 @@ func FS() fstest.MapFS {
 		"mobs/test.toml":       file(Mobs),
 		"maps/test.tmj":        file(MapTMJ),
 		"maps/annex.tmj":       file(AnnexTMJ),
+		"maps/crypt.tmj":       file(CryptTMJ),
+		"dungeons/test.toml":   file(Dungeons),
 	}
 }
 
@@ -480,6 +482,67 @@ const MapTMJ = `{
     ]
   }]
 }`
+
+// CryptTMJ is a dungeon map: privately placed, with two mob spawn points that
+// the test dungeon below turns into two stages.
+//
+// Deliberately bare and deliberately small. What it is for is being an
+// instance with an order to it, so the only things on it are a floor, a way
+// in, and the two groups you have to kill in sequence.
+const CryptTMJ = `{
+  "type": "map", "width": 30, "height": 10, "tilewidth": 32, "tileheight": 32,
+  "properties": [
+    {"name": "mapId", "type": "string", "value": "crypt"},
+    {"name": "displayName", "type": "string", "value": "The Test Crypt"},
+    {"name": "placement", "type": "string", "value": "private"},
+    {"name": "capacity", "type": "int", "value": 6},
+    {"name": "minLevel", "type": "int", "value": 1}
+  ],
+  "layers": [{
+    "name": "collision", "type": "objectgroup",
+    "objects": [
+      {"id": 1, "class": "solid", "x": 0, "y": 288, "width": 960, "height": 32},
+      {"id": 2, "class": "spawn_point", "name": "entrance", "x": 64, "y": 288,
+       "properties": [{"name": "isDefault", "type": "bool", "value": true}]},
+      {"id": 3, "class": "mob_spawn", "name": "outer", "x": 400, "y": 288,
+       "properties": [
+         {"name": "mob_id", "type": "string", "value": "test_dummy"},
+         {"name": "layer", "type": "string", "value": "shared"},
+         {"name": "respawn_ms", "type": "int", "value": 1000},
+         {"name": "max_alive", "type": "int", "value": 2},
+         {"name": "radius", "type": "int", "value": 0}
+       ]},
+      {"id": 4, "class": "mob_spawn", "name": "inner", "x": 700, "y": 288,
+       "properties": [
+         {"name": "mob_id", "type": "string", "value": "test_boss"},
+         {"name": "layer", "type": "string", "value": "shared"},
+         {"name": "respawn_ms", "type": "int", "value": 1000},
+         {"name": "max_alive", "type": "int", "value": 1},
+         {"name": "radius", "type": "int", "value": 0}
+       ]}
+    ]
+  }]
+}`
+
+// Dungeons turns the crypt into two stages: clear the outer room, then the
+// thing in the inner one.
+const Dungeons = `
+[dungeon.test_crypt]
+name = "The Test Crypt"
+map = "crypt"
+min_level = 1
+lockout_ms = 60000
+exit_map = "test"
+exit_spawn = "start"
+
+[[dungeon.test_crypt.stages]]
+name = "Outer"
+spawns = ["outer"]
+
+[[dungeon.test_crypt.stages]]
+name = "Inner"
+spawns = ["inner"]
+`
 
 // AnnexTMJ is a second map, so tests can exercise a portal between two of
 // them.

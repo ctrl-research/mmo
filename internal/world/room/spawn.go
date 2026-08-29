@@ -22,6 +22,18 @@ type spawnState struct {
 	// immediately, which is what makes a room populate on creation rather than
 	// staying empty for one respawn interval.
 	nextSpawn uint64
+
+	// spawned counts how many this point has ever produced. Only a dungeon
+	// reads it: outside one a spawn point runs forever and the total is
+	// meaningless, but inside one it is half of "this stage is cleared".
+	spawned int
+
+	// gated marks a spawn point that belongs to a dungeon stage, stage is
+	// which one, and open is whether that stage has begun. A gated point that
+	// is not open produces nothing.
+	gated bool
+	stage int
+	open  bool
 }
 
 func newSpawnState(def *content.MobSpawn, layer LayerID) *spawnState {
@@ -55,6 +67,15 @@ func (r *Room) phaseSpawns() {
 }
 
 func (r *Room) serviceSpawn(sp *spawnState, source *rng.Source) {
+	if sp.gated {
+		// A dungeon stage that has not begun produces nothing, and one that
+		// has produces its population exactly once. Respawning inside a
+		// dungeon would mean a stage that can never be cleared -- the party
+		// would be fighting the same four slimes until the server gave out.
+		if !sp.open || sp.spawned >= sp.def.MaxAlive {
+			return
+		}
+	}
 	if sp.alive >= sp.def.MaxAlive || r.tick < sp.nextSpawn {
 		return
 	}
@@ -76,6 +97,7 @@ func (r *Room) serviceSpawn(sp *spawnState, source *rng.Source) {
 
 	r.spawnMob(def, sp, source)
 	sp.alive++
+	sp.spawned++
 
 	// The timer restarts per spawn rather than per wave, so a cap of three
 	// trickles in one at a time instead of all three at once.

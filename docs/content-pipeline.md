@@ -357,6 +357,53 @@ Keystones use `more` multipliers with real drawbacks — that is what makes them
 
 A drawback is a negative number, and the conversion from authored decimals to parts-per-million has to keep the sign. There are two conversions for that reason: one clamped to [0, 1] for probabilities, and one signed for stat modifiers. Using the probability one for a modifier silently discards every drawback — which it did, until a test asked whether each keystone actually traded something.
 
+## Dungeons
+
+A dungeon is a private map with a shape: you go in as a party, you clear it in
+order, and you come out. `content/dungeons/*.toml`:
+
+```toml
+[dungeon.slime_grove]
+name = "Slime Grove"
+map = "grove"          # must be placement = "private"
+min_level = 10
+lockout_ms = 1800000
+exit_map = "forest"    # where a run ends, cleared or wiped
+exit_spawn = "from-grove"
+
+[[dungeon.slime_grove.stages]]
+name = "The Guards"
+spawns = ["guards"]    # spawn point names on the map
+
+[[dungeon.slime_grove.stages]]
+name = "The Slime King"
+spawns = ["king"]
+```
+
+**Progression is spawning, not doors.** A stage's spawn points produce nothing
+until the stage begins, and the stage is cleared when every one of them has
+produced its whole population and none of it is left alive. So "kill the
+guards, then the king" needs no keys and no geometry that changes underfoot —
+and the client's collision is never told anything, so prediction cannot drift
+over a wall that is solid on one side and not the other.
+
+Inside a dungeon a spawn point produces its population **once**; `respawn_ms`
+is ignored. A respawning stage is a stage that can never be cleared.
+
+**A run ends two ways.** The last stage clears, or every connected player is
+down at the same moment. Only a clear writes a lockout — being beaten by a
+dungeon is punishment enough without also being barred from trying again.
+Either way the party is sent to `exit_map` after a short pause, long enough to
+loot what the boss dropped and to read what happened.
+
+The loader checks each dungeon against its map: every spawn point on it must
+belong to exactly one stage, and every privately placed map must have a
+dungeon. Both mistakes load cleanly and then fail in play — a stage naming a
+renamed spawn point leaves a party in an empty room with no way to progress.
+
+Lockouts are per **character**, so a group carrying a friend through does not
+spend the friend's, and leaving a party cannot launder one.
+
 ## Death
 
 Four knobs in `balance.toml`, all under `[combat]`:

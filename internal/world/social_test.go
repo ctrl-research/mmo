@@ -5,9 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ctrl-research/mmo/internal/content"
 	"github.com/ctrl-research/mmo/internal/directory"
 	"github.com/ctrl-research/mmo/internal/store"
 	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
+	"github.com/ctrl-research/mmo/internal/world/room"
 	"github.com/google/uuid"
 )
 
@@ -783,4 +785,121 @@ func TestYourOwnMemberFrameHasHealth(t *testing.T) {
 		}
 		return false
 	})
+}
+
+// A party walks into one dungeon, not one each.
+//
+// Private placement is keyed by the *party*, falling back to the character
+// when unpartied. Keying it by character -- which it was, from M4 until
+// parties existed and nothing came back to it -- gives every member of a group
+// their own copy of the instance. Nothing errors, nobody sees anyone else, and
+// the dungeon quietly stops being one.
+func TestAPartySharesOneDungeonInstance(t *testing.T) {
+	c := newCluster(t)
+	a, b, _, _ := c.party(t)
+
+	crypt := c.a.content.Maps["crypt"]
+	if crypt == nil {
+		t.Skip("the test content set has no dungeon map")
+	}
+
+	if got := roomKey(crypt, a.layerKey()); got != roomKey(crypt, b.layerKey()) {
+		t.Fatalf("party members route to %v and %v", got, roomKey(crypt, b.layerKey()))
+	}
+
+	// And the key really is the party rather than either character, or two
+	// people who happened to share a key would pass this.
+	if key := roomKey(crypt, a.layerKey()); key.OwnerKey == a.characterID.String() {
+		t.Error("a partied character routes by their own id, so each member " +
+			"of a party gets a separate instance")
+	}
+}
+
+// The same thing end to end: two partied characters walk into the dungeon and
+// come out in one instance.
+//
+// The rule above is the mechanism; this is the behaviour. They are separate
+// tests because there are three places that route a character into a room --
+// a portal, a waypoint, and the way out of a finished run -- and a rule that
+// holds in one of them and not the others is exactly the bug this is for.
+func TestAPartyWalkingIntoADungeonLandsTogether(t *testing.T) {
+	c := newCluster(t)
+	a, b, _, _ := c.party(t)
+
+	if c.a.content.Maps["crypt"] == nil {
+		t.Skip("the test content set has no dungeon map")
+	}
+
+	portal := content.Portal{TargetMap: "crypt", TargetSpawn: "entrance"}
+
+	for _, s := range []*Session{a, b} {
+		s.handlePortal(room.PortalRequest{Portal: portal})
+		if got := s.MapID(); got != "crypt" {
+			t.Fatalf("%s is in %q, not the dungeon", s.characterID, got)
+		}
+	}
+
+	if a.Instance() != b.Instance() {
+		t.Errorf("a party landed in instances %d and %d; that is two runs, not one",
+			a.Instance(), b.Instance())
+	}
+}
+
+// Logging back in inside a dungeon rejoins the party's run, not a fresh copy
+// of it.
+//
+// The party is read before placement for exactly this: everything else about a
+// party is restored after the character is already in a room, and by then the
+// routing decision has been made.
+func TestLoggingBackInRejoinsThePartysInstance(t *testing.T) {
+	c := newCluster(t)
+	a, b, _, _ := c.party(t)
+
+	if c.a.content.Maps["crypt"] == nil {
+		t.Skip("the test content set has no dungeon map")
+	}
+
+	portal := content.Portal{TargetMap: "crypt", TargetSpawn: "entrance"}
+	a.handlePortal(room.PortalRequest{Portal: portal})
+	b.handlePortal(room.PortalRequest{Portal: portal})
+
+	shared := a.Instance()
+	if shared != b.Instance() {
+		t.Fatalf("the party did not land together: %d and %d", shared, b.Instance())
+	}
+
+	// Bob drops out and comes straight back.
+	bobAccount, bobID := b.accountID, b.characterID
+	closeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	b.Close(closeCtx)
+	cancel()
+
+	back, _ := c.enter(c.b, bobAccount, bobID)
+	if got := back.MapID(); got != "crypt" {
+		t.Fatalf("came back in %q rather than the dungeon", got)
+	}
+	if back.Instance() != shared {
+		t.Errorf("came back in instance %d, not the party's %d -- a fresh copy "+
+			"of the run, next to the party still doing it", back.Instance(), shared)
+	}
+}
+
+// Unpartied, the fallback still has to give one instance per character rather
+// than one for everybody.
+func TestUnpartiedCharactersGetSeparateInstances(t *testing.T) {
+	c := newCluster(t)
+
+	aliceAccount, alice := c.character("Alice")
+	bobAccount, bob := c.character("Bob")
+	a, _ := c.enter(c.a, aliceAccount, alice)
+	b, _ := c.enter(c.b, bobAccount, bob)
+
+	crypt := c.a.content.Maps["crypt"]
+	if crypt == nil {
+		t.Skip("the test content set has no dungeon map")
+	}
+
+	if roomKey(crypt, a.layerKey()) == roomKey(crypt, b.layerKey()) {
+		t.Error("two unpartied characters share a private instance")
+	}
 }

@@ -20,6 +20,7 @@ import "embed"
 //go:embed all:classes
 //go:embed all:curves
 //go:embed all:droptables
+//go:embed all:dungeons
 //go:embed all:items
 //go:embed all:maps
 //go:embed all:mobs
