@@ -1,0 +1,80 @@
+# Builds and publishes the split client and server images.
+#
+# Both are built from the same commit in the same run and share a tag set, so
+# a given tag always names a client and a server compiled from one tree. That
+# matters more here than in most projects: the client predicts using a WASM
+# build of internal/world/sim and the server simulates with the Go build of
+# the same package, and the two must agree bit for bit.
+
+name: Images
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      # Bare SemVer, no v prefix, per AGENTS.md.
+      - "[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.component }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      # One failing image should not cancel the other; a half-published pair is
+      # easier to reason about when you can see which half failed and why.
+      fail-fast: false
+      matrix:
+        include:
+          - component: server
+            dockerfile: deploy/Dockerfile.server
+          - component: client
+            dockerfile: deploy/Dockerfile.client
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.component }}
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # The Go and npm layers dominate the build; without a cache every
+          # push re-downloads the full dependency tree for both images.
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
