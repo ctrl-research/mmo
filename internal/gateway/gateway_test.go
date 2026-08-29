@@ -45,6 +45,14 @@ type testServer struct {
 
 func newTestServer(t *testing.T) *testServer {
 	t.Helper()
+	return newTestServerWithGrace(t, 150*time.Millisecond)
+}
+
+// newTestServerWithGrace builds the stack with a chosen reconnect window, so
+// both the resume path and the expiry path are reachable without waiting out
+// the production minute.
+func newTestServerWithGrace(t *testing.T, grace time.Duration) *testServer {
+	t.Helper()
 
 	dbURL := os.Getenv("MMO_TEST_DATABASE_URL")
 	if dbURL == "" {
@@ -83,7 +91,8 @@ func newTestServer(t *testing.T) *testServer {
 		Logger:     log,
 		Observer:   mx,
 		// A fixed seed so these tests never depend on the roll of the day.
-		Seed: 0xC0FFEE,
+		Seed:           0xC0FFEE,
+		ReconnectGrace: grace,
 	})
 	if err != nil {
 		cancel()
@@ -545,41 +554,56 @@ func TestPingIsAnswered(t *testing.T) {
 	t.Fatal("no Pong received")
 }
 
-func TestDisconnectRemovesPlayerFromRoom(t *testing.T) {
-	ts := newTestServer(t)
+// A dropped connection holds the character rather than removing it, so a
+// transient blip mid-fight is not a wipe. It is removed once the window
+// expires.
+func TestDisconnectHoldsThenRemovesTheCharacter(t *testing.T) {
+	ts := newTestServerWithGrace(t, 300*time.Millisecond)
 
 	a := ts.dial(t)
-	a.hello(ts.ticket(t, "alice"), ProtocolVersion)
+	a.hello(ts.ticket(t, "Watcher"), ProtocolVersion)
 	a.awaitWelcome()
 
-	b := ts.dial(t)
-	b.hello(ts.ticket(t, "bob"), ProtocolVersion)
-	wb := b.awaitWelcome()
-	a.awaitSnapshots(5)
+	p := ts.signUp(t, "Leaver")
+	b := ts.connect(t, p)
+	bEntity := uint32(0)
+	for _, s := range collectSnapshots(a, 1500*time.Millisecond) {
+		for _, e := range s.GetEntered() {
+			if e.GetName() == "Leaver" {
+				bEntity = e.GetId()
+			}
+		}
+	}
+	if bEntity == 0 {
+		t.Fatal("the second player was never announced")
+	}
 
-	b.conn.Close(websocket.StatusNormalClosure, "leaving")
+	b.conn.Close(websocket.StatusNormalClosure, "dropping")
 
-	// Alice must eventually be told Bob's entity is gone.
+	// Held: still present, and the node knows it is resumable.
+	waitUntil(t, 2*time.Second, func() bool { return ts.node.Holding() > 0 })
+
+	// Expired: removed from the world.
 	removed := false
 	deadline := time.Now().Add(5 * time.Second)
 	for !removed && time.Now().Before(deadline) {
-		msgs, err := a.recv(2 * time.Second)
-		if err != nil {
-			break
-		}
-		for _, m := range msgs {
-			if s := m.GetSnapshot(); s != nil {
-				for _, id := range s.GetRemoved() {
-					if id == wb.GetEntityId() {
-						removed = true
-					}
+		for _, s := range collectSnapshots(a, 300*time.Millisecond) {
+			for _, id := range s.GetRemoved() {
+				if id == bEntity {
+					removed = true
 				}
 			}
 		}
 	}
 	if !removed {
-		t.Error("bob's entity was never removed after he disconnected")
+		t.Error("the character was never removed after its reconnect window expired")
 	}
+}
+
+// collectSnapshots drains snapshots for a while.
+func collectSnapshots(c *client, d time.Duration) []*mmov1.Snapshot {
+	_, snaps := c.collect(d)
+	return snaps
 }
 
 func TestMalformedFrameClosesConnection(t *testing.T) {

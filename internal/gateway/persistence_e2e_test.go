@@ -120,15 +120,13 @@ func TestProgressSurvivesReconnect(t *testing.T) {
 		t.Fatal("character never moved; nothing to persist")
 	}
 
-	// Disconnecting triggers the final checkpoint, which is what makes logging
-	// out lossless rather than discarding up to a whole interval of progress.
+	// Disconnecting checkpoints immediately, so the character is recoverable
+	// from that moment rather than from up to a full interval earlier.
 	first.conn.Close(websocket.StatusNormalClosure, "logging out")
 
-	// The lease has to be released before the same character can be played
-	// again, so wait for the server to finish tearing the session down.
-	waitUntil(t, 5*time.Second, func() bool {
-		return ts.characterFree(t, p)
-	})
+	// Wait out the reconnect window, so this exercises a genuine reload from
+	// the database rather than resuming the held session.
+	waitUntil(t, 5*time.Second, func() bool { return ts.characterFree(t, p) })
 
 	second := ts.connect(t, p)
 	_, after := second.collect(1500 * time.Millisecond)
@@ -220,6 +218,75 @@ func TestCharacterIsPlayableAgainAfterALogout(t *testing.T) {
 	second.hello(ts.ticketFor(t, p.client, p.characterID), ProtocolVersion)
 	if w := second.awaitWelcome(); w.GetEntityId() == 0 {
 		t.Error("could not rejoin after a clean logout")
+	}
+}
+
+// Reconnecting inside the window resumes the very same character in place,
+// rather than reloading it -- which is what stops a network blip during a boss
+// fight from being a wipe.
+func TestReconnectWithinTheGraceWindowResumes(t *testing.T) {
+	// Long enough that the reconnect lands inside it.
+	ts := newTestServerWithGrace(t, 10*time.Second)
+	p := ts.signUp(t, "Blipper")
+
+	first := ts.connect(t, p)
+	drive(t, first, 2*time.Second, false)
+
+	_, snaps := first.collect(400 * time.Millisecond)
+	if len(snaps) == 0 {
+		t.Fatal("no snapshots before the drop")
+	}
+	before := snaps[len(snaps)-1].GetSelf()
+
+	first.conn.Close(websocket.StatusAbnormalClosure, "network blip")
+	waitUntil(t, 3*time.Second, func() bool { return ts.node.Holding() > 0 })
+
+	// Reconnect immediately, inside the window.
+	second := ts.dial(t)
+	second.hello(ts.ticketFor(t, p.client, p.characterID), ProtocolVersion)
+	w := second.awaitWelcome()
+
+	// The same entity, not a new one: the character never left the world.
+	if w.GetEntityId() != before.GetId() {
+		t.Errorf("resumed as entity %d, was %d; the character was re-entered rather than resumed",
+			w.GetEntityId(), before.GetId())
+	}
+
+	// And in the same place, give or take a tick of gravity.
+	const tolerance = 64 * 256
+	if diff := abs32(w.GetSelf().GetX() - before.GetX()); diff > tolerance {
+		t.Errorf("resumed at x=%d, was at x=%d", w.GetSelf().GetX(), before.GetX())
+	}
+}
+
+// The grace window must not become a way to survive a fight by pulling a
+// cable: a held character is inert and cannot be harmed.
+func TestHeldCharacterIsNotAttackable(t *testing.T) {
+	ts := newTestServerWithGrace(t, 5*time.Second)
+	p := ts.signUp(t, "Vanisher")
+
+	c := ts.connect(t, p)
+	drive(t, c, 3*time.Second, false) // walk into the mobs
+
+	_, snaps := c.collect(400 * time.Millisecond)
+	if len(snaps) == 0 {
+		t.Fatal("no snapshots")
+	}
+	hpBefore := snaps[len(snaps)-1].GetSelf().GetHp()
+
+	c.conn.Close(websocket.StatusAbnormalClosure, "blip")
+	waitUntil(t, 3*time.Second, func() bool { return ts.node.Holding() > 0 })
+
+	// Let the mobs have their chance at a defenceless target.
+	time.Sleep(1500 * time.Millisecond)
+
+	second := ts.dial(t)
+	second.hello(ts.ticketFor(t, p.client, p.characterID), ProtocolVersion)
+	w := second.awaitWelcome()
+
+	if got := w.GetSelf().GetHp(); got < hpBefore {
+		t.Errorf("HP fell from %d to %d while the character was held; "+
+			"a dropped connection must not be worse than a clean logout", hpBefore, got)
 	}
 }
 

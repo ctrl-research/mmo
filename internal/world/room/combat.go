@@ -89,7 +89,7 @@ func (r *Room) resolveTargets(caster *Entity, skill *content.Skill) []*Entity {
 
 	var out []*Entity
 	for _, e := range r.entities {
-		if e.ID == caster.ID || !isAlive(e) {
+		if e.ID == caster.ID || !isAlive(e) || r.isFrozen(e) {
 			continue
 		}
 		// Players hit mobs and mobs hit players. PvP is explicitly out of
@@ -320,4 +320,17 @@ func (r *Room) kill(killer, victim *Entity) {
 			victim.Body = r.spawnBody()
 		}
 	}
+}
+
+// isFrozen reports whether an entity belongs to a disconnected player.
+//
+// Frozen characters are invulnerable. Freezing only the AI's choice of target
+// would still leave them killable by an area effect, which is the case that
+// would actually cost somebody a character.
+func (r *Room) isFrozen(e *Entity) bool {
+	if e.Kind != KindPlayer {
+		return false
+	}
+	p, ok := r.players[e.ID]
+	return ok && p.frozen
 }

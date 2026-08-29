@@ -22,6 +22,15 @@ import (
 // ever lost, the session ends rather than continuing to write over whoever
 // owns the character now.
 
+// ReconnectGrace is how long a character stays in the world after an
+// unexpected disconnect.
+//
+// Without it, every transient network blip during a boss fight is a wipe: the
+// character leaves the room, the party loses them mid-encounter, and they
+// return at a spawn point. The character is frozen and invulnerable for this
+// window, so the grace cannot be abused to survive a fight by pulling a cable.
+const DefaultReconnectGrace = 60 * time.Second
+
 // CheckpointInterval is how often live state is written back.
 //
 // Position is worthless a second later, so writing it at tick rate would melt
@@ -54,6 +63,10 @@ type PlayerSession interface {
 
 	// Close checkpoints and releases the character.
 	Close(ctx context.Context)
+
+	// Disconnect holds the character in the world for a grace period after a
+	// dropped connection, so a transient blip is not a wipe.
+	Disconnect(ctx context.Context)
 }
 
 // Session is one character in the world.
@@ -78,6 +91,11 @@ type Session struct {
 	closeOnce sync.Once
 	done      chan struct{}
 	log       *slog.Logger
+
+	mu           sync.Mutex
+	disconnected bool
+	closedFlag   bool
+	graceTimer   *time.Timer
 }
 
 // Handle returns the room this session is in.
@@ -100,6 +118,24 @@ func (s *Session) OnOwnershipLost(fn func(reason string)) { s.onLost = fn }
 func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink room.Sink) (PlayerSession, error) {
 	if n.store == nil || n.leases == nil {
 		return nil, errors.New("world: persistence is not configured")
+	}
+
+	// A character still inside its reconnect window is resumed rather than
+	// re-entered. Without this check the player's own dropped session would
+	// hold the lease and they would be told their character is already in
+	// play -- by themselves.
+	if held, ok := n.held(characterID); ok {
+		if held.accountID != accountID {
+			// The lease belongs to a different account's session, which should
+			// be impossible, but resuming would hand them someone else's
+			// character.
+			return nil, ErrCharacterBusy
+		}
+		if held.Resume(ctx, sink) {
+			return held, nil
+		}
+		// The session finished tearing down between the lookup and the resume;
+		// fall through and enter normally.
 	}
 
 	lease, err := n.leases.Acquire(ctx, characterID.String(), directory.NodeID(n.nodeID))
@@ -177,6 +213,7 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 			"character", characterID.String(), "name", character.Name, "account", accountID.String()),
 	}
 
+	n.hold(characterID, s)
 	go s.maintain()
 
 	s.log.Info("character entered the world", "map", mapID, "lease", lease.Token)
@@ -259,6 +296,15 @@ func (s *Session) checkpoint(ctx context.Context) error {
 
 // loseOwnership ends the session because the lease moved.
 func (s *Session) loseOwnership(reason string) {
+	s.mu.Lock()
+	s.closedFlag = true
+	if s.graceTimer != nil {
+		s.graceTimer.Stop()
+		s.graceTimer = nil
+	}
+	s.mu.Unlock()
+	s.node.forget(s.characterID)
+
 	// Deliberately no final checkpoint: this node no longer owns the
 	// character, and its write would be rejected by the fencing predicate
 	// anyway. Attempting one would only risk overwriting a newer owner if the
@@ -271,13 +317,91 @@ func (s *Session) loseOwnership(reason string) {
 	s.detach()
 }
 
-// Close ends the session cleanly: final checkpoint, then release.
-func (s *Session) Close(ctx context.Context) {
-	var alreadyClosed bool
-	s.closeOnce.Do(func() { close(s.done) })
-	if alreadyClosed {
+// Disconnect handles a dropped connection, keeping the character in the world
+// for a grace period.
+//
+// The lease is deliberately *not* released: the character is still in play as
+// far as the world is concerned, and releasing would let another session claim
+// it while this one is still holding its entity.
+func (s *Session) Disconnect(ctx context.Context) {
+	if s.closed() {
 		return
 	}
+
+	s.handle.Freeze(ctx, s.entityID)
+
+	// Checkpoint now rather than waiting for the grace period to end. If the
+	// process dies during the window, the character is recoverable from here
+	// rather than from up to a full interval earlier.
+	checkpointCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	err := s.checkpoint(checkpointCtx)
+	cancel()
+	if err != nil && !errors.Is(err, store.ErrStaleWrite) {
+		s.log.Error("checkpoint on disconnect failed", "err", err)
+	}
+
+	s.mu.Lock()
+	s.disconnected = true
+	s.graceTimer = time.AfterFunc(s.node.grace, func() {
+		s.log.Info("reconnect window expired")
+		closeCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		s.Close(closeCtx)
+	})
+	s.mu.Unlock()
+
+	s.log.Info("connection dropped; holding the character", "grace", s.node.grace)
+}
+
+// Resume rebinds a reconnecting player to their held character.
+//
+// It reports false if the session has already been torn down, in which case
+// the caller enters the world normally.
+func (s *Session) Resume(ctx context.Context, sink room.Sink) bool {
+	s.mu.Lock()
+	if !s.disconnected || s.closedFlag {
+		s.mu.Unlock()
+		return false
+	}
+	if s.graceTimer != nil {
+		s.graceTimer.Stop()
+		s.graceTimer = nil
+	}
+	s.disconnected = false
+	s.mu.Unlock()
+
+	if !s.handle.Thaw(ctx, s.entityID, sink) {
+		return false
+	}
+
+	s.log.Info("player reconnected within the grace window")
+	return true
+}
+
+func (s *Session) closed() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.closedFlag
+}
+
+// Close ends the session cleanly: final checkpoint, then release.
+func (s *Session) Close(ctx context.Context) {
+	s.mu.Lock()
+	if s.closedFlag {
+		s.mu.Unlock()
+		return
+	}
+	s.closedFlag = true
+	if s.graceTimer != nil {
+		s.graceTimer.Stop()
+		s.graceTimer = nil
+	}
+	s.mu.Unlock()
+
+	s.closeOnce.Do(func() { close(s.done) })
+
+	// The node stops holding this character for reconnection.
+	s.node.forget(s.characterID)
 
 	// The final checkpoint is what makes logging out lossless, rather than
 	// discarding up to a whole interval of progress.

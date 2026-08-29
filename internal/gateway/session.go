@@ -127,11 +127,19 @@ func (s *session) run(ctx context.Context) {
 	s.closeWith(room.CloseKicked, "connection ended")
 
 	if s.play != nil {
-		// A fresh context: the session's is already cancelled, and the final
-		// checkpoint still has to happen. Without it, logging out would
-		// discard up to a full checkpoint interval of progress.
+		// A fresh context: the session's is already cancelled, and the
+		// character still has to be dealt with.
 		closeCtx, closeCancel := context.WithTimeout(context.Background(), 10*time.Second)
-		s.play.Close(closeCtx)
+
+		// A dropped socket holds the character for a grace period rather than
+		// removing it, so a transient blip mid-fight is not a wipe. Anything
+		// deliberate -- a kick, a lost lease, a shutdown -- ends it outright,
+		// because there is nothing to come back to.
+		if s.gracefulDisconnect() {
+			s.play.Disconnect(closeCtx)
+		} else {
+			s.play.Close(closeCtx)
+		}
 		closeCancel()
 	}
 
@@ -419,3 +427,23 @@ func isExpectedClose(err error) bool {
 }
 
 var _ room.Sink = (*session)(nil)
+
+// gracefulDisconnect reports whether a closed connection should leave the
+// character held for reconnection.
+//
+// Only an unexpected drop qualifies. A kick, a lost lease, or a shutdown means
+// the character must leave now: holding it would let a kicked player return by
+// reconnecting, and holding one whose lease moved would keep this node
+// simulating something it no longer owns.
+func (s *session) gracefulDisconnect() bool {
+	s.closeMu.Lock()
+	code := s.closeCode
+	s.closeMu.Unlock()
+
+	switch code {
+	case room.CloseKicked, 0:
+		return true
+	default:
+		return false
+	}
+}

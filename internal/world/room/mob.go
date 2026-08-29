@@ -243,7 +243,10 @@ func (r *Room) findTarget(e *Entity) EntityID {
 
 	for _, id := range r.playerOrder {
 		p := r.players[id]
-		if p == nil || !isAlive(p.entity) {
+		// A frozen player is not a target: leaving a disconnected character
+		// attackable would make a dropped connection worse than a clean
+		// logout, which is exactly backwards.
+		if p == nil || p.frozen || !isAlive(p.entity) {
 			continue
 		}
 		if !canInteract(e, p.entity) {

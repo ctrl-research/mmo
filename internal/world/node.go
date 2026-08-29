@@ -18,6 +18,7 @@ import (
 	"github.com/ctrl-research/mmo/internal/store"
 	"github.com/ctrl-research/mmo/internal/world/room"
 	"github.com/ctrl-research/mmo/internal/world/sim"
+	"github.com/google/uuid"
 )
 
 // Node hosts room instances.
@@ -38,10 +39,17 @@ type Node struct {
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
-	seed uint64
+	seed  uint64
+	grace time.Duration
 
 	mu    sync.Mutex
 	rooms map[directory.InstanceID]*hosted
+
+	// holding tracks characters kept in the world through a reconnect grace
+	// window, so a returning player resumes the character they left rather
+	// than being told it is already in play by their own dropped session.
+	holdMu  sync.Mutex
+	holding map[uuid.UUID]*Session
 }
 
 type hosted struct {
@@ -64,6 +72,11 @@ type Config struct {
 	// draws a fresh one, which is right for a real server; a fixed value makes
 	// a session reproducible, which is what tests and replay want.
 	Seed uint64
+
+	// ReconnectGrace overrides how long a character is held after a dropped
+	// connection. Zero uses the default; tests set it short so both the
+	// resume path and the expiry path are reachable without waiting a minute.
+	ReconnectGrace time.Duration
 }
 
 // NewNode builds a node. Call Start before use.
@@ -79,6 +92,11 @@ func NewNode(cfg Config) (*Node, error) {
 	}
 	if cfg.Logger == nil {
 		cfg.Logger = slog.Default()
+	}
+
+	grace := cfg.ReconnectGrace
+	if grace <= 0 {
+		grace = DefaultReconnectGrace
 	}
 
 	seed := cfg.Seed
@@ -104,7 +122,9 @@ func NewNode(cfg Config) (*Node, error) {
 		log:        cfg.Logger,
 		observer:   cfg.Observer,
 		seed:       seed,
+		grace:      grace,
 		rooms:      make(map[directory.InstanceID]*hosted),
+		holding:    make(map[uuid.UUID]*Session),
 	}, nil
 }
 
@@ -217,3 +237,32 @@ func (n *Node) Rooms() int {
 
 // Content returns the loaded game data this node simulates.
 func (n *Node) Content() *content.Content { return n.content }
+
+// hold registers a session as resumable.
+func (n *Node) hold(characterID uuid.UUID, s *Session) {
+	n.holdMu.Lock()
+	defer n.holdMu.Unlock()
+	n.holding[characterID] = s
+}
+
+// forget stops holding a character for reconnection.
+func (n *Node) forget(characterID uuid.UUID) {
+	n.holdMu.Lock()
+	defer n.holdMu.Unlock()
+	delete(n.holding, characterID)
+}
+
+// held returns the session holding a character, if any.
+func (n *Node) held(characterID uuid.UUID) (*Session, bool) {
+	n.holdMu.Lock()
+	defer n.holdMu.Unlock()
+	s, ok := n.holding[characterID]
+	return s, ok
+}
+
+// Holding reports how many characters are waiting out a reconnect window.
+func (n *Node) Holding() int {
+	n.holdMu.Lock()
+	defer n.holdMu.Unlock()
+	return len(n.holding)
+}

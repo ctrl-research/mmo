@@ -25,6 +25,15 @@ type Handle interface {
 	// Capture reads a player's persistable state for checkpointing.
 	Capture(ctx context.Context, id EntityID) (Snapshot, bool)
 
+	// Freeze suspends a player whose connection dropped, leaving them in the
+	// world but inert, so a brief network blip does not cost their position in
+	// a fight.
+	Freeze(ctx context.Context, id EntityID)
+
+	// Thaw resumes a frozen player on a new connection, reporting whether they
+	// were still present to resume.
+	Thaw(ctx context.Context, id EntityID, sink Sink) bool
+
 	// Leave removes a player. It is safe to call for an unknown ID, which
 	// happens whenever a disconnect races a kick.
 	Leave(ctx context.Context, id EntityID)
@@ -58,6 +67,16 @@ type captureCmd struct {
 type captureResult struct {
 	snapshot Snapshot
 	ok       bool
+}
+
+// freezeCmd suspends a player whose connection dropped, without removing them.
+type freezeCmd struct{ id EntityID }
+
+// thawCmd resumes a frozen player on a new connection.
+type thawCmd struct {
+	id     EntityID
+	sink   Sink
+	result chan bool
 }
 
 type joinResult struct {
@@ -100,6 +119,8 @@ const (
 
 func (joinCmd) isCommand()     {}
 func (captureCmd) isCommand()  {}
+func (freezeCmd) isCommand()   {}
+func (thawCmd) isCommand()     {}
 func (leaveCmd) isCommand()    {}
 func (inputCmd) isCommand()    {}
 func (castCmd) isCommand()     {}
@@ -115,6 +136,10 @@ func (r *Room) handle(c command) {
 	case captureCmd:
 		snap, ok := r.capture(cmd.id)
 		cmd.result <- captureResult{snapshot: snap, ok: ok}
+	case freezeCmd:
+		r.freeze(cmd.id)
+	case thawCmd:
+		cmd.result <- r.thaw(cmd.id, cmd.sink)
 	case leaveCmd:
 		r.leave(cmd.id)
 	case inputCmd:
@@ -358,5 +383,88 @@ func (r *Room) interact(id EntityID, target EntityID, kind InteractKind) {
 	switch kind {
 	case InteractLoot:
 		r.tryLoot(p.entity, target)
+	}
+}
+
+// freeze suspends a player without removing them.
+//
+// A frozen character stays visible so the world does not appear to blink
+// people in and out on every transient disconnect, but takes no input, runs no
+// physics, and cannot be harmed. Leaving them vulnerable would make a dropped
+// connection worse than a clean logout, which is exactly backwards.
+func (r *Room) freeze(id EntityID) {
+	p, ok := r.players[id]
+	if !ok {
+		return
+	}
+
+	p.frozen = true
+	p.queue = p.queue[:0]
+	p.lastInput = sim.Input{}
+	p.entity.Body.Vel = sim.Vec{}
+
+	// Any mob chasing them loses interest, rather than standing over an
+	// untouchable target forever.
+	for _, e := range r.entities {
+		if e.Mob != nil && e.Mob.Target == id {
+			e.Mob.Target = 0
+			e.Mob.State = aiLeash
+		}
+	}
+
+	r.log.Info("player frozen after disconnect", "entity", uint32(id), "name", p.entity.Name)
+}
+
+// thaw resumes a frozen player on a new connection.
+func (r *Room) thaw(id EntityID, sink Sink) bool {
+	p, ok := r.players[id]
+	if !ok {
+		return false
+	}
+
+	p.frozen = false
+	p.sink = sink
+
+	// Forget what the previous connection was told: the new client has no
+	// baseline, so every visible entity must be sent again in full rather than
+	// as a delta against something it never received.
+	clear(p.sent)
+	p.ackSeq = 0
+
+	sink.Send(&mmov1.ServerMessage{
+		Body: &mmov1.ServerMessage_Welcome{Welcome: &mmov1.Welcome{
+			EntityId:   uint32(id),
+			InstanceId: uint64(r.cfg.InstanceID),
+			Tick:       r.tick,
+			TickMs:     uint32(TickPeriod.Milliseconds()),
+			MapId:      r.cfg.MapID,
+			Self:       p.entity.state(true),
+		}},
+	})
+
+	r.log.Info("player resumed after reconnect", "entity", uint32(id), "name", p.entity.Name)
+	return true
+}
+
+func (h *localHandle) Freeze(ctx context.Context, id EntityID) {
+	select {
+	case h.room.cmds <- freezeCmd{id: id}:
+	case <-ctx.Done():
+	}
+}
+
+func (h *localHandle) Thaw(ctx context.Context, id EntityID, sink Sink) bool {
+	result := make(chan bool, 1)
+	select {
+	case h.room.cmds <- thawCmd{id: id, sink: sink, result: result}:
+	case <-ctx.Done():
+		return false
+	}
+
+	select {
+	case ok := <-result:
+		return ok
+	case <-ctx.Done():
+		return false
 	}
 }
