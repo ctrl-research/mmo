@@ -11,6 +11,7 @@ import type {
   Snapshot,
   SkillBar,
   BuffState,
+  PassiveState,
   SystemMessage,
   Welcome,
   WorldMap,
@@ -71,6 +72,7 @@ export interface LoopCallbacks {
   onChat?(line: ChatLine): void;
   onSkillBar?(bar: SkillBar): void;
   onBuffs?(buffs: BuffState): void;
+  onPassives?(state: PassiveState): void;
 
   /** Called when the server confirms this player cast something. */
   onCast?(skillId: string): void;
@@ -313,6 +315,10 @@ export class GameLoop {
         this.#cb.onBuffs?.(e.body.value);
         break;
 
+      case "passives":
+        this.#cb.onPassives?.(e.body.value);
+        break;
+
       case "skillCast": {
         const cast = e.body.value;
         this.#scene.playAttack(cast.casterId, this.#selfId);
@@ -524,6 +530,21 @@ export class GameLoop {
   /** Asks to put a skill and its supports in a bar slot. */
   setSkillSlot(slot: number, skillId: string, supports: string[]): void {
     this.#conn.sendSkillSlot(slot, skillId, supports);
+  }
+
+  /** Asks to take a passive node. */
+  allocatePassive(nodeId: number): void {
+    this.#conn.sendPassive({ case: "allocate", value: nodeId });
+  }
+
+  /** Asks to give a passive node back. */
+  refundPassive(nodeId: number): void {
+    this.#conn.sendPassive({ case: "refund", value: nodeId });
+  }
+
+  /** Asks to clear the whole tree. */
+  respecPassives(): void {
+    this.#conn.sendPassive({ case: "respecAll", value: true });
   }
 
   /** The bar as the server last sent it, for the UI to draw. */

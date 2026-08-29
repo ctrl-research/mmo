@@ -324,6 +324,20 @@ func (s *captureSink) friendLists() []*mmov1.FriendList {
 	return out
 }
 
+// passiveStates returns every passive tree state the client was sent.
+func (s *captureSink) passiveStates() []*mmov1.PassiveState {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var out []*mmov1.PassiveState
+	for _, m := range s.messages {
+		if ev := m.GetEvent(); ev != nil && ev.GetPassives() != nil {
+			out = append(out, ev.GetPassives())
+		}
+	}
+	return out
+}
+
 // invites returns every party invitation the client was shown.
 func (s *captureSink) invites() []string {
 	s.mu.Lock()

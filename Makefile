@@ -53,6 +53,13 @@ generate: ## Regenerate protobuf types
 proto-breaking: ## Check the wire protocol for breaking changes against main
 	$(BUFTOOL) breaking --against '.git#branch=main'
 
+.PHONY: tree
+tree: ## Regenerate the passive tree (review the diff carefully)
+	$(GO) run ./cmd/treegen
+	@echo
+	@echo "Tree regenerated. A diff here means the passive tree changed --"
+	@echo "look at what moved before committing."
+
 .PHONY: sprites
 sprites: ## Regenerate the pixel art (review the diff carefully)
 	$(GO) run ./cmd/spritegen

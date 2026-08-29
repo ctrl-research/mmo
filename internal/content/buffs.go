@@ -162,8 +162,8 @@ func (c *Content) loadBuffs(fsys fs.FS, rec *hashRecorder) error {
 				b.StatMods = append(b.StatMods, StatMod{
 					Stat:      m.Stat,
 					Flat:      m.Flat,
-					Increased: ratioToPPM(m.Increased),
-					More:      ratioToPPM(m.More),
+					Increased: modifierToPPM(m.Increased),
+					More:      modifierToPPM(m.More),
 				})
 			}
 

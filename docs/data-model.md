@@ -150,8 +150,15 @@ characters      (id, account_id, name UNIQUE, class_id, level, exp,
                  created_at, deleted_at)
 
 character_stats     (character_id, allocated jsonb)      -- manual stat points
-character_passives  (character_id, node_id, PRIMARY KEY(character_id, node_id))
+character_passives  (character_id, node_id, allocated_at,
+                     PRIMARY KEY(character_id, node_id))
+                    -- refunding deletes; a respec is a decision about the
+                    -- future, not a record of the past
 character_skills    (character_id, skill_id, rank, PRIMARY KEY(character_id, skill_id))
+character_skill_bar (character_id, slot, skill_id, supports text[],
+                     PRIMARY KEY(character_id, slot))
+                    -- supports are an ordered list always read and written
+                    -- whole; normalising would cost a join per login
 secondary_skills    (character_id, skill_id, exp, PRIMARY KEY(character_id, skill_id))
 waypoints           (character_id, waypoint_id, unlocked_at)
 

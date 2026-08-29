@@ -399,6 +399,13 @@ func (s *session) handleClientMessage(ctx context.Context, cm *mmov1.ClientMessa
 		}
 		s.handleSkillSlot(ctx, cm.GetSkillSlot())
 
+	case cm.GetPassive() != nil:
+		if !limiter.allow() {
+			s.gw.metrics.InputsDropped.Inc()
+			return
+		}
+		s.handlePassive(ctx, cm.GetPassive())
+
 	case cm.GetPing() != nil:
 		s.Send(&mmov1.ServerMessage{
 			Body: &mmov1.ServerMessage_Pong{Pong: &mmov1.Pong{
@@ -687,6 +694,29 @@ func (s *session) handleSkillSlot(ctx context.Context, req *mmov1.SetSkillSlot) 
 		Supports: supports,
 	})
 	if err != nil {
+		s.Send(systemMessage(mmov1.ChatChannel_CHAT_CHANNEL_UNSPECIFIED, err.Error()))
+	}
+}
+
+// handlePassive forwards a passive tree change.
+func (s *session) handlePassive(ctx context.Context, action *mmov1.PassiveAction) {
+	if s.play == nil {
+		return
+	}
+
+	var req world.PassiveRequest
+	switch a := action.GetAction().(type) {
+	case *mmov1.PassiveAction_Allocate:
+		req.Allocate = int(a.Allocate)
+	case *mmov1.PassiveAction_Refund:
+		req.Refund = int(a.Refund)
+	case *mmov1.PassiveAction_RespecAll:
+		req.RespecAll = a.RespecAll
+	default:
+		return
+	}
+
+	if err := s.play.Passive(ctx, req); err != nil {
 		s.Send(systemMessage(mmov1.ChatChannel_CHAT_CHANNEL_UNSPECIFIED, err.Error()))
 	}
 }

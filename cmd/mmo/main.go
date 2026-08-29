@@ -265,6 +265,7 @@ func run() error {
 			Logger:         log,
 			AllowedOrigins: splitAndTrim(cfg.origins),
 			ClientDir:      cfg.clientDir,
+			Passives:       game.Passives,
 			DevAuth:        cfg.devAuth,
 			Identity:       identity,
 		})
