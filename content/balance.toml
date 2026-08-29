@@ -36,3 +36,14 @@ scatter_range = 40.0
 [party]
 exp_share_range = 600.0
 max_size = 6
+
+[rooms]
+# How close a player must be for a spawn point to produce mobs. Wider than
+# half a viewport, so mobs are already there when the screen reaches them
+# rather than appearing out of nothing in front of the player.
+spawn_activation_range = 800.0
+
+# How long a room runs empty before it stops. Long enough that stepping
+# through a portal and back finds the room you left, with its mobs where you
+# left them, rather than a fresh one.
+idle_ms = 60000

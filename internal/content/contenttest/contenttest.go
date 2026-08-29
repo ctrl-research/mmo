@@ -27,6 +27,7 @@ func FS() fstest.MapFS {
 		"skills/test.toml":     file(Skills),
 		"mobs/test.toml":       file(Mobs),
 		"maps/test.tmj":        file(MapTMJ),
+		"maps/annex.tmj":       file(AnnexTMJ),
 	}
 }
 
@@ -52,6 +53,9 @@ scatter_range = 0.0
 [party]
 exp_share_range = 600.0
 max_size = 6
+[rooms]
+spawn_activation_range = 800.0
+idle_ms = 60000
 `
 
 const Curves = `
@@ -251,13 +255,66 @@ const MapTMJ = `{
          {"name": "max_alive", "type": "int", "value": 2},
          {"name": "radius", "type": "int", "value": 0}
        ]},
-      {"id": 4, "class": "mob_spawn", "name": "statue", "x": 900, "y": 288,
+      {"id": 4, "class": "mob_spawn", "name": "statue", "x": 700, "y": 288,
        "properties": [
          {"name": "mob_id", "type": "string", "value": "test_statue"},
          {"name": "layer", "type": "string", "value": "shared"},
          {"name": "respawn_ms", "type": "int", "value": 60000},
          {"name": "max_alive", "type": "int", "value": 1}
+       ]},
+      {"id": 6, "class": "portal", "name": "to_annex", "x": 1216, "y": 256,
+       "width": 64, "height": 64,
+       "properties": [
+         {"name": "target_map", "type": "string", "value": "annex"},
+         {"name": "target_spawn", "type": "string", "value": "from_test"}
+       ]},
+      {"id": 7, "class": "waypoint", "name": "Test Grounds", "x": 200, "y": 288,
+       "width": 48, "height": 48,
+       "properties": [{"name": "waypoint_id", "type": "string", "value": "wp_test"}]},
+      {"id": 5, "class": "mob_spawn", "name": "far", "x": 1250, "y": 288,
+       "properties": [
+         {"name": "mob_id", "type": "string", "value": "test_dummy"},
+         {"name": "layer", "type": "string", "value": "owner"},
+         {"name": "respawn_ms", "type": "int", "value": 1000},
+         {"name": "max_alive", "type": "int", "value": 1},
+         {"name": "radius", "type": "int", "value": 0}
        ]}
+    ]
+  }]
+}`
+
+// AnnexTMJ is a second map, so tests can exercise a portal between two of
+// them.
+//
+// Kept deliberately bare -- ground, two spawn points, a portal back, and a
+// waypoint -- because what it is for is being somewhere else, not being
+// somewhere interesting.
+const AnnexTMJ = `{
+  "type": "map", "width": 20, "height": 10, "tilewidth": 32, "tileheight": 32,
+  "properties": [
+    {"name": "mapId", "type": "string", "value": "annex"},
+    {"name": "displayName", "type": "string", "value": "The Annex"},
+    {"name": "placement", "type": "string", "value": "shared"},
+    {"name": "capacity", "type": "int", "value": 4},
+    {"name": "minLevel", "type": "int", "value": 3},
+    {"name": "maxLevel", "type": "int", "value": 9}
+  ],
+  "layers": [{
+    "name": "collision", "type": "objectgroup",
+    "objects": [
+      {"id": 1, "class": "solid", "x": 0, "y": 288, "width": 640, "height": 32},
+      {"id": 2, "class": "spawn_point", "name": "start", "x": 64, "y": 288,
+       "properties": [{"name": "isDefault", "type": "bool", "value": true}]},
+      {"id": 3, "class": "spawn_point", "name": "from_test", "x": 560, "y": 288},
+      {"id": 4, "class": "portal", "name": "to_test", "x": 0, "y": 256,
+       "width": 48, "height": 64,
+       "properties": [
+         {"name": "target_map", "type": "string", "value": "test"},
+         {"name": "target_spawn", "type": "string", "value": "start"}
+       ]},
+      {"id": 5, "class": "waypoint", "name": "The Annex", "x": 544, "y": 256,
+       "width": 48, "height": 64,
+       "properties": [{"name": "waypoint_id", "type": "string", "value": "wp_annex"}]}
     ]
   }]
 }`

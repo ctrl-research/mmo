@@ -1,0 +1,19 @@
+version: v2
+
+# TypeScript types, generated from the same schema as the Go types so the
+# client and server cannot drift.
+#
+# A separate template from buf.gen.yaml because the client must not see
+# cluster.proto: those messages are a server-internal contract, and generating
+# them here would grow the browser bundle every time a node learns to say
+# something new to another node.
+inputs:
+  - directory: proto
+    exclude_paths:
+      - proto/mmo/v1/cluster.proto
+
+plugins:
+  # protoc-gen-es comes from the client's node_modules.
+  - local: ./client/node_modules/.bin/protoc-gen-es
+    out: client/src/gen
+    opt: target=ts

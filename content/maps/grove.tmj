@@ -1,0 +1,256 @@
+{
+  "compressionlevel": -1,
+  "infinite": false,
+  "orientation": "orthogonal",
+  "renderorder": "right-down",
+  "tiledversion": "1.11.0",
+  "tilewidth": 32,
+  "tileheight": 32,
+  "type": "map",
+  "version": "1.10",
+  "width": 30,
+  "height": 16,
+  "nextlayerid": 3,
+  "nextobjectid": 100,
+  "properties": [
+    {
+      "name": "mapId",
+      "type": "string",
+      "value": "grove"
+    },
+    {
+      "name": "displayName",
+      "type": "string",
+      "value": "Slime Grove"
+    },
+    {
+      "name": "capacity",
+      "type": "int",
+      "value": 6
+    },
+    {
+      "name": "minLevel",
+      "type": "int",
+      "value": 10
+    },
+    {
+      "name": "maxLevel",
+      "type": "int",
+      "value": 20
+    },
+    {
+      "name": "placement",
+      "type": "string",
+      "value": "private"
+    }
+  ],
+  "layers": [
+    {
+      "id": 1,
+      "name": "collision",
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "objects": [
+        {
+          "id": 1,
+          "name": "floor",
+          "class": "solid",
+          "x": 0,
+          "y": 480,
+          "width": 960,
+          "height": 32,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 2,
+          "name": "wall-left",
+          "class": "solid",
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 480,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 3,
+          "name": "wall-right",
+          "class": "solid",
+          "x": 928,
+          "y": 0,
+          "width": 32,
+          "height": 480,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 4,
+          "name": "ledge-left",
+          "class": "platform",
+          "x": 160,
+          "y": 384,
+          "width": 160,
+          "height": 16,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 5,
+          "name": "ledge-right",
+          "class": "platform",
+          "x": 640,
+          "y": 384,
+          "width": 160,
+          "height": 16,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 6,
+          "name": "dais",
+          "class": "platform",
+          "x": 400,
+          "y": 288,
+          "width": 160,
+          "height": 16,
+          "rotation": 0,
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "gameplay",
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "objects": [
+        {
+          "id": 20,
+          "name": "entrance",
+          "class": "spawn_point",
+          "x": 96,
+          "y": 480,
+          "width": 0,
+          "height": 0,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "isDefault",
+              "type": "bool",
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": 21,
+          "name": "to-forest",
+          "class": "portal",
+          "x": 32,
+          "y": 384,
+          "width": 48,
+          "height": 96,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "target_map",
+              "type": "string",
+              "value": "forest"
+            },
+            {
+              "name": "target_spawn",
+              "type": "string",
+              "value": "from-grove"
+            }
+          ]
+        },
+        {
+          "id": 30,
+          "name": "king",
+          "class": "mob_spawn",
+          "x": 480,
+          "y": 288,
+          "width": 0,
+          "height": 0,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "mob_id",
+              "type": "string",
+              "value": "slime_king"
+            },
+            {
+              "name": "layer",
+              "type": "string",
+              "value": "shared"
+            },
+            {
+              "name": "respawn_ms",
+              "type": "int",
+              "value": 120000
+            },
+            {
+              "name": "max_alive",
+              "type": "int",
+              "value": 1
+            },
+            {
+              "name": "radius",
+              "type": "int",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "id": 31,
+          "name": "guards",
+          "class": "mob_spawn",
+          "x": 300,
+          "y": 480,
+          "width": 0,
+          "height": 0,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "mob_id",
+              "type": "string",
+              "value": "slime_green"
+            },
+            {
+              "name": "layer",
+              "type": "string",
+              "value": "shared"
+            },
+            {
+              "name": "respawn_ms",
+              "type": "int",
+              "value": 15000
+            },
+            {
+              "name": "max_alive",
+              "type": "int",
+              "value": 4
+            },
+            {
+              "name": "radius",
+              "type": "int",
+              "value": 120
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

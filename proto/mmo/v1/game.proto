@@ -37,10 +37,12 @@ message ClientMessage {
     Cast   cast   = 4;
     Interact interact = 5;
     ItemAction item_action = 6;
+    OpenWorldMap open_world_map = 7;
+    Travel travel = 8;
   }
   // Reserved for messages arriving in later milestones -- chat, party, trade
   // -- so adding them never renumbers what is already deployed.
-  reserved 7 to 9;
+  reserved 9;
 }
 
 // Cast requests a skill. The client asks; the server decides.
@@ -320,8 +322,15 @@ message Event {
     ExpGained exp_gained = 6;
     LevelUp level_up = 7;
     LootTaken loot_taken = 8;
+    WaypointFound waypoint_found = 9;
+    PortalRefused portal_refused = 10;
+    WorldMap world_map = 12;
   }
-  reserved 9 to 15;  // chat, buffs, party
+  // 11 was MapChanged, replaced by a second Welcome: it carried strictly less
+  // than the Welcome the destination room already sends, and two messages
+  // saying the same thing is one of them being wrong eventually.
+  reserved 11;
+  reserved 13 to 15;  // chat, buffs, party
 }
 
 // DamageDealt is sent rather than inferred from a falling HP number, because a
@@ -354,6 +363,95 @@ message ExpGained {
 message LevelUp {
   uint32 level = 1;
   uint64 exp_to_next = 2;
+}
+
+// WaypointFound announces a fast-travel destination unlocked by visiting it.
+//
+// Unlocked by visiting rather than granted, so the world map fills in as a
+// record of where someone has actually been.
+message WaypointFound {
+  string waypoint_id = 1;
+  string name = 2;
+  string map_id = 3;
+}
+
+// PortalRefused explains why a transition did not happen.
+//
+// A portal that silently does nothing reads as broken, and a level gate is
+// only meaningful if the player is told about it.
+message PortalRefused {
+  string target_map = 1;
+  uint32 required_level = 2;
+  string reason = 3;
+}
+
+// OpenWorldMap asks for everything the map screen shows.
+//
+// Requested rather than pushed: the contents change only when a player unlocks
+// a waypoint or a channel fills up, and neither is worth a per-tick broadcast
+// to every client in the world.
+message OpenWorldMap {}
+
+// Travel is a request to move somewhere without walking: a fast-travel
+// waypoint, or a different channel of the map the player is already in.
+//
+// Exactly one field is set. The server validates both -- an unlocked waypoint,
+// an instance that exists and has room -- because a client that could name any
+// destination could walk into a level-40 zone at level 3.
+message Travel {
+  oneof destination {
+    string waypoint_id = 1;
+    uint64 channel_instance_id = 2;
+
+    // Ask for any channel but this one, creating it if every existing channel
+    // is somewhere the player already is. This is what the button does: at
+    // hobby scale there is usually only one channel, and "leave this instance"
+    // is still a thing a player wants.
+    bool new_channel = 3;
+  }
+}
+
+// WorldMap is the map screen: where the player can go, and where they are.
+message WorldMap {
+  repeated MapSummary maps = 1;
+  repeated WaypointSummary waypoints = 2;
+  repeated ChannelSummary channels = 3;
+
+  string current_map_id = 4;
+  uint64 current_instance_id = 5;
+}
+
+message MapSummary {
+  string map_id = 1;
+  string name = 2;
+  int32 min_level = 3;
+  int32 max_level = 4;
+
+  // Private maps are dungeons: a party gets its own copy, so they are shown
+  // differently from a public zone with channels.
+  bool private = 5;
+}
+
+// WaypointSummary is one fast-travel destination. Only unlocked waypoints are
+// sent: the world map is a record of where a player has been, and listing the
+// ones they have not found would give that away.
+message WaypointSummary {
+  string waypoint_id = 1;
+  string name = 2;
+  string map_id = 3;
+}
+
+// ChannelSummary is one instance of the map the player is currently in.
+message ChannelSummary {
+  uint64 instance_id = 1;
+
+  // Channel is the position in the list, which is the number a player sees.
+  // Instance IDs are never reused and grow forever, so they make a poor label.
+  uint32 channel = 2;
+
+  uint32 players = 3;
+  uint32 capacity = 4;
+  bool current = 5;
 }
 
 message LootTaken {

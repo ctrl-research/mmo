@@ -415,6 +415,9 @@ scatter_range = 40.0
 [party]
 exp_share_range = 600.0
 max_size = 6
+[rooms]
+spawn_activation_range = 800.0
+idle_ms = 60000
 `
 
 const curvesTOML = `

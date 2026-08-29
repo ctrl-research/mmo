@@ -170,7 +170,7 @@ jobs:
       # this is the only job with both toolchains installed.
       - name: Verify generated code is up to date
         run: |
-          go tool -modfile=tools/go.mod buf generate
+          make generate
           if ! git diff --exit-code -- internal/wire client/src/gen; then
             echo "::error::Generated code is stale. Run 'make generate' and commit the result."
             exit 1

@@ -175,7 +175,7 @@ func (r *Room) tryLoot(player *Entity, dropID EntityID) {
 	}
 
 	p := r.players[player.ID]
-	if drop.Drop.Instance == nil || p == nil || p.items == nil {
+	if drop.Drop.Instance == nil || p == nil || p.events == nil {
 		// Nothing to store, or nowhere to store it. Leaving the drop rather
 		// than silently consuming it means the loss is visible.
 		return
@@ -186,7 +186,7 @@ func (r *Room) tryLoot(player *Entity, dropID EntityID) {
 	// destroying a drop the player just earned.
 	drop.Drop.Claimed = true
 
-	p.items.ClaimLoot(LootClaim{
+	p.events.ClaimLoot(LootClaim{
 		Player:      player.ID,
 		CharacterID: p.characterID,
 		DropID:      dropID,

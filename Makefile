@@ -47,6 +47,7 @@ fmt: ## Format Go code
 .PHONY: generate
 generate: ## Regenerate protobuf types
 	$(BUFTOOL) generate
+	$(BUFTOOL) generate --template buf.gen.client.yaml
 
 .PHONY: proto-breaking
 proto-breaking: ## Check the wire protocol for breaking changes against main

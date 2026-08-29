@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ctrl-research/mmo/internal/auth"
+	"github.com/ctrl-research/mmo/internal/bus"
 	"github.com/ctrl-research/mmo/internal/store"
 	"github.com/ctrl-research/mmo/internal/store/storetest"
 
@@ -71,11 +72,13 @@ func newTestServerWithGrace(t *testing.T, grace time.Duration) *testServer {
 
 	dir := directory.NewMemory("test-node")
 	leases := directory.NewMemoryLeases()
+	msgBus := bus.NewInProc()
 
 	node, err := world.NewNode(world.Config{
 		Directory:  dir,
 		Leases:     leases,
 		Store:      st,
+		Bus:        msgBus,
 		NodeID:     "test-node",
 		Content:    game,
 		DefaultMap: "test",
@@ -89,7 +92,10 @@ func newTestServerWithGrace(t *testing.T, grace time.Duration) *testServer {
 		cancel()
 		t.Fatalf("new node: %v", err)
 	}
-	node.Start(ctx)
+	if err := node.Start(ctx); err != nil {
+		cancel()
+		t.Fatalf("start node: %v", err)
+	}
 
 	sessions, err := auth.NewSessions(
 		[]byte("a-test-signing-secret-at-least-32-bytes"), auth.NewMemoryEphemeral(), false)
@@ -129,6 +135,7 @@ func newTestServerWithGrace(t *testing.T, grace time.Duration) *testServer {
 		srv.Close()
 		cancel()
 		node.Stop()
+		msgBus.Close()
 	})
 
 	return &testServer{url: srv.URL, gw: gw, node: node, store: st, leases: leases}

@@ -1,27 +1,27 @@
 {
   "compressionlevel": -1,
-  "height": 20,
   "infinite": false,
   "orientation": "orthogonal",
   "renderorder": "right-down",
   "tiledversion": "1.11.0",
-  "tileheight": 32,
   "tilewidth": 32,
+  "tileheight": 32,
   "type": "map",
   "version": "1.10",
-  "width": 40,
+  "width": 50,
+  "height": 20,
   "nextlayerid": 3,
-  "nextobjectid": 21,
+  "nextobjectid": 100,
   "properties": [
     {
       "name": "mapId",
       "type": "string",
-      "value": "tutorial"
+      "value": "forest"
     },
     {
       "name": "displayName",
       "type": "string",
-      "value": "Training Grounds"
+      "value": "Whispering Forest"
     },
     {
       "name": "placement",
@@ -36,12 +36,12 @@
     {
       "name": "minLevel",
       "type": "int",
-      "value": 1
+      "value": 5
     },
     {
       "name": "maxLevel",
       "type": "int",
-      "value": 8
+      "value": 15
     }
   ],
   "layers": [
@@ -61,7 +61,7 @@
           "class": "solid",
           "x": 0,
           "y": 608,
-          "width": 1280,
+          "width": 1600,
           "height": 32,
           "rotation": 0,
           "visible": true
@@ -81,7 +81,7 @@
           "id": 3,
           "name": "wall-right",
           "class": "solid",
-          "x": 1248,
+          "x": 1568,
           "y": 0,
           "width": 32,
           "height": 608,
@@ -90,89 +90,78 @@
         },
         {
           "id": 4,
-          "name": "pillar",
+          "name": "outcrop",
           "class": "solid",
-          "x": 1024,
-          "y": 480,
-          "width": 96,
-          "height": 128,
+          "x": 700,
+          "y": 448,
+          "width": 128,
+          "height": 160,
           "rotation": 0,
           "visible": true
         },
         {
           "id": 5,
-          "name": "ledge-low-left",
+          "name": "canopy-low",
           "class": "platform",
-          "x": 160,
+          "x": 220,
           "y": 512,
-          "width": 192,
+          "width": 200,
           "height": 16,
           "rotation": 0,
           "visible": true
         },
         {
           "id": 6,
-          "name": "ledge-mid",
+          "name": "canopy-mid",
           "class": "platform",
-          "x": 448,
-          "y": 416,
-          "width": 192,
+          "x": 520,
+          "y": 400,
+          "width": 180,
           "height": 16,
           "rotation": 0,
           "visible": true
         },
         {
           "id": 7,
-          "name": "ledge-low-right",
+          "name": "canopy-high",
           "class": "platform",
-          "x": 736,
-          "y": 512,
-          "width": 192,
+          "x": 900,
+          "y": 320,
+          "width": 220,
           "height": 16,
           "rotation": 0,
           "visible": true
         },
         {
           "id": 8,
-          "name": "ledge-high",
+          "name": "canopy-far",
           "class": "platform",
-          "x": 352,
-          "y": 288,
-          "width": 160,
+          "x": 1220,
+          "y": 448,
+          "width": 200,
           "height": 16,
           "rotation": 0,
           "visible": true
         },
         {
           "id": 9,
-          "name": "ledge-top",
-          "class": "platform",
-          "x": 704,
-          "y": 224,
-          "width": 224,
-          "height": 16,
+          "name": "vine-a",
+          "class": "rope",
+          "x": 600,
+          "y": 400,
+          "width": 16,
+          "height": 208,
           "rotation": 0,
           "visible": true
         },
         {
           "id": 10,
-          "name": "rope-main",
+          "name": "vine-b",
           "class": "rope",
-          "x": 976,
-          "y": 224,
+          "x": 1000,
+          "y": 320,
           "width": 16,
-          "height": 384,
-          "rotation": 0,
-          "visible": true
-        },
-        {
-          "id": 11,
-          "name": "rope-short",
-          "class": "rope",
-          "x": 416,
-          "y": 288,
-          "width": 16,
-          "height": 144,
+          "height": 288,
           "rotation": 0,
           "visible": true
         }
@@ -189,10 +178,10 @@
       "y": 0,
       "objects": [
         {
-          "id": 12,
-          "name": "start",
+          "id": 20,
+          "name": "from-tutorial",
           "class": "spawn_point",
-          "x": 200,
+          "x": 120,
           "y": 608,
           "width": 0,
           "height": 0,
@@ -207,86 +196,91 @@
           ]
         },
         {
-          "id": 13,
-          "name": "slimes-west",
-          "class": "mob_spawn",
-          "x": 420,
+          "id": 21,
+          "name": "from-grove",
+          "class": "spawn_point",
+          "x": 1480,
           "y": 608,
           "width": 0,
           "height": 0,
           "rotation": 0,
           "visible": true,
-          "properties": [
-            {
-              "name": "mob_id",
-              "type": "string",
-              "value": "slime_green"
-            },
-            {
-              "name": "layer",
-              "type": "string",
-              "value": "owner"
-            },
-            {
-              "name": "respawn_ms",
-              "type": "int",
-              "value": 5000
-            },
-            {
-              "name": "max_alive",
-              "type": "int",
-              "value": 3
-            },
-            {
-              "name": "radius",
-              "type": "int",
-              "value": 90
-            }
-          ]
+          "properties": []
         },
         {
-          "id": 14,
-          "name": "slimes-east",
-          "class": "mob_spawn",
-          "x": 780,
-          "y": 608,
-          "width": 0,
-          "height": 0,
+          "id": 22,
+          "name": "to-tutorial",
+          "class": "portal",
+          "x": 32,
+          "y": 512,
+          "width": 48,
+          "height": 96,
           "rotation": 0,
           "visible": true,
           "properties": [
             {
-              "name": "mob_id",
+              "name": "target_map",
               "type": "string",
-              "value": "slime_green"
+              "value": "tutorial"
             },
             {
-              "name": "layer",
+              "name": "target_spawn",
               "type": "string",
-              "value": "owner"
-            },
-            {
-              "name": "respawn_ms",
-              "type": "int",
-              "value": 5000
-            },
-            {
-              "name": "max_alive",
-              "type": "int",
-              "value": 3
-            },
-            {
-              "name": "radius",
-              "type": "int",
-              "value": 90
+              "value": "from-forest"
             }
           ]
         },
         {
-          "id": 15,
-          "name": "boars-far",
+          "id": 23,
+          "name": "to-grove",
+          "class": "portal",
+          "x": 1500,
+          "y": 512,
+          "width": 48,
+          "height": 96,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "target_map",
+              "type": "string",
+              "value": "grove"
+            },
+            {
+              "name": "target_spawn",
+              "type": "string",
+              "value": "entrance"
+            },
+            {
+              "name": "required_level",
+              "type": "int",
+              "value": 10
+            }
+          ]
+        },
+        {
+          "id": 24,
+          "name": "Whispering Forest",
+          "class": "waypoint",
+          "x": 200,
+          "y": 544,
+          "width": 40,
+          "height": 64,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "waypoint_id",
+              "type": "string",
+              "value": "wp_forest"
+            }
+          ]
+        },
+        {
+          "id": 30,
+          "name": "boars-west",
           "class": "mob_spawn",
-          "x": 1160,
+          "x": 400,
           "y": 608,
           "width": 0,
           "height": 0,
@@ -306,26 +300,64 @@
             {
               "name": "respawn_ms",
               "type": "int",
-              "value": 8000
+              "value": 6000
             },
             {
               "name": "max_alive",
               "type": "int",
-              "value": 2
+              "value": 3
             },
             {
               "name": "radius",
               "type": "int",
-              "value": 70
+              "value": 100
             }
           ]
         },
         {
-          "id": 16,
-          "name": "slimes-ledge",
+          "id": 31,
+          "name": "boars-east",
           "class": "mob_spawn",
-          "x": 560,
-          "y": 416,
+          "x": 1100,
+          "y": 608,
+          "width": 0,
+          "height": 0,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "mob_id",
+              "type": "string",
+              "value": "boar_wild"
+            },
+            {
+              "name": "layer",
+              "type": "string",
+              "value": "owner"
+            },
+            {
+              "name": "respawn_ms",
+              "type": "int",
+              "value": 6000
+            },
+            {
+              "name": "max_alive",
+              "type": "int",
+              "value": 3
+            },
+            {
+              "name": "radius",
+              "type": "int",
+              "value": 100
+            }
+          ]
+        },
+        {
+          "id": 32,
+          "name": "slimes-canopy",
+          "class": "mob_spawn",
+          "x": 980,
+          "y": 320,
           "width": 0,
           "height": 0,
           "rotation": 0,
@@ -344,7 +376,7 @@
             {
               "name": "respawn_ms",
               "type": "int",
-              "value": 6000
+              "value": 5000
             },
             {
               "name": "max_alive",
@@ -354,100 +386,9 @@
             {
               "name": "radius",
               "type": "int",
-              "value": 60
+              "value": 80
             }
           ]
-        },
-        {
-          "id": 17,
-          "name": "king",
-          "class": "mob_spawn",
-          "x": 860,
-          "y": 224,
-          "width": 0,
-          "height": 0,
-          "rotation": 0,
-          "visible": true,
-          "properties": [
-            {
-              "name": "mob_id",
-              "type": "string",
-              "value": "slime_king"
-            },
-            {
-              "name": "layer",
-              "type": "string",
-              "value": "shared"
-            },
-            {
-              "name": "respawn_ms",
-              "type": "int",
-              "value": 60000
-            },
-            {
-              "name": "max_alive",
-              "type": "int",
-              "value": 1
-            },
-            {
-              "name": "radius",
-              "type": "int",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "id": 18,
-          "name": "to-forest",
-          "class": "portal",
-          "x": 1200,
-          "y": 512,
-          "width": 48,
-          "height": 96,
-          "rotation": 0,
-          "visible": true,
-          "properties": [
-            {
-              "name": "target_map",
-              "type": "string",
-              "value": "forest"
-            },
-            {
-              "name": "target_spawn",
-              "type": "string",
-              "value": "from-tutorial"
-            }
-          ]
-        },
-        {
-          "id": 19,
-          "name": "Training Grounds",
-          "class": "waypoint",
-          "x": 96,
-          "y": 544,
-          "width": 40,
-          "height": 64,
-          "rotation": 0,
-          "visible": true,
-          "properties": [
-            {
-              "name": "waypoint_id",
-              "type": "string",
-              "value": "wp_tutorial"
-            }
-          ]
-        },
-        {
-          "id": 20,
-          "name": "from-forest",
-          "class": "spawn_point",
-          "x": 1160,
-          "y": 608,
-          "width": 0,
-          "height": 0,
-          "rotation": 0,
-          "visible": true,
-          "properties": []
         }
       ]
     }

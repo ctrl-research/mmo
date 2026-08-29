@@ -147,21 +147,61 @@ stacks of the same item into one, so twenty potions occupy twenty slots.
 
 ---
 
-## M4 — A world of rooms
+## M4 — A world of rooms — **done**
 
 *Where the scaling design gets exercised for real.*
 
-- Room lifecycle: create, populate, idle, tear down
-- Portals and the full handoff protocol — **including the local case, which must not be special-cased**
-- `shared` policy: auto-scaled channels, join least-full, capacity limits
-- `private` policy: party-keyed instances with TTL
-- Layer key follows party membership: partying merges mob views, leaving splits them
-- Proximity spawning and tiered AI ticking — the two mitigations that keep layering inside the tick budget
-- World map UI, waypoint unlock and teleport
-- Multiple maps with level ranges
-- Simulated multi-node in tests: two world roles in one process, forced to communicate over the bus
+- [x] Room lifecycle: create, populate, idle, tear down
+- [x] Portals and the full handoff protocol — including the local case, which is not special-cased
+- [x] `shared` policy: auto-scaled channels, join least-full, capacity limits
+- [x] `private` policy: one instance per owner key
+- [x] Proximity spawning and tiered AI ticking — the two mitigations that keep layering inside the tick budget
+- [x] World map UI, waypoint unlock and teleport
+- [x] Multiple maps with level ranges
+- [x] Simulated multi-node in tests: two world roles in one process, forced to communicate over the bus
+- [ ] Layer key follows party membership — deferred to M5, see below
 
-**Exit:** walk through a portal into a different map hosted by a different world role, with no visible interruption. Channel switching works. A party gets its own dungeon instance, and partying up in a hunting zone merges the members' mob layers.
+**Exit criterion, verified by test and in a browser.** The architectural half is
+`TestPortalTransfersBetweenNodes`: two nodes sharing a bus and a directory, a
+character walking a portal from a room on one to a room on the other. It was
+checked against two mutations — pinning both rooms to one node, and pointing
+the transfer at a subject nobody answers — and fails on each, so it is not
+passing by accident.
+
+| Claim | How it was checked |
+| --- | --- |
+| A portal crosses nodes over the bus | `TestPortalTransfersBetweenNodes`, plus both mutations above |
+| The source is torn down only after the destination accepts | The source slot is asserted released; every failure path leaves the character where it was |
+| A stale fencing token cannot resurrect a character | `TestStaleTransferTokensAreRefused` |
+| The session follows the character | `TestASessionFollowsTheCharacterThroughAPortal` |
+| Distant spawn points stay empty, and walking away culls | Four tests in `internal/world/room/lifecycle_test.go`, mutation-checked |
+| Empty rooms retire and release their instance | `TestIdleRoomsAreTornDown`; seen firing after exactly 60 s in a live server |
+| Channel switching | Clicked in a browser: a second Welcome, position preserved, 0 hard corrections |
+| Waypoints unlock by being walked over and appear on the world map | Walked over in a browser after a transfer |
+
+**A bug worth recording, because tests did not catch it.** Everything a live
+session holds — the socket, the channel the room reports portals and loot on
+-- is an in-process reference to the node the *player* is connected to, so none
+of it can travel in the transfer request. The first implementation left it
+behind. The character arrived able to move and unable to do anything else: no
+loot, no waypoints, and no second portal, with nothing in the logs to say so.
+Every test passed, because each one took exactly one portal. It showed up in a
+browser within a minute. `room.Attachment` now carries all of it, handed over
+after the destination accepts, and `TestASessionFollowsTheCharacterThroughAPortal`
+fails without it.
+
+**Deferred deliberately.** The layer key is the character ID rather than the
+party ID, because parties are M5 and there is nothing to key on yet. It is the
+same code path with a different key — `layerFor(LayerID)` — not a placeholder
+to be replaced. Private instances have no TTL either: they are torn down by the
+same idle timeout as every other room, and a dungeon that should persist past
+its party leaving is a reason to add one, which M7 will have and M4 does not.
+
+**Also worth knowing:** culled mobs clear their spawn timer, so returning to an
+area finds it repopulated rather than empty for a respawn interval. And a
+character can be in a room with no connection at all — mid-transfer, or inside
+a reconnect window — which is why the room tolerates a null sink instead of
+checking for one in the tick loop.
 
 ---
 
@@ -169,6 +209,7 @@ stacks of the same item into one, so twenty potions occupy twenty slots.
 
 - Chat: global, local (room), whisper, party, guild — with rate limits and mutes
 - Party: invite, join, leave, kick, leader transfer, member frames
+- Layer key follows party membership: partying merges mob views, leaving splits them (carried over from M4)
 - Party exp sharing by radius, and configurable loot rules
 - Guild: create, roster, ranks and permissions, MOTD, guild chat
 - Friends and presence

@@ -114,6 +114,29 @@ type Directory interface {
 	// simultaneous joins both pick the same last free slot.
 	Join(ctx context.Context, key RoomKey, capacity int) (Instance, error)
 
+	// JoinInstance reserves a slot in one named instance, rather than letting
+	// the directory choose.
+	//
+	// This is channel switching: a player picking channel 3 means that
+	// instance and no other, so the placement that spreads players across the
+	// least-full channel is exactly the wrong behaviour. Fails with
+	// ErrNoCapacity if it filled up in the meantime and ErrUnknownInstance if
+	// it was torn down, both of which the caller reports rather than silently
+	// substituting a different channel.
+	JoinInstance(ctx context.Context, id InstanceID) (Instance, error)
+
+	// NewInstance creates an additional instance for a key and reserves a slot
+	// in it, whether or not the existing ones have room.
+	//
+	// Join deliberately fills the least-full channel, which is right for
+	// placement and wrong for a player who wants out of the one they are in.
+	// Fails for a private key, which is one instance by definition.
+	NewInstance(ctx context.Context, key RoomKey, capacity int) (Instance, error)
+
+	// InstancesFor returns every live instance satisfying a key, ordered by
+	// ID. For a shared map this is the channel list.
+	InstancesFor(ctx context.Context, key RoomKey) []Instance
+
 	// Leave releases a slot previously reserved by Join. Releasing the last
 	// slot in an instance does not destroy it: the world node decides when to
 	// tear a room down, since only it knows whether the room still has work
@@ -123,6 +146,18 @@ type Directory interface {
 	// Release removes an instance entirely. The world node calls this after
 	// tearing the room down.
 	Release(ctx context.Context, id InstanceID) error
+
+	// TryRelease removes an instance only if nobody occupies a slot in it,
+	// reporting whether it did.
+	//
+	// This is what makes tearing an idle room down safe. Checking occupancy
+	// and releasing separately leaves a window where a player joins the
+	// instance between the two, and the room they were placed in stops
+	// ticking a moment later. Doing both under the directory's own lock closes
+	// it: after a successful TryRelease no further placement can name the
+	// instance, and a failed one means somebody arrived and the room should
+	// keep running.
+	TryRelease(ctx context.Context, id InstanceID) (bool, error)
 
 	// Lookup returns a single instance.
 	Lookup(ctx context.Context, id InstanceID) (Instance, bool)

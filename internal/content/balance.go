@@ -25,6 +25,29 @@ type Balance struct {
 	Combat CombatBalance
 	Drops  DropBalance
 	Party  PartyBalance
+	Rooms  RoomBalance
+}
+
+// RoomBalance tunes the two things that keep a layered room inside its tick
+// budget, and the point at which an empty one stops costing anything.
+type RoomBalance struct {
+	// SpawnActivationRange is how close a player must be to a spawn point for
+	// it to produce mobs.
+	//
+	// Under per-player layering a room holds roughly layers x mobs entities,
+	// and most of them are somewhere the owner is not. Gating on distance
+	// means a layer only populates the part of the map its player is actually
+	// in. Set it wider than half a viewport, or mobs appear on screen out of
+	// nothing.
+	SpawnActivationRange fixed.F
+
+	// IdleTicks is how long a room runs with nobody in it before it stops.
+	//
+	// Not zero: a player walking through a portal and straight back should
+	// find the room they left, not a fresh one with every mob respawned. Not
+	// long either, since an empty room still costs a goroutine and 20 wakeups
+	// a second.
+	IdleTicks int
 }
 
 type CombatBalance struct {
@@ -89,6 +112,11 @@ type balanceFile struct {
 		ExpShareRange float64 `toml:"exp_share_range"`
 		MaxSize       int     `toml:"max_size"`
 	} `toml:"party"`
+
+	Rooms struct {
+		SpawnActivationRange float64 `toml:"spawn_activation_range"`
+		IdleMs               int     `toml:"idle_ms"`
+	} `toml:"rooms"`
 }
 
 func (c *Content) loadBalance(fsys fs.FS, rec *hashRecorder) error {
@@ -120,6 +148,10 @@ func (c *Content) loadBalance(fsys fs.FS, rec *hashRecorder) error {
 			ExpShareRange: toFixedValue(f.Party.ExpShareRange),
 			MaxSize:       f.Party.MaxSize,
 		},
+		Rooms: RoomBalance{
+			SpawnActivationRange: toFixedValue(f.Rooms.SpawnActivationRange),
+			IdleTicks:            msToTicks(f.Rooms.IdleMs, TickRate),
+		},
 	}
 
 	return c.Balance.validate()
@@ -143,6 +175,10 @@ func (b Balance) validate() error {
 		return fmt.Errorf("balance: pickup_range must be positive, or nothing could be looted")
 	case b.Party.MaxSize <= 0:
 		return fmt.Errorf("balance: party max_size must be positive")
+	case b.Rooms.SpawnActivationRange <= 0:
+		return fmt.Errorf("balance: spawn_activation_range must be positive, or no mob would ever spawn")
+	case b.Rooms.IdleTicks <= 0:
+		return fmt.Errorf("balance: rooms idle_ms must be positive, or a room would be torn down the tick it empties")
 	}
 	return nil
 }

@@ -75,6 +75,17 @@ type Sink interface {
 	Close(code uint32, reason string)
 }
 
+// nullSink is where messages for a character with no connection go.
+//
+// A character can be in a room with nobody watching -- mid-transfer, or inside
+// a reconnect window -- and every path that would otherwise need a nil check
+// is inside the tick loop, where a nil dereference takes the room down for
+// everybody in it.
+type nullSink struct{}
+
+func (nullSink) Send(*mmov1.ServerMessage) {}
+func (nullSink) Close(uint32, string)      {}
+
 // player is the room's per-connection state.
 type player struct {
 	entity *Entity
@@ -101,9 +112,26 @@ type player struct {
 	// allocating a map per player per tick.
 	seenScratch map[EntityID]struct{}
 
-	// items receives this player's loot claims. Per player rather than per
-	// room, because each player has their own session and their own inventory.
-	items ItemSink
+	// events is this player's channel back to their session. Per player rather
+	// than per room, because each player has their own session.
+	events SessionEvents
+
+	// transferring marks a player whose portal transfer is in flight. They
+	// take no further portal, and cannot be transferred twice.
+	transferring bool
+
+	// portalReadyAt is the tick from which portals apply again, so arriving on
+	// a spawn that overlaps the return portal does not bounce the character
+	// straight back.
+	portalReadyAt uint64
+
+	// portalNoticeAt throttles the "you cannot enter" message, which would
+	// otherwise be sent every tick a player stands in a gated portal.
+	portalNoticeAt uint64
+
+	// knownWaypoints avoids one database write per tick while a player stands
+	// on a waypoint they have already unlocked.
+	knownWaypoints map[string]bool
 
 	// casts queued since the last tick, drained in the cast phase.
 	casts []castRequest
@@ -147,10 +175,24 @@ type Config struct {
 	// the input log makes the room's entire history reproducible.
 	Seed uint64
 
+	// IdleTicks is how long the room may run with nobody in it before it asks
+	// Retire whether it may stop. Zero disables idle teardown.
+	IdleTicks int
+
 	// Observer receives per-tick statistics. Optional; the metrics package
 	// provides one. Kept as an interface so the simulation has no dependency
 	// on a metrics library.
 	Observer Observer
+
+	// Retire asks whether the room may stop after standing empty. It returns
+	// false when somebody has just been placed here, in which case the room
+	// keeps running and asks again later.
+	//
+	// A callback rather than the room deciding for itself, because only the
+	// node can make "stop hosting" and "stop being offered to players" one
+	// step. Optional: a room with no Retire runs until its context is
+	// cancelled, which is what a test wants.
+	Retire func() bool
 }
 
 // Observer receives per-tick measurements from a room.
@@ -158,13 +200,34 @@ type Observer interface {
 	ObserveTick(mapID string, d time.Duration, entities, players int)
 }
 
-// ItemSink receives loot claims from the tick loop.
+// SessionEvents is the room's channel back to a player's session.
 //
-// Implementations must not block: this is called mid-tick, and a database
-// round trip here would stall the simulation for everyone in the room. The
-// session's implementation enqueues and answers later through ResolveLoot.
-type ItemSink interface {
+// Everything here needs work the tick loop must not do -- a database write, a
+// transfer negotiated over the bus -- so the room reports what happened and
+// the session acts on it.
+//
+// Implementations must not block: these are called mid-tick, and anything
+// slower than a channel send stalls the simulation for everyone in the room.
+type SessionEvents interface {
+	// ClaimLoot reports that a player has asked for an item. The drop stays in
+	// the world until the session confirms it through ResolveLoot.
 	ClaimLoot(claim LootClaim)
+
+	// EnterPortal reports that a player is standing in a portal. The session
+	// runs the transfer protocol, which is not something a tick can wait for.
+	EnterPortal(req PortalRequest)
+
+	// DiscoverWaypoint reports that a player touched a waypoint, so the
+	// session can record the unlock.
+	DiscoverWaypoint(player EntityID, characterID, waypointID string)
+}
+
+// PortalRequest is a player standing in a portal.
+type PortalRequest struct {
+	Player      EntityID
+	CharacterID string
+	Portal      content.Portal
+	Tick        uint64
 }
 
 // LootClaim is a player's request for an item, pending persistence.
@@ -222,6 +285,14 @@ type Room struct {
 	// pending accumulates events produced during a tick, flushed with the
 	// snapshot so a client receives a tick's outcome as one frame.
 	pending []pendingEvent
+
+	// emptySince is the tick the last player left, or zero while anyone is
+	// here. It is what the idle timeout measures from.
+	emptySince uint64
+
+	// retiring is set once the node has agreed the room may stop, so the loop
+	// exits after finishing the tick it is in rather than mid-phase.
+	retiring bool
 
 	cmds chan command
 }
@@ -318,7 +389,10 @@ func (r *Room) Run(ctx context.Context) error {
 	defer ticker.Stop()
 
 	r.log.Info("room started", "capacity", r.cfg.Capacity, "tick_hz", TickRate)
-	defer r.log.Info("room stopped", "ticks", r.tick)
+	// Wrapped in a closure because a deferred call evaluates its arguments
+	// now, not on return -- so logging r.tick directly reports zero for every
+	// room that ever ran.
+	defer func() { r.log.Info("room stopped", "ticks", r.tick) }()
 
 	for {
 		select {
@@ -331,6 +405,12 @@ func (r *Room) Run(ctx context.Context) error {
 
 		case <-ticker.C:
 			r.doTick()
+			if r.retiring {
+				// Nobody is here, and the node has already stopped offering
+				// this instance to anyone, so there is nothing left to do.
+				r.shutdown()
+				return nil
+			}
 		}
 	}
 }
@@ -349,12 +429,18 @@ func (r *Room) doTick() {
 	// queued this tick -- it does not, because AI runs before its own death is
 	// processed but after players have already acted.
 	r.phaseIngestAndMove()
+	// Portals and waypoints are checked against final positions for this tick,
+	// before combat and AI: a player standing in a portal is leaving, and
+	// should not take a hit from a mob on the way out.
+	r.phasePortals()
 	r.phaseCasts()
 	r.phaseAI()
 	r.phaseDrops()
 	r.phaseSpawns()
 	r.phaseSnapshot()
 	r.pending = r.pending[:0]
+
+	r.checkIdle()
 
 	elapsed := time.Since(start)
 	if r.cfg.Observer != nil {
@@ -367,6 +453,41 @@ func (r *Room) doTick() {
 			"took", elapsed, "budget", TickBudget,
 			"entities", len(r.entities), "players", len(r.players))
 	}
+}
+
+// checkIdle stops a room that has stood empty for long enough.
+//
+// An empty room is not free: it holds a goroutine, wakes 20 times a second,
+// and keeps every mob it spawned. It is also not worthless -- a player who
+// steps through a portal and straight back should find the room they left --
+// so the timeout is generous rather than immediate.
+//
+// The Retire call blocks the tick loop. That is acceptable precisely because
+// the room is empty: there is nobody whose tick it could delay, and it happens
+// at most once per idle interval.
+func (r *Room) checkIdle() {
+	if r.cfg.Retire == nil || r.cfg.IdleTicks <= 0 {
+		return
+	}
+	if len(r.players) > 0 {
+		r.emptySince = 0
+		return
+	}
+	if r.emptySince == 0 {
+		r.emptySince = r.tick
+		return
+	}
+	if r.tick-r.emptySince < uint64(r.cfg.IdleTicks) {
+		return
+	}
+
+	if !r.cfg.Retire() {
+		// Somebody has just been placed here and their join is on its way.
+		// Restart the clock rather than asking again on the very next tick.
+		r.emptySince = r.tick
+		return
+	}
+	r.retiring = true
 }
 
 // phaseIngestAndMove drains each player's input queue and advances their body.
