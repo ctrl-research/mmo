@@ -19,8 +19,11 @@ var ErrRoomClosed = errors.New("room: closed")
 // difference, which is the entire point -- and why even the in-process path
 // goes through it (AGENTS.md invariants 1 and 2).
 type Handle interface {
-	// Join adds a player and returns their entity ID.
-	Join(ctx context.Context, name string, sink Sink) (EntityID, error)
+	// Join places a character and returns the entity it was given.
+	Join(ctx context.Context, spec JoinSpec) (EntityID, error)
+
+	// Capture reads a player's persistable state for checkpointing.
+	Capture(ctx context.Context, id EntityID) (Snapshot, bool)
 
 	// Leave removes a player. It is safe to call for an unknown ID, which
 	// happens whenever a disconnect races a kick.
@@ -41,9 +44,20 @@ type Handle interface {
 type command interface{ isCommand() }
 
 type joinCmd struct {
-	name   string
-	sink   Sink
+	spec   JoinSpec
 	result chan joinResult
+}
+
+// captureCmd reads a player's persistable state on the room goroutine, which
+// is what makes the result internally consistent.
+type captureCmd struct {
+	id     EntityID
+	result chan captureResult
+}
+
+type captureResult struct {
+	snapshot Snapshot
+	ok       bool
 }
 
 type joinResult struct {
@@ -85,6 +99,7 @@ const (
 )
 
 func (joinCmd) isCommand()     {}
+func (captureCmd) isCommand()  {}
 func (leaveCmd) isCommand()    {}
 func (inputCmd) isCommand()    {}
 func (castCmd) isCommand()     {}
@@ -95,8 +110,11 @@ func (interactCmd) isCommand() {}
 func (r *Room) handle(c command) {
 	switch cmd := c.(type) {
 	case joinCmd:
-		id, err := r.join(cmd.name, cmd.sink)
+		id, err := r.join(cmd.spec)
 		cmd.result <- joinResult{id: id, err: err}
+	case captureCmd:
+		snap, ok := r.capture(cmd.id)
+		cmd.result <- captureResult{snapshot: snap, ok: ok}
 	case leaveCmd:
 		r.leave(cmd.id)
 	case inputCmd:
@@ -113,12 +131,14 @@ func (r *Room) handle(c command) {
 	}
 }
 
-func (r *Room) join(name string, sink Sink) (EntityID, error) {
+func (r *Room) join(spec JoinSpec) (EntityID, error) {
 	if len(r.players) >= r.cfg.Capacity {
 		return 0, ErrRoomFull
 	}
 
 	state := newPlayerState()
+	name := spec.Name
+	sink := spec.Sink
 
 	e := r.spawnEntity(&Entity{
 		Kind: KindPlayer,
@@ -136,6 +156,11 @@ func (r *Room) join(name string, sink Sink) (EntityID, error) {
 	// Allocate the layer this player's mobs and drops live in. From M5 the key
 	// is the party ID, so partying up merges views; until parties exist every
 	// player gets their own, which is the same code path with a different key.
+	// Restore saved progression and position before anything observes the
+	// entity, so the first snapshot a client receives is already correct
+	// rather than a spawn-point position corrected a tick later.
+	r.applyCharacter(e, spec)
+
 	r.nextLayer++
 	layer := r.nextLayer
 	r.layerFor(layer)
@@ -145,6 +170,7 @@ func (r *Room) join(name string, sink Sink) (EntityID, error) {
 		entity:      e,
 		sink:        sink,
 		layer:       layer,
+		characterID: spec.CharacterID,
 		sent:        make(map[EntityID]view),
 		seenScratch: make(map[EntityID]struct{}),
 	}
@@ -171,8 +197,19 @@ func (r *Room) join(name string, sink Sink) (EntityID, error) {
 		}},
 	})
 
-	r.log.Info("player joined", "entity", uint32(e.ID), "name", name, "players", len(r.players))
+	r.log.Info("player joined",
+		"entity", uint32(e.ID), "name", name, "character", spec.CharacterID,
+		"level", state.Level, "players", len(r.players))
 	return e.ID, nil
+}
+
+// capture reads a player's persistable state.
+func (r *Room) capture(id EntityID) (Snapshot, bool) {
+	p, ok := r.players[id]
+	if !ok {
+		return Snapshot{}, false
+	}
+	return captureCharacter(p.entity, r.cfg.MapID), true
 }
 
 func (r *Room) leave(id EntityID) {
@@ -249,10 +286,10 @@ type localHandle struct{ room *Room }
 // NewHandle returns a Handle for a room in this process.
 func NewHandle(r *Room) Handle { return &localHandle{room: r} }
 
-func (h *localHandle) Join(ctx context.Context, name string, sink Sink) (EntityID, error) {
+func (h *localHandle) Join(ctx context.Context, spec JoinSpec) (EntityID, error) {
 	result := make(chan joinResult, 1)
 	select {
-	case h.room.cmds <- joinCmd{name: name, sink: sink, result: result}:
+	case h.room.cmds <- joinCmd{spec: spec, result: result}:
 	case <-ctx.Done():
 		return 0, ctx.Err()
 	}

@@ -27,10 +27,12 @@ import (
 	"time"
 
 	gamedata "github.com/ctrl-research/mmo/content"
+	"github.com/ctrl-research/mmo/internal/auth"
 	"github.com/ctrl-research/mmo/internal/content"
 	"github.com/ctrl-research/mmo/internal/directory"
 	"github.com/ctrl-research/mmo/internal/gateway"
 	"github.com/ctrl-research/mmo/internal/metrics"
+	"github.com/ctrl-research/mmo/internal/store"
 	"github.com/ctrl-research/mmo/internal/world"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -57,6 +59,13 @@ type config struct {
 	logLevel   string
 	logJSON    bool
 	seed       uint64
+
+	databaseURL   string
+	redisAddr     string
+	sessionSecret string
+	publicURL     string
+	secureCookies bool
+	providersFile string
 }
 
 func main() {
@@ -101,13 +110,44 @@ func run() error {
 		"hash", game.Hash, "maps", len(game.Maps), "mobs", len(game.Mobs),
 		"items", len(game.Items), "skills", len(game.Skills))
 
+	db, err := store.Open(ctx, store.Config{URL: cfg.databaseURL, Logger: log})
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	allowed, err := db.AllowlistSize(ctx)
+	if err != nil {
+		return err
+	}
+	if allowed == 0 && !cfg.devAuth {
+		// An empty allowlist admits nobody, which is the safe default but
+		// looks exactly like a broken server to whoever tries to sign in.
+		log.Warn("the allowlist is empty, so nobody can sign in; " +
+			"add an entry or start with --dev-auth for local play")
+	}
+
 	dir := directory.NewMemory(directory.NodeID(cfg.nodeID))
 	defer dir.Close()
+
+	// Redis is optional at hobby scale: with one process, in-memory leases and
+	// token storage are correct, and the fencing check in Postgres -- which is
+	// what actually enforces single-writer -- is identical either way. With
+	// several gateways it becomes required, because a login can start on one
+	// and its callback land on another.
+	leases, ephemeral, closeRedis, err := openCoordination(ctx, cfg, log)
+	if err != nil {
+		return err
+	}
+	defer closeRedis()
 
 	var node *world.Node
 	if roles[RoleWorld] {
 		node, err = world.NewNode(world.Config{
 			Directory:  dir,
+			Leases:     leases,
+			Store:      db,
+			NodeID:     cfg.nodeID,
 			Content:    game,
 			DefaultMap: cfg.defaultMap,
 			Logger:     log,
@@ -135,20 +175,61 @@ func run() error {
 				"anyone who can reach this server can obtain a ticket for any name")
 		}
 
+		secret, err := sessionSecret(cfg, log)
+		if err != nil {
+			return err
+		}
+
+		providerConfigs, err := loadProviders(cfg.providersFile)
+		if err != nil {
+			return err
+		}
+
+		sessions, err := auth.NewSessions([]byte(secret), ephemeral, cfg.secureCookies)
+		if err != nil {
+			return err
+		}
+
+		redirectBase := cfg.publicURL
+		if redirectBase == "" && len(providerConfigs) > 0 {
+			// The redirect URI must match what is registered with the
+			// provider exactly, so guessing it would fail in a way that is
+			// confusing to diagnose.
+			return errors.New("--public-url is required when OIDC providers are configured")
+		}
+		providers, err := auth.NewRegistry(ctx, providerConfigs, redirectBase+"/auth/callback")
+		if err != nil {
+			return err
+		}
+
+		identity, err := auth.NewService(auth.ServiceConfig{
+			Store:      db,
+			Sessions:   sessions,
+			Providers:  providers,
+			Logger:     log,
+			DevAuth:    cfg.devAuth,
+			DefaultMap: cfg.defaultMap,
+		})
+		if err != nil {
+			return err
+		}
+
 		gw, err := gateway.New(gateway.Config{
-			Rooms:          node,
+			World:          node,
 			Maps:           game.Maps,
 			ContentHash:    game.Hash,
-			Tickets:        gateway.NewTicketStore(),
+			Sessions:       sessions,
 			Metrics:        m,
 			Logger:         log,
 			AllowedOrigins: splitAndTrim(cfg.origins),
 			ClientDir:      cfg.clientDir,
 			DevAuth:        cfg.devAuth,
+			Identity:       identity,
 		})
 		if err != nil {
 			return err
 		}
+		log.Info("identity ready", "providers", providers.Len(), "dev_auth", cfg.devAuth)
 		defer func() {
 			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
@@ -240,6 +321,19 @@ func parseFlags() config {
 		"comma-separated allowed WebSocket origins; empty means same-origin only")
 	flag.BoolVar(&cfg.devAuth, "dev-auth", false,
 		"issue game tickets with no identity check (development only)")
+	flag.StringVar(&cfg.databaseURL, "database-url",
+		envOr("DATABASE_URL", "postgres://mmo:devpassword@localhost:5432/mmo?sslmode=disable"),
+		"Postgres connection string")
+	flag.StringVar(&cfg.redisAddr, "redis-addr", envOr("REDIS_ADDR", ""),
+		"Redis address; empty keeps leases and tokens in this process, which is correct for a single node")
+	flag.StringVar(&cfg.sessionSecret, "session-secret", os.Getenv("SESSION_SECRET"),
+		"secret signing session tokens; a random one is generated if unset, which logs everyone out on restart")
+	flag.StringVar(&cfg.publicURL, "public-url", envOr("PUBLIC_URL", ""),
+		"externally reachable base URL, used to build the OIDC redirect URI")
+	flag.BoolVar(&cfg.secureCookies, "secure-cookies", false,
+		"mark session cookies Secure; required for HTTPS, must be off for plain-HTTP local play")
+	flag.StringVar(&cfg.providersFile, "providers", envOr("PROVIDERS_FILE", ""),
+		"TOML file describing OIDC providers")
 	flag.Uint64Var(&cfg.seed, "seed", 0,
 		"fixed simulation seed, making a session reproducible; 0 draws a fresh one")
 	flag.StringVar(&cfg.logLevel, "log-level", "info", "debug, info, warn, or error")

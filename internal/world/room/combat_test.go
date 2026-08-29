@@ -55,7 +55,15 @@ func (h *harness) join(name string) (EntityID, *recordSink) {
 
 	sink := newSink()
 	result := make(chan joinResult, 1)
-	h.room.handle(joinCmd{name: name, sink: sink, result: result})
+	h.room.handle(joinCmd{
+		spec: JoinSpec{
+			CharacterID: "char-" + name,
+			Name:        name,
+			Fresh:       true,
+			Sink:        sink,
+		},
+		result: result,
+	})
 
 	res := <-result
 	if res.err != nil {

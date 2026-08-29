@@ -9,6 +9,7 @@ import (
 
 	"github.com/coder/websocket"
 	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
+	"github.com/ctrl-research/mmo/internal/world"
 	"github.com/ctrl-research/mmo/internal/world/room"
 	"github.com/ctrl-research/mmo/internal/world/sim"
 	"google.golang.org/protobuf/proto"
@@ -58,6 +59,11 @@ type session struct {
 	entityID room.EntityID
 	handle   room.Handle
 	name     string
+
+	// play owns the character's lease and checkpoint loop. Closing it is what
+	// makes a disconnect lossless rather than discarding up to one checkpoint
+	// interval of progress.
+	play world.PlayerSession
 
 	out chan *mmov1.ServerMessage
 
@@ -119,12 +125,14 @@ func (s *session) run(ctx context.Context) {
 	err := s.readLoop(ctx)
 
 	s.closeWith(room.CloseKicked, "connection ended")
-	if s.handle != nil && s.entityID != 0 {
-		// Use a fresh context: the session's is already cancelled, and the
-		// room must still learn the player is gone.
-		leaveCtx, leaveCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		s.handle.Leave(leaveCtx, s.entityID)
-		leaveCancel()
+
+	if s.play != nil {
+		// A fresh context: the session's is already cancelled, and the final
+		// checkpoint still has to happen. Without it, logging out would
+		// discard up to a full checkpoint interval of progress.
+		closeCtx, closeCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		s.play.Close(closeCtx)
+		closeCancel()
 	}
 
 	s.closeMu.Lock()
@@ -218,31 +226,49 @@ func (s *session) readHello(ctx context.Context) error {
 		return errors.New("gateway: content hash mismatch")
 	}
 
-	ticket, ok := s.gw.tickets.Redeem(hello.GetTicket())
+	ticket, ok, err := s.gw.sessions.RedeemTicket(ctx, hello.GetTicket())
+	if err != nil {
+		s.closeWith(room.CloseServerShutdown, "could not verify ticket")
+		return err
+	}
 	if !ok {
+		// A ticket is single-use and short-lived, so this covers an expired
+		// one, a replayed one, and a forged one -- all refused identically.
 		s.closeWith(room.CloseTicketInvalid, "invalid or expired ticket")
 		return errors.New("gateway: ticket rejected")
 	}
-	s.name = ticket.Name
-	s.log = s.log.With("player", ticket.Name)
 
-	handle, err := s.gw.rooms.Handle(ctx)
+	s.name = ticket.Name
+	s.log = s.log.With("player", ticket.Name, "character", ticket.CharacterID.String())
+
+	// The character named by the ticket was chosen over authenticated HTTP, so
+	// the socket proves only that the ticket was held. Identity never enters
+	// the game protocol.
+	play, err := s.gw.world.Enter(ctx, ticket.AccountID, ticket.CharacterID, s)
 	if err != nil {
-		s.closeWith(room.CloseServerShutdown, "no room available")
-		return err
-	}
-	id, err := handle.Join(ctx, ticket.Name, s)
-	if err != nil {
-		if errors.Is(err, room.ErrRoomFull) {
-			s.closeWith(room.CloseNotAllowed, "room is full")
-		} else {
-			s.closeWith(room.CloseServerShutdown, "join failed")
+		switch {
+		case errors.Is(err, world.ErrCharacterBusy):
+			// Someone -- possibly this same player in another tab -- already
+			// has this character in play. Saying so beats a generic failure.
+			s.closeWith(room.CloseLeaseLost, "this character is already in play")
+		case errors.Is(err, room.ErrRoomFull):
+			s.closeWith(room.CloseNotAllowed, "the room is full")
+		default:
+			s.closeWith(room.CloseServerShutdown, "could not enter the world")
 		}
 		return err
 	}
 
-	s.handle, s.entityID = handle, id
-	s.log.Info("player connected", "entity", uint32(id))
+	// Losing the lease mid-session must close the connection: the character
+	// belongs to another node now, and this one must stop simulating it.
+	play.OnOwnershipLost(func(reason string) {
+		s.closeWith(room.CloseLeaseLost, reason)
+	})
+
+	s.play = play
+	s.handle, s.entityID = play.Handle(), play.EntityID()
+
+	s.log.Info("player connected", "entity", uint32(s.entityID))
 	return nil
 }
 

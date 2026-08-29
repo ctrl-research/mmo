@@ -15,6 +15,7 @@ import (
 
 	"github.com/ctrl-research/mmo/internal/content"
 	"github.com/ctrl-research/mmo/internal/directory"
+	"github.com/ctrl-research/mmo/internal/store"
 	"github.com/ctrl-research/mmo/internal/world/room"
 	"github.com/ctrl-research/mmo/internal/world/sim"
 )
@@ -22,6 +23,9 @@ import (
 // Node hosts room instances.
 type Node struct {
 	dir      directory.Directory
+	leases   directory.Leases
+	store    *store.Store
+	nodeID   string
 	content  *content.Content
 	log      *slog.Logger
 	observer room.Observer
@@ -48,6 +52,9 @@ type hosted struct {
 // Config configures a Node.
 type Config struct {
 	Directory  directory.Directory
+	Leases     directory.Leases
+	Store      *store.Store
+	NodeID     string
 	Content    *content.Content
 	DefaultMap string
 	Logger     *slog.Logger
@@ -82,8 +89,16 @@ func NewNode(cfg Config) (*Node, error) {
 		seed = uint64(time.Now().UnixNano())
 	}
 
+	nodeID := cfg.NodeID
+	if nodeID == "" {
+		nodeID = "node-1"
+	}
+
 	return &Node{
 		dir:        cfg.Directory,
+		leases:     cfg.Leases,
+		store:      cfg.Store,
+		nodeID:     nodeID,
 		content:    cfg.Content,
 		defaultMap: cfg.DefaultMap,
 		log:        cfg.Logger,
@@ -107,14 +122,18 @@ func (n *Node) Stop() {
 	n.wg.Wait()
 }
 
-// Handle places a connecting player and returns a handle to their room,
-// satisfying gateway.RoomProvider.
+// placeIn asks the directory for an instance of a map and ensures a room
+// exists for it.
 //
-// The flow is the same one M4 uses across many nodes: ask the directory for an
-// instance, then ensure a room exists for it. Today the answer is always local;
-// when it is not, this returns a remote handle and nothing above it changes.
-func (n *Node) Handle(ctx context.Context) (room.Handle, error) {
-	m := n.content.Maps[n.defaultMap]
+// This is the same flow M4 uses across many nodes: ask where the player
+// belongs, then make sure the room is running. Today the answer is always
+// local; when it is not, this returns a remote handle and nothing above it
+// changes.
+func (n *Node) placeIn(ctx context.Context, mapID string) (room.Handle, directory.InstanceID, error) {
+	m, ok := n.content.Maps[mapID]
+	if !ok {
+		return nil, 0, fmt.Errorf("world: unknown map %q", mapID)
+	}
 
 	key := directory.RoomKey{
 		MapID:     m.ID,
@@ -123,20 +142,16 @@ func (n *Node) Handle(ctx context.Context) (room.Handle, error) {
 
 	inst, err := n.dir.Join(ctx, key, m.Capacity)
 	if err != nil {
-		return nil, fmt.Errorf("world: placing player: %w", err)
+		return nil, 0, fmt.Errorf("world: placing player: %w", err)
 	}
 
-	h, err := n.ensureRoom(inst, m)
+	handle, err := n.ensureRoom(inst, m)
 	if err != nil {
 		// Release the slot we reserved, or capacity leaks on every failure.
 		_ = n.dir.Leave(ctx, inst.ID)
-		return nil, err
+		return nil, 0, err
 	}
-
-	// Wrap so that a player leaving the room also frees their directory slot.
-	// Without this the directory believes rooms are fuller than they are and
-	// eventually opens channels nobody needs.
-	return &trackedHandle{Handle: h, dir: n.dir, instance: inst.ID}, nil
+	return handle, inst.ID, nil
 }
 
 // ensureRoom returns the room for an instance, starting it if this node is not
@@ -198,18 +213,6 @@ func (n *Node) Rooms() int {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	return len(n.rooms)
-}
-
-// trackedHandle frees a directory slot when its player leaves.
-type trackedHandle struct {
-	room.Handle
-	dir      directory.Directory
-	instance directory.InstanceID
-}
-
-func (h *trackedHandle) Leave(ctx context.Context, id room.EntityID) {
-	h.Handle.Leave(ctx, id)
-	_ = h.dir.Leave(ctx, h.instance)
 }
 
 // Content returns the loaded game data this node simulates.

@@ -463,7 +463,10 @@ func TestCharacterLifecycle(t *testing.T) {
 	}
 
 	// List.
-	listResp, _ := client.Get(srv.URL + "/api/characters")
+	listResp, err := client.Get(srv.URL + "/api/characters")
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
 	defer listResp.Body.Close()
 	var list struct {
 		Characters []characterView `json:"characters"`
@@ -474,8 +477,11 @@ func TestCharacterLifecycle(t *testing.T) {
 	}
 
 	// Ticket.
-	tResp, _ := client.Post(srv.URL+"/api/ticket", "application/json",
+	tResp, err := client.Post(srv.URL+"/api/ticket", "application/json",
 		strings.NewReader(`{"characterId":"`+created.ID+`"}`))
+	if err != nil {
+		t.Fatalf("ticket: %v", err)
+	}
 	defer tResp.Body.Close()
 	if tResp.StatusCode != http.StatusOK {
 		t.Fatalf("ticket returned %d", tResp.StatusCode)
@@ -499,7 +505,10 @@ func TestCharacterLifecycle(t *testing.T) {
 		t.Fatalf("delete returned %d", dResp.StatusCode)
 	}
 
-	after, _ := client.Get(srv.URL + "/api/characters")
+	after, err := client.Get(srv.URL + "/api/characters")
+	if err != nil {
+		t.Fatalf("list after delete: %v", err)
+	}
 	defer after.Body.Close()
 	var remaining struct {
 		Characters []characterView `json:"characters"`
@@ -515,8 +524,11 @@ func TestCannotGetATicketForAnotherAccountsCharacter(t *testing.T) {
 	_, _, srv := testService(t)
 
 	owner := signIn(t, srv, "owner")
-	resp, _ := owner.Post(srv.URL+"/api/characters", "application/json",
+	resp, err := owner.Post(srv.URL+"/api/characters", "application/json",
 		strings.NewReader(`{"name":"Victim"}`))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
 	var created characterView
 	json.NewDecoder(resp.Body).Decode(&created)
 	resp.Body.Close()
@@ -567,8 +579,11 @@ func TestCharacterLimitIsEnforced(t *testing.T) {
 		}
 	}
 
-	resp, _ := client.Post(srv.URL+"/api/characters", "application/json",
+	resp, err := client.Post(srv.URL+"/api/characters", "application/json",
 		strings.NewReader(`{"name":"OneTooMany"}`))
+	if err != nil {
+		t.Fatalf("create beyond the limit: %v", err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusConflict {
 		t.Errorf("exceeding the character limit returned %d, want 409", resp.StatusCode)
@@ -585,7 +600,10 @@ func TestLogoutEndsTheSession(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	after, _ := client.Get(srv.URL + "/api/me")
+	after, err := client.Get(srv.URL + "/api/me")
+	if err != nil {
+		t.Fatalf("me after logout: %v", err)
+	}
 	defer after.Body.Close()
 	if after.StatusCode != http.StatusUnauthorized {
 		t.Errorf("still signed in after logout: %d", after.StatusCode)
@@ -605,7 +623,10 @@ func TestRefreshIssuesANewSession(t *testing.T) {
 		t.Fatalf("refresh returned %d", resp.StatusCode)
 	}
 
-	after, _ := client.Get(srv.URL + "/api/me")
+	after, err := client.Get(srv.URL + "/api/me")
+	if err != nil {
+		t.Fatalf("me after refresh: %v", err)
+	}
 	defer after.Body.Close()
 	if after.StatusCode != http.StatusOK {
 		t.Errorf("session is not usable after refresh: %d", after.StatusCode)

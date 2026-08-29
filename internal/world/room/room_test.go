@@ -111,7 +111,7 @@ func TestJoinSendsWelcome(t *testing.T) {
 	ctx := context.Background()
 
 	sink := newSink()
-	id, err := h.Join(ctx, "alice", sink)
+	id, err := h.Join(ctx, JoinSpec{CharacterID: "char-alice", Name: "alice", Fresh: true, Sink: sink})
 	if err != nil {
 		t.Fatalf("join: %v", err)
 	}
@@ -141,11 +141,11 @@ func TestJoinRejectedWhenFull(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 2; i++ {
-		if _, err := h.Join(ctx, "player", newSink()); err != nil {
+		if _, err := h.Join(ctx, JoinSpec{CharacterID: "char-player", Name: "player", Fresh: true, Sink: newSink()}); err != nil {
 			t.Fatalf("join %d: %v", i, err)
 		}
 	}
-	if _, err := h.Join(ctx, "overflow", newSink()); err != ErrRoomFull {
+	if _, err := h.Join(ctx, JoinSpec{CharacterID: "char-overflow", Name: "overflow", Fresh: true, Sink: newSink()}); err != ErrRoomFull {
 		t.Errorf("join beyond capacity = %v, want ErrRoomFull", err)
 	}
 }
@@ -155,8 +155,8 @@ func TestPlayersSeeEachOther(t *testing.T) {
 	ctx := context.Background()
 
 	a, b := newSink(), newSink()
-	idA, _ := h.Join(ctx, "alice", a)
-	idB, _ := h.Join(ctx, "bob", b)
+	idA, _ := h.Join(ctx, JoinSpec{CharacterID: "char-alice", Name: "alice", Fresh: true, Sink: a})
+	idB, _ := h.Join(ctx, JoinSpec{CharacterID: "char-bob", Name: "bob", Fresh: true, Sink: b})
 
 	waitForSnapshots(t, a, 3)
 
@@ -204,8 +204,8 @@ func TestLeaveNotifiesOthersAndRemovesEntity(t *testing.T) {
 	ctx := context.Background()
 
 	a, b := newSink(), newSink()
-	h.Join(ctx, "alice", a)
-	idB, _ := h.Join(ctx, "bob", b)
+	h.Join(ctx, JoinSpec{CharacterID: "char-alice", Name: "alice", Fresh: true, Sink: a})
+	idB, _ := h.Join(ctx, JoinSpec{CharacterID: "char-bob", Name: "bob", Fresh: true, Sink: b})
 
 	waitForSnapshots(t, a, 3)
 	h.Leave(ctx, idB)
@@ -241,7 +241,7 @@ func TestLeaveOfUnknownPlayerIsSafe(t *testing.T) {
 	h.Leave(context.Background(), EntityID(9999))
 
 	sink := newSink()
-	if _, err := h.Join(context.Background(), "alice", sink); err != nil {
+	if _, err := h.Join(context.Background(), JoinSpec{CharacterID: "char-alice", Name: "alice", Fresh: true, Sink: sink}); err != nil {
 		t.Fatalf("room broken after unknown leave: %v", err)
 	}
 }
@@ -251,7 +251,7 @@ func TestInputMovesThePlayer(t *testing.T) {
 	ctx := context.Background()
 
 	sink := newSink()
-	id, _ := h.Join(ctx, "alice", sink)
+	id, _ := h.Join(ctx, JoinSpec{CharacterID: "char-alice", Name: "alice", Fresh: true, Sink: sink})
 
 	startX := selfX(t, sink)
 
@@ -274,7 +274,7 @@ func TestSnapshotSelfIsServerAuthoritative(t *testing.T) {
 	ctx := context.Background()
 
 	sink := newSink()
-	id, _ := h.Join(ctx, "alice", sink)
+	id, _ := h.Join(ctx, JoinSpec{CharacterID: "char-alice", Name: "alice", Fresh: true, Sink: sink})
 
 	// Nothing but held-button intent is accepted.
 	h.Input(ctx, id, 1, sim.Input{MoveX: 999999}) // out of range: clamped
@@ -293,7 +293,7 @@ func TestDuplicateAndStaleInputIgnored(t *testing.T) {
 	ctx := context.Background()
 
 	sink := newSink()
-	id, _ := h.Join(ctx, "alice", sink)
+	id, _ := h.Join(ctx, JoinSpec{CharacterID: "char-alice", Name: "alice", Fresh: true, Sink: sink})
 
 	h.Input(ctx, id, 5, sim.Input{MoveX: 1000})
 	h.Input(ctx, id, 5, sim.Input{MoveX: 1000}) // duplicate
@@ -320,7 +320,7 @@ func TestInputQueueIsBounded(t *testing.T) {
 	ctx := context.Background()
 
 	sink := newSink()
-	id, _ := h.Join(ctx, "alice", sink)
+	id, _ := h.Join(ctx, JoinSpec{CharacterID: "char-alice", Name: "alice", Fresh: true, Sink: sink})
 
 	// A client running far ahead must not be able to grow the queue without
 	// limit; stale intent is worth less than fresh.
@@ -345,8 +345,8 @@ func TestSnapshotOmitsUnchangedEntities(t *testing.T) {
 	ctx := context.Background()
 
 	a, b := newSink(), newSink()
-	h.Join(ctx, "alice", a)
-	h.Join(ctx, "bob", b)
+	h.Join(ctx, JoinSpec{CharacterID: "char-alice", Name: "alice", Fresh: true, Sink: a})
+	h.Join(ctx, JoinSpec{CharacterID: "char-bob", Name: "bob", Fresh: true, Sink: b})
 
 	// Let both settle on the floor with no input at all.
 	waitForSnapshots(t, a, 25)
@@ -368,8 +368,8 @@ func TestSnapshotSendsDeltaAfterFirstFullState(t *testing.T) {
 	ctx := context.Background()
 
 	a, b := newSink(), newSink()
-	h.Join(ctx, "alice", a)
-	idB, _ := h.Join(ctx, "bob", b)
+	h.Join(ctx, JoinSpec{CharacterID: "char-alice", Name: "alice", Fresh: true, Sink: a})
+	idB, _ := h.Join(ctx, JoinSpec{CharacterID: "char-bob", Name: "bob", Fresh: true, Sink: b})
 
 	waitForSnapshots(t, a, 5)
 	for seq := uint32(1); seq <= 15; seq++ {
@@ -408,8 +408,8 @@ func TestPredictionFieldsSentOnlyToOwner(t *testing.T) {
 	ctx := context.Background()
 
 	a, b := newSink(), newSink()
-	h.Join(ctx, "alice", a)
-	idB, _ := h.Join(ctx, "bob", b)
+	h.Join(ctx, JoinSpec{CharacterID: "char-alice", Name: "alice", Fresh: true, Sink: a})
+	idB, _ := h.Join(ctx, JoinSpec{CharacterID: "char-bob", Name: "bob", Fresh: true, Sink: b})
 
 	waitForSnapshots(t, a, 5)
 
@@ -430,7 +430,7 @@ func TestShutdownClosesConnections(t *testing.T) {
 	ctx := context.Background()
 
 	sink := newSink()
-	h.Join(ctx, "alice", sink)
+	h.Join(ctx, JoinSpec{CharacterID: "char-alice", Name: "alice", Fresh: true, Sink: sink})
 	waitForSnapshots(t, sink, 2)
 
 	cancel()
@@ -458,7 +458,7 @@ func TestConcurrentJoinsAndLeaves(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < 10; j++ {
-				id, err := h.Join(ctx, "churn", newSink())
+				id, err := h.Join(ctx, JoinSpec{CharacterID: "char-churn", Name: "churn", Fresh: true, Sink: newSink()})
 				if err == nil {
 					h.Input(ctx, id, uint32(j+1), sim.Input{MoveX: 500})
 					h.Leave(ctx, id)
@@ -469,7 +469,7 @@ func TestConcurrentJoinsAndLeaves(t *testing.T) {
 	wg.Wait()
 
 	// The room must still be alive and accepting players.
-	if _, err := h.Join(ctx, "final", newSink()); err != nil {
+	if _, err := h.Join(ctx, JoinSpec{CharacterID: "char-final", Name: "final", Fresh: true, Sink: newSink()}); err != nil {
 		t.Fatalf("room unhealthy after churn: %v", err)
 	}
 }

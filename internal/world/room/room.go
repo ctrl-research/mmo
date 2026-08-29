@@ -106,6 +106,10 @@ type player struct {
 	// layer is the visibility layer this player's mobs and drops live in.
 	// From M5 it is the party ID; until then, one per player.
 	layer LayerID
+
+	// characterID is the durable identity this session is playing, used when
+	// checkpointing and when releasing the ownership lease.
+	characterID string
 }
 
 type queuedInput struct {
