@@ -44,6 +44,9 @@ const (
 	// layer like everything else.
 	KindProjectile
 	KindArea
+
+	// KindTelegraph is the marker a boss puts down before an attack lands.
+	KindTelegraph
 )
 
 func (k Kind) wire() mmov1.EntityKind {
@@ -60,6 +63,8 @@ func (k Kind) wire() mmov1.EntityKind {
 		return mmov1.EntityKind_ENTITY_KIND_PROJECTILE
 	case KindArea:
 		return mmov1.EntityKind_ENTITY_KIND_AREA
+	case KindTelegraph:
+		return mmov1.EntityKind_ENTITY_KIND_TELEGRAPH
 	default:
 		return mmov1.EntityKind_ENTITY_KIND_UNSPECIFIED
 	}
@@ -108,6 +113,9 @@ type Entity struct {
 	// caster dying, unequipping, or leaving the room.
 	Projectile *ProjectileState
 	Area       *AreaState
+
+	// Telegraph is set on the marker a boss puts down before an attack lands.
+	Telegraph *TelegraphState
 
 	// Kind-specific state. Exactly one of these is non-nil, matching Kind.
 	// A discriminated union by nilable pointer rather than an interface: the

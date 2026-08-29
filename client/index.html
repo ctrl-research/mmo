@@ -305,6 +305,44 @@
       .buff-stacks { color: #e8c977; }
       .buff-time { color: #6b7280; }
 
+      /* The boss frame. Top-centre and wide, because it is the one thing on
+         screen that has to be readable without looking away from the fight. */
+      #boss {
+        position: fixed; top: 42px; left: 50%; transform: translateX(-50%);
+        z-index: 12; width: min(460px, 76vw); pointer-events: none;
+        background: rgba(11, 13, 18, 0.86); border: 1px solid #5a2f36;
+        border-radius: 6px; padding: 6px 9px 7px;
+      }
+      #boss[hidden] { display: none; }
+      #boss.enraged { border-color: #ff4d4d; }
+
+      .boss-head {
+        display: flex; align-items: baseline; gap: 8px;
+        font-size: 11px; margin-bottom: 4px;
+      }
+      .boss-name { font-weight: 600; color: #ffb3b3; letter-spacing: 0.04em; }
+      .boss-phase { margin-left: auto; color: #6b7280; font-size: 10px; }
+      /* A phase change is lit while it is news, then settles back. */
+      .boss-phase.fresh { color: #ffd280; }
+      #boss.enraged .boss-phase.fresh { color: #ff6b6b; }
+
+      .boss-bar {
+        position: relative; height: 14px; border-radius: 3px;
+        background: #1a1015; overflow: hidden;
+      }
+      .boss-fill {
+        height: 100%; width: 100%;
+        background: linear-gradient(90deg, #b33c3c, #e05a5a);
+        transition: width 140ms linear;
+      }
+      #boss.enraged .boss-fill {
+        background: linear-gradient(90deg, #d13030, #ff7a4d);
+      }
+      .boss-text {
+        position: absolute; inset: 0; display: grid; place-items: center;
+        font-size: 10px; color: #ffe3e3; text-shadow: 0 1px 2px #000;
+      }
+
       /* Passive tree: a canvas, because several hundred nodes that pan and
          zoom in DOM is hundreds of layout boxes recalculated on every drag. */
       #passives {
@@ -439,6 +477,7 @@
     <div id="inventory" hidden></div>
     <div id="worldmap" hidden></div>
     <div id="chat" hidden></div>
+    <div id="boss" hidden></div>
     <div id="party" hidden></div>
     <div id="social" hidden></div>
     <div id="prompt" hidden></div>

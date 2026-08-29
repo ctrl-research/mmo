@@ -79,6 +79,16 @@ const (
 	EffectHeal    EffectKind = "heal"
 	EffectRestore EffectKind = "restore"
 
+	// EffectSplitDamage is one hit divided evenly among everyone it lands on.
+	//
+	// It is the vocabulary's answer to "this needs more than one person". A
+	// hit that would kill anyone alone is survivable by six standing together,
+	// so the counterplay is a party moving as a group rather than a party with
+	// better gear. Nothing else in the vocabulary can express that, because
+	// every other effect resolves against one target without knowing whether
+	// there are others.
+	EffectSplitDamage EffectKind = "split_damage"
+
 	// State, applied to a target for a while.
 	EffectApplyBuff  EffectKind = "apply_buff"
 	EffectRemoveBuff EffectKind = "remove_buff"
@@ -102,6 +112,7 @@ const (
 // build, not fail quietly in play.
 var validEffectKinds = map[EffectKind]bool{
 	EffectDamage:       true,
+	EffectSplitDamage:  true,
 	EffectHeal:         true,
 	EffectRestore:      true,
 	EffectApplyBuff:    true,
@@ -392,7 +403,7 @@ func parseEffect(e effectFile) (Effect, error) {
 // validateEffect checks that an effect has what its kind needs to do anything.
 func validateEffect(e Effect) error {
 	switch e.Kind {
-	case EffectDamage, EffectHeal, EffectRestore, EffectShield:
+	case EffectDamage, EffectSplitDamage, EffectHeal, EffectRestore, EffectShield:
 		if e.BaseMax <= 0 && e.ScaleAttack <= 0 {
 			return fmt.Errorf("%s has no base amount and no scaling, so it would do nothing", e.Kind)
 		}

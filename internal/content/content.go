@@ -235,6 +235,31 @@ func (c *Content) verify() error {
 		}
 	}
 
+	// A boss whose ability names a skill that does not exist is a boss that
+	// telegraphs an attack and never lands it.
+	for id, m := range c.Mobs {
+		for _, phase := range m.Phases {
+			if phase.OnEnter != "" {
+				if _, ok := c.Skills[phase.OnEnter]; !ok {
+					return fmt.Errorf("content: mob %q phase %q enters with unknown skill %q",
+						id, phase.Name, phase.OnEnter)
+				}
+			}
+			if phase.EnrageBuff != "" {
+				if _, ok := c.Buffs[phase.EnrageBuff]; !ok {
+					return fmt.Errorf("content: mob %q phase %q enrages with unknown buff %q",
+						id, phase.Name, phase.EnrageBuff)
+				}
+			}
+			for _, a := range phase.Abilities {
+				if _, ok := c.Skills[a.Skill]; !ok {
+					return fmt.Errorf("content: mob %q phase %q uses unknown skill %q",
+						id, phase.Name, a.Skill)
+				}
+			}
+		}
+	}
+
 	if err := c.validatePassives(); err != nil {
 		return err
 	}

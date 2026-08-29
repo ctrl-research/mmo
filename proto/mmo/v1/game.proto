@@ -195,6 +195,12 @@ enum EntityKind {
   // list, so they interpolate and layer like everything else.
   ENTITY_KIND_PROJECTILE = 5;
   ENTITY_KIND_AREA = 6;
+
+  // A telegraph: the ground marker a boss puts down before an attack lands.
+  // An entity so it culls, layers, and interpolates like anything else, and
+  // so its disappearance is the attack landing rather than a separate
+  // message the client has to correlate.
+  ENTITY_KIND_TELEGRAPH = 7;
 }
 
 // Bit positions in EntityDelta.field_mask.
@@ -347,6 +353,7 @@ message Event {
     Absorbed absorbed = 23;
     SkillBar skill_bar = 24;
     PassiveState passives = 25;
+    BossPhase boss_phase = 26;
   }
   // 11 was MapChanged, replaced by a second Welcome: it carried strictly less
   // than the Welcome the destination room already sends, and two messages
@@ -375,6 +382,22 @@ message SkillCast {
   uint32 caster_id = 1;
   string skill_id = 2;
   bool facing_left = 3;
+}
+
+// BossPhase announces an encounter changing what it is doing.
+//
+// Sent as an event rather than left for the client to infer from a health bar,
+// because a phase change is the fight telling a party to do something
+// different, and a party that misses it does not.
+message BossPhase {
+  uint32 entity_id = 1;
+  string name = 2;
+
+  // The phase's own name, or "enraged" when the phase's clock has run out.
+  string phase = 3;
+
+  uint32 hp = 4;
+  uint32 hp_max = 5;
 }
 
 message ExpGained {

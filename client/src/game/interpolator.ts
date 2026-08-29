@@ -64,6 +64,9 @@ export interface RenderedEntity {
 export const KIND_PLAYER = 1;
 export const KIND_MOB = 2;
 export const KIND_DROP = 3;
+export const KIND_PROJECTILE = 5;
+export const KIND_AREA = 6;
+export const KIND_TELEGRAPH = 7;
 
 // Field-mask bits, mirroring mmov1.EntityField.
 const FIELD_POS = 1 << 0;
@@ -210,6 +213,12 @@ export class Interpolator {
   clear(): void {
     for (const id of this.#entities.keys()) this.#removed.push(id);
     this.#entities.clear();
+  }
+
+  /** Returns one tracked entity's health, or null when it is not in view. */
+  healthOf(id: number): { hp: number; hpMax: number } | null {
+    const e = this.#entities.get(id);
+    return e ? { hp: e.hp, hpMax: e.hpMax } : null;
   }
 
   /** Returns one tracked entity's latest known position, or null. */

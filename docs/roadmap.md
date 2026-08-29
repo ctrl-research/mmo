@@ -384,14 +384,38 @@ work on a path a player waits on is extra work on a path a player waits on.
 
 ## M7 — Dungeons and bossing
 
-- Instanced dungeon flow: entry requirements, lockouts, progression, completion
-- Boss AI with phases, telegraphed attacks, enrage
-- Team-play mechanics that require coordination — shared shields, combo triggers, mechanics that cannot be soloed
-- Enhanced mobs: champion and rare tiers rolling elite modifiers
-- Zone events: interactive triggers, timed spawns, mini-bosses
-- Boss health UI, telegraph rendering, wipe and recovery flow
+- [x] Boss AI with phases, telegraphed attacks, enrage
+- [x] Team-play mechanics that require coordination — a hit divided among everyone it lands on, so what one player cannot survive six can
+- [x] Boss health UI, telegraph rendering
+- [ ] Instanced dungeon flow: entry requirements, lockouts, progression, completion
+- [ ] Enhanced mobs: champion and rare tiers rolling elite modifiers
+- [ ] Zone events: interactive triggers, timed spawns, mini-bosses
+- [ ] Wipe and recovery flow
 
 **Exit:** a six-player party clears a dungeon and kills a boss whose mechanics genuinely require coordination.
+
+The encounter half is done and the dungeon half is not. The order is deliberate:
+a dungeon with nothing worth fighting at the end of it is a corridor, and the
+entry rules, lockouts and completion state are all in service of an encounter
+that has to exist first.
+
+A boss is `profile = "boss"`: a Go state machine that runs phases written in
+content. Phases are entered as health falls and never left, each listing what
+the boss may do while it is in that one, so a fight changes shape rather than
+being one rotation with bigger numbers. The scripting language stays out and
+the encounter stays authorable.
+
+| Claim | How it was checked |
+| --- | --- |
+| Phases advance on health and never come back | `TestBossAdvancesPhasesAsHealthFallsAndNeverReturns` — healing a boss to full must not reset the fight |
+| A hit that crosses two thresholds lands in the right phase | `TestBossSkipsPhasesItsHealthHasPassed` — walking down one phase per tick would give a party free openings |
+| The enrage clock belongs to the phase, not the fight | `TestTheEnrageClockRestartsWithEachPhase` — otherwise the last phase enrages the instant it is reached |
+| An attack is announced before it lands | `TestABossAnnouncesAnAttackBeforeItLands` — and nothing may land during the wind-up |
+| The marker is the hitbox | `TestTheMarkerIsExactlyWhatTheAttackWillHit` — computed separately, the two drift apart the first time either is tuned |
+| Moving out of a marker works | `TestWalkingOutOfAMarkerAvoidsTheAttack` — a boss that turned mid-wind-up would make the marker a lie |
+| A split hit is genuinely divided | `TestSplitDamageIsDividedAmongEveryoneItHits` — four shares add up to the solo hit |
+| A boss does not commit to what it cannot reach | `TestABossDoesNotWindUpAnAttackThatCannotReach`, found in play: it rooted itself telegraphing at a player on a ledge |
+| A boss out of reach closes the gap | `TestABossKeepsClosingOnATargetItCannotReach` — horizontal distance alone is half an answer in a platformer |
 
 ---
 

@@ -96,6 +96,26 @@ refresh_on_apply = true
 [[buff.test_might.stat_mods]]
 stat = "attack"
 increased = 0.25
+
+[buff.test_hardened]
+name = "Test Hardened"
+kind = "buff"
+duration_ms = 60000
+max_stacks = 1
+refresh_on_apply = true
+[[buff.test_hardened.stat_mods]]
+stat = "armour"
+increased = 0.50
+
+[buff.test_enrage]
+name = "Test Enrage"
+kind = "buff"
+duration_ms = 60000
+max_stacks = 1
+refresh_on_apply = true
+[[buff.test_enrage.stat_mods]]
+stat = "attack"
+increased = 2.00
 `
 
 // Supports covers the two halves of what a support does: scale an effect, and
@@ -274,6 +294,47 @@ type = "damage"
 element = "physical"
 base = { min = 2, max = 2 }
 scaling = { attack = 0.0 }
+
+[skill.boss_swing]
+name = "Swing"
+max_rank = 1
+cooldown_ms = 500
+tags = ["melee", "attack"]
+[skill.boss_swing.targeting]
+kind = "cone"
+range = 120.0
+half_height = 40.0
+max_targets = 8
+[[skill.boss_swing.effects]]
+type = "damage"
+element = "physical"
+base = { min = 5, max = 5 }
+scaling = { attack = 0.0 }
+
+[skill.boss_share]
+name = "Share"
+max_rank = 1
+cooldown_ms = 500
+tags = ["attack"]
+[skill.boss_share.targeting]
+kind = "circle"
+range = 200.0
+max_targets = 8
+[[skill.boss_share.effects]]
+type = "split_damage"
+element = "physical"
+base = { min = 600, max = 600 }
+
+[skill.boss_roar]
+name = "Roar"
+max_rank = 1
+cooldown_ms = 500
+tags = ["buff"]
+[skill.boss_roar.targeting]
+kind = "self"
+[[skill.boss_roar.effects]]
+type = "apply_buff"
+buff = "test_hardened"
 `
 
 // The dummy has enough HP to survive a hit and little enough to die to two,
@@ -300,6 +361,52 @@ idle_tick_interval = 2
 skill = "mob_bite"
 weight = 1
 cooldown_ms = 1000
+
+# A three-phase encounter. The numbers are round so a test can assert on
+# exactly which phase a given health value is in: 100%, 60%, and 25% of 1000.
+[mob.test_boss]
+name = "Test Boss"
+level = 5
+hp = 1000
+attack = 0
+armour = 0
+exp = 100
+width = 48.0
+height = 48.0
+[mob.test_boss.ai]
+profile = "boss"
+aggro_range = 600.0
+leash_range = 2000.0
+attack_range = 60.0
+move_speed = 40.0
+idle_tick_interval = 1
+[[mob.test_boss.phases]]
+name = "opening"
+at_hp_percent = 100
+[[mob.test_boss.phases.abilities]]
+skill = "boss_swing"
+cooldown_ms = 1000
+telegraph_ms = 500
+target = "current"
+[[mob.test_boss.phases]]
+name = "middle"
+at_hp_percent = 60
+on_enter = "boss_roar"
+[[mob.test_boss.phases.abilities]]
+skill = "boss_share"
+cooldown_ms = 2000
+telegraph_ms = 500
+target = "self"
+[[mob.test_boss.phases]]
+name = "final"
+at_hp_percent = 25
+enrage_after_ms = 1000
+enrage_buff = "test_enrage"
+[[mob.test_boss.phases.abilities]]
+skill = "boss_swing"
+cooldown_ms = 500
+telegraph_ms = 0
+target = "farthest"
 
 [mob.test_statue]
 name = "Test Statue"

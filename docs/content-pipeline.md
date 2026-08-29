@@ -93,6 +93,7 @@ chance      = 0.35
 | Type | Effect |
 |---|---|
 | `damage` | Roll and apply damage through the full pipeline |
+| `split_damage` | One hit, divided evenly among everyone it lands on |
 | `heal` | Restore HP |
 | `restore` | Restore a resource (MP, rage, ...) |
 | `apply_buff` / `remove_buff` | Buffs, debuffs, DoTs |
@@ -212,9 +213,49 @@ weight      = 1.0
 cooldown_ms = 3000
 ```
 
-AI *profiles* are Go state machines (idle → aggro → chase → attack → leash → dead); AI *parameters* are content. A handful of profiles covers most mobs; bosses get bespoke profiles because their mechanics are the encounter.
+AI *profiles* are Go state machines (idle → aggro → chase → attack → leash → dead); AI *parameters* are content. A handful of profiles covers most mobs.
 
-**Enhanced mobs** roll modifiers at spawn time from a weighted pool, PoE rare-mob style. Each modifier is stat mods plus optional effects plus a visual aura, so the combination is emergent rather than enumerated:
+### Boss encounters
+
+`profile = "boss"` replaces that state machine with the one in `boss.go`, and the encounter is written in content. A boss's mechanics *are* the encounter, so "which ability, at what health, after how long a wind-up" has to be authorable — but the machine that runs them stays Go, because expressing it as parameters means inventing a scripting language nobody asked for.
+
+```toml
+[mob.slime_king.ai]
+profile      = "boss"
+aggro_range  = 520
+attack_range = 120
+
+[[mob.slime_king.phases]]
+name          = "The Throne Cracks"
+at_hp_percent = 65          # entered at or below this, and never left
+on_enter      = "king_quake"
+
+[[mob.slime_king.phases.abilities]]
+skill        = "king_crush"
+cooldown_ms  = 13000
+telegraph_ms = 1600         # wind-up before it lands
+target       = "self"       # current | random | farthest | self
+```
+
+Three things make a boss a fight rather than a damage race:
+
+**Phases**, entered as health falls and never returned to. A boss that went back on being healed would be a boss whose fight resets on a mistake. Phases must be listed in descending health order, and a hit that crosses two thresholds lands in the phase its health says rather than walking down one per tick.
+
+**Telegraphs.** An ability with a `telegraph_ms` puts down a marker, roots the boss, and lands when the wind-up ends. The marker is the skill's own hitbox, anchored where the boss is standing and facing the direction it committed to — not an approximation drawn alongside it. Everything the marker promises follows from the boss not moving or turning until the attack resolves. An attack that is merely announced can be survived by moving; one that simply happens can only be survived by having enough health.
+
+A boss only commits to an ability that would actually land, which is the same hitbox test again. Without it, a boss whose target stands on a ledge roots itself and telegraphs forever at a player in no danger at all — and a marker that appears when nothing is at stake teaches players to ignore markers.
+
+**An enrage clock**, per phase rather than per fight, applying a buff when it runs out. A boss you can beat by refusing to engage with it is a boss with no mechanics.
+
+### Asking for a party
+
+`split_damage` is the vocabulary's answer to "this needs more than one person": one roll, divided evenly among everyone the cast lands on, then resolved through the ordinary damage path so each share is mitigated and rolled for a critical like any other hit. Set the whole number past what anyone at that level survives and a player who takes it alone dies while a party that takes it together does not. There is no gear answer and no skill answer — only six people in the same place at the same time.
+
+Nothing else in the vocabulary can express that, because every other effect resolves against one target without knowing whether there are others. The division therefore happens at cast time, where the target list exists.
+
+### Enhanced mobs
+
+Enhanced mobs roll modifiers at spawn time from a weighted pool, PoE rare-mob style. Each modifier is stat mods plus optional effects plus a visual aura, so the combination is emergent rather than enumerated:
 
 ```toml
 [elite_mod.vampiric]

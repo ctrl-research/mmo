@@ -1,0 +1,152 @@
+# Boss abilities.
+#
+# The same skill system as everything else, because a boss that needed its own
+# is a boss whose mechanics could not be reused, retuned, or given to a second
+# encounter. What makes these different from a mob's bite is not the machinery:
+# it is that they are slow, they are announced, and at least one of them cannot
+# be survived alone.
+
+# --- the Slime King ----------------------------------------------------------
+
+# A committed overhead swing. Slow enough to walk out of, punishing enough that
+# walking out of it matters.
+[skill.king_slam]
+name = "Royal Slam"
+max_rank = 1
+cooldown_ms = 3000
+animation = "slam"
+tags = ["melee", "attack", "physical", "boss"]
+
+[skill.king_slam.targeting]
+kind = "cone"
+range = 140.0
+half_height = 56.0
+max_targets = 8
+
+[[skill.king_slam.effects]]
+type = "damage"
+element = "physical"
+base = { min = 40, max = 60 }
+scaling = { attack = 1.4 }
+
+[[skill.king_slam.effects]]
+type = "knockback"
+speed = 9.0
+distance = 5.0
+
+# A gobbet of slime, thrown at whoever thought range made them safe.
+[skill.king_spit]
+name = "Caustic Spit"
+max_rank = 1
+cooldown_ms = 4000
+animation = "cast"
+tags = ["projectile", "attack", "chaos", "boss"]
+
+[skill.king_spit.targeting]
+kind = "self"
+
+[[skill.king_spit.effects]]
+type = "spawn_projectile"
+speed = 16.0
+distance = 700.0
+
+[[skill.king_spit.effects.effects]]
+type = "damage"
+element = "chaos"
+base = { min = 25, max = 35 }
+scaling = { attack = 0.8 }
+
+[[skill.king_spit.effects.effects]]
+type = "apply_buff"
+buff = "weakened"
+
+# The mechanic.
+#
+# One hit, divided evenly among everyone standing in it. The whole number is
+# well past what anyone at this level survives, so a player who takes it alone
+# dies and a party that takes it together does not. There is no gear answer and
+# no skill answer: the only answer is six people in the same place at the same
+# time, which is the thing this encounter exists to ask for.
+[skill.king_crush]
+name = "Crushing Weight"
+max_rank = 1
+cooldown_ms = 12000
+animation = "slam"
+tags = ["attack", "physical", "boss"]
+
+[skill.king_crush.targeting]
+kind = "circle"
+range = 190.0
+max_targets = 8
+
+[[skill.king_crush.effects]]
+type = "split_damage"
+element = "physical"
+base = { min = 900, max = 1100 }
+
+# The other half of the same question. A sweep that covers most of the arena
+# and hits whoever is furthest away hardest -- so the party that stacks for
+# Crushing Weight has to unstack again, and cannot simply stand in one place
+# for the whole fight.
+[skill.king_sweep]
+name = "Tidal Sweep"
+max_rank = 1
+cooldown_ms = 9000
+animation = "slam"
+tags = ["melee", "attack", "physical", "boss"]
+
+[skill.king_sweep.targeting]
+kind = "cone"
+range = 340.0
+half_height = 72.0
+max_targets = 8
+
+[[skill.king_sweep.effects]]
+type = "damage"
+element = "physical"
+base = { min = 55, max = 75 }
+scaling = { attack = 1.1 }
+
+[[skill.king_sweep.effects]]
+type = "apply_buff"
+buff = "chilled"
+
+# Cast once as the second phase begins: an untelegraphed nova that announces
+# the change by knocking everyone off it.
+[skill.king_quake]
+name = "Throneshock"
+max_rank = 1
+cooldown_ms = 1000
+animation = "cast_nova"
+tags = ["attack", "physical", "boss"]
+
+[skill.king_quake.targeting]
+kind = "circle"
+range = 300.0
+max_targets = 8
+
+[[skill.king_quake.effects]]
+type = "damage"
+element = "physical"
+base = { min = 20, max = 30 }
+
+[[skill.king_quake.effects]]
+type = "knockback"
+speed = 14.0
+distance = 8.0
+
+# Cast on entering the last phase, on the king itself: the visible sign that
+# the enrage clock has started.
+[skill.king_harden]
+name = "Harden"
+max_rank = 1
+cooldown_ms = 1000
+animation = "cast"
+tags = ["buff", "boss"]
+
+[skill.king_harden.targeting]
+kind = "self"
+
+[[skill.king_harden.effects]]
+type = "apply_buff"
+buff = "king_hardened"

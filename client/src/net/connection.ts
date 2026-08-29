@@ -41,6 +41,7 @@ import {
   type BuffState,
   type PassiveState,
   type PassiveAction,
+  type BossPhase,
 } from "@/gen/mmo/v1/game_pb";
 
 /** Bumped on any incompatible wire change; must match gateway.ProtocolVersion. */
@@ -377,5 +378,6 @@ export type {
   SkillBar,
   BuffState,
   PassiveState,
+  BossPhase,
 };
 export { ChatChannel, PartyAction_Kind, GuildAction_Kind, SocialAction_Kind };
