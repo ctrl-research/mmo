@@ -29,6 +29,7 @@ import (
 // allowlist fails open in the worst case.
 //
 //	mmo allow jonathan              add a local username
+//	mmo allow alice bob carol       add several at once
 //	mmo allow --provider=google --kind=email you@example.com
 //	mmo allowlist                   list every rule
 //	mmo revoke jonathan             remove a rule
@@ -36,8 +37,8 @@ import (
 //	mmo give Sigrun weapon.iron_sword --rarity=rare --ilvl=40
 //	mmo mute Sigrun --for=24h --reason="advertising"
 const adminUsage = `Usage:
-  mmo allow [flags] VALUE      allow someone to sign in
-  mmo revoke [flags] VALUE     remove an allowlist rule
+  mmo allow [flags] VALUE...   allow one or more people to sign in
+  mmo revoke [flags] VALUE...  remove one or more allowlist rules
   mmo allowlist                list allowlist rules
   mmo passwd USERNAME          set a local account's password
   mmo give CHARACTER BASE_ID   place an item in a character's inventory
@@ -113,9 +114,9 @@ func runAdmin(args []string) (handled bool, err error) {
 
 	switch args[0] {
 	case "allow":
-		return true, adminAllow(ctx, db, arg(0), *provider, *kind, *note)
+		return true, adminAllow(ctx, db, positional, *provider, *kind, *note)
 	case "revoke":
-		return true, adminRevoke(ctx, db, arg(0), *provider, *kind)
+		return true, adminRevoke(ctx, db, positional, *provider, *kind)
 	case "allowlist":
 		return true, adminList(ctx, db)
 	case "passwd":
@@ -130,37 +131,67 @@ func runAdmin(args []string) (handled bool, err error) {
 	return true, nil
 }
 
-func adminAllow(ctx context.Context, db *store.Store, value, provider, kind, note string) error {
-	if value == "" {
-		return errors.New("a value is required: mmo allow USERNAME")
+// adminAllow adds every value in one pass. Taking a list rather than a single
+// value is what lets a deployment seed a whole allowlist in one invocation --
+// the server image is distroless with no shell to loop with, so one value per
+// process meant one container per user.
+func adminAllow(ctx context.Context, db *store.Store, values []string, provider, kind, note string) error {
+	if len(values) == 0 {
+		return errors.New("a value is required: mmo allow USERNAME [USERNAME...]")
 	}
 
-	// Usernames are matched case-insensitively and stored normalised, so an
-	// entry added as "Jonathan" must still match a sign-in as "jonathan".
-	if provider == "local" && kind == store.MatchSubject {
-		value = auth.NormaliseUsername(value)
-	}
-
-	if err := db.AddAllowlistEntry(ctx, provider, kind, value, note); err != nil {
-		return err
+	// Checked before anything is written, so a typo in the sixth argument
+	// does not leave the first five applied and the command reporting failure.
+	for i, value := range values {
+		if value == "" {
+			return fmt.Errorf("argument %d is empty; every value must be a username", i+1)
+		}
 	}
 
 	scope := provider
 	if scope == "" {
 		scope = "any provider"
 	}
-	fmt.Printf("allowed %s %q on %s\n", kind, value, scope)
+	local := provider == "local" && kind == store.MatchSubject
 
-	if provider == "local" && kind == store.MatchSubject {
-		fmt.Printf("They can now register at /auth/local/register with the username %q.\n", value)
+	added := make([]string, 0, len(values))
+	for _, value := range values {
+		// Usernames are matched case-insensitively and stored normalised, so
+		// an entry added as "Jonathan" must still match a sign-in as
+		// "jonathan".
+		if local {
+			value = auth.NormaliseUsername(value)
+		}
+
+		// Named, because a bare constraint error gives no clue which of six
+		// arguments was the bad one.
+		if err := db.AddAllowlistEntry(ctx, provider, kind, value, note); err != nil {
+			return fmt.Errorf("%s: %w", value, err)
+		}
+		fmt.Printf("allowed %s %q on %s\n", kind, value, scope)
+		added = append(added, value)
+	}
+
+	if local {
+		fmt.Printf("They can now register at /auth/local/register with: %s\n",
+			strings.Join(added, ", "))
 	}
 	return nil
 }
 
-func adminRevoke(ctx context.Context, db *store.Store, value, provider, kind string) error {
-	if value == "" {
-		return errors.New("a value is required: mmo revoke USERNAME")
+func adminRevoke(ctx context.Context, db *store.Store, values []string, provider, kind string) error {
+	if len(values) == 0 {
+		return errors.New("a value is required: mmo revoke USERNAME [USERNAME...]")
 	}
+	for _, value := range values {
+		if err := revokeOne(ctx, db, value, provider, kind); err != nil {
+			return fmt.Errorf("%s: %w", value, err)
+		}
+	}
+	return nil
+}
+
+func revokeOne(ctx context.Context, db *store.Store, value, provider, kind string) error {
 	if provider == "local" && kind == store.MatchSubject {
 		value = auth.NormaliseUsername(value)
 	}
