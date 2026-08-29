@@ -19,8 +19,20 @@ var ErrRoomClosed = errors.New("room: closed")
 // difference, which is the entire point -- and why even the in-process path
 // goes through it (AGENTS.md invariants 1 and 2).
 type Handle interface {
-	// Join adds a player and returns their entity ID.
-	Join(ctx context.Context, name string, sink Sink) (EntityID, error)
+	// Join places a character and returns the entity it was given.
+	Join(ctx context.Context, spec JoinSpec) (EntityID, error)
+
+	// Capture reads a player's persistable state for checkpointing.
+	Capture(ctx context.Context, id EntityID) (Snapshot, bool)
+
+	// Freeze suspends a player whose connection dropped, leaving them in the
+	// world but inert, so a brief network blip does not cost their position in
+	// a fight.
+	Freeze(ctx context.Context, id EntityID)
+
+	// Thaw resumes a frozen player on a new connection, reporting whether they
+	// were still present to resume.
+	Thaw(ctx context.Context, id EntityID, sink Sink) bool
 
 	// Leave removes a player. It is safe to call for an unknown ID, which
 	// happens whenever a disconnect races a kick.
@@ -41,9 +53,30 @@ type Handle interface {
 type command interface{ isCommand() }
 
 type joinCmd struct {
-	name   string
-	sink   Sink
+	spec   JoinSpec
 	result chan joinResult
+}
+
+// captureCmd reads a player's persistable state on the room goroutine, which
+// is what makes the result internally consistent.
+type captureCmd struct {
+	id     EntityID
+	result chan captureResult
+}
+
+type captureResult struct {
+	snapshot Snapshot
+	ok       bool
+}
+
+// freezeCmd suspends a player whose connection dropped, without removing them.
+type freezeCmd struct{ id EntityID }
+
+// thawCmd resumes a frozen player on a new connection.
+type thawCmd struct {
+	id     EntityID
+	sink   Sink
+	result chan bool
 }
 
 type joinResult struct {
@@ -85,6 +118,9 @@ const (
 )
 
 func (joinCmd) isCommand()     {}
+func (captureCmd) isCommand()  {}
+func (freezeCmd) isCommand()   {}
+func (thawCmd) isCommand()     {}
 func (leaveCmd) isCommand()    {}
 func (inputCmd) isCommand()    {}
 func (castCmd) isCommand()     {}
@@ -95,8 +131,15 @@ func (interactCmd) isCommand() {}
 func (r *Room) handle(c command) {
 	switch cmd := c.(type) {
 	case joinCmd:
-		id, err := r.join(cmd.name, cmd.sink)
+		id, err := r.join(cmd.spec)
 		cmd.result <- joinResult{id: id, err: err}
+	case captureCmd:
+		snap, ok := r.capture(cmd.id)
+		cmd.result <- captureResult{snapshot: snap, ok: ok}
+	case freezeCmd:
+		r.freeze(cmd.id)
+	case thawCmd:
+		cmd.result <- r.thaw(cmd.id, cmd.sink)
 	case leaveCmd:
 		r.leave(cmd.id)
 	case inputCmd:
@@ -113,12 +156,14 @@ func (r *Room) handle(c command) {
 	}
 }
 
-func (r *Room) join(name string, sink Sink) (EntityID, error) {
+func (r *Room) join(spec JoinSpec) (EntityID, error) {
 	if len(r.players) >= r.cfg.Capacity {
 		return 0, ErrRoomFull
 	}
 
 	state := newPlayerState()
+	name := spec.Name
+	sink := spec.Sink
 
 	e := r.spawnEntity(&Entity{
 		Kind: KindPlayer,
@@ -136,6 +181,11 @@ func (r *Room) join(name string, sink Sink) (EntityID, error) {
 	// Allocate the layer this player's mobs and drops live in. From M5 the key
 	// is the party ID, so partying up merges views; until parties exist every
 	// player gets their own, which is the same code path with a different key.
+	// Restore saved progression and position before anything observes the
+	// entity, so the first snapshot a client receives is already correct
+	// rather than a spawn-point position corrected a tick later.
+	r.applyCharacter(e, spec)
+
 	r.nextLayer++
 	layer := r.nextLayer
 	r.layerFor(layer)
@@ -145,6 +195,7 @@ func (r *Room) join(name string, sink Sink) (EntityID, error) {
 		entity:      e,
 		sink:        sink,
 		layer:       layer,
+		characterID: spec.CharacterID,
 		sent:        make(map[EntityID]view),
 		seenScratch: make(map[EntityID]struct{}),
 	}
@@ -171,8 +222,19 @@ func (r *Room) join(name string, sink Sink) (EntityID, error) {
 		}},
 	})
 
-	r.log.Info("player joined", "entity", uint32(e.ID), "name", name, "players", len(r.players))
+	r.log.Info("player joined",
+		"entity", uint32(e.ID), "name", name, "character", spec.CharacterID,
+		"level", state.Level, "players", len(r.players))
 	return e.ID, nil
+}
+
+// capture reads a player's persistable state.
+func (r *Room) capture(id EntityID) (Snapshot, bool) {
+	p, ok := r.players[id]
+	if !ok {
+		return Snapshot{}, false
+	}
+	return captureCharacter(p.entity, r.cfg.MapID), true
 }
 
 func (r *Room) leave(id EntityID) {
@@ -249,10 +311,10 @@ type localHandle struct{ room *Room }
 // NewHandle returns a Handle for a room in this process.
 func NewHandle(r *Room) Handle { return &localHandle{room: r} }
 
-func (h *localHandle) Join(ctx context.Context, name string, sink Sink) (EntityID, error) {
+func (h *localHandle) Join(ctx context.Context, spec JoinSpec) (EntityID, error) {
 	result := make(chan joinResult, 1)
 	select {
-	case h.room.cmds <- joinCmd{name: name, sink: sink, result: result}:
+	case h.room.cmds <- joinCmd{spec: spec, result: result}:
 	case <-ctx.Done():
 		return 0, ctx.Err()
 	}
@@ -321,5 +383,88 @@ func (r *Room) interact(id EntityID, target EntityID, kind InteractKind) {
 	switch kind {
 	case InteractLoot:
 		r.tryLoot(p.entity, target)
+	}
+}
+
+// freeze suspends a player without removing them.
+//
+// A frozen character stays visible so the world does not appear to blink
+// people in and out on every transient disconnect, but takes no input, runs no
+// physics, and cannot be harmed. Leaving them vulnerable would make a dropped
+// connection worse than a clean logout, which is exactly backwards.
+func (r *Room) freeze(id EntityID) {
+	p, ok := r.players[id]
+	if !ok {
+		return
+	}
+
+	p.frozen = true
+	p.queue = p.queue[:0]
+	p.lastInput = sim.Input{}
+	p.entity.Body.Vel = sim.Vec{}
+
+	// Any mob chasing them loses interest, rather than standing over an
+	// untouchable target forever.
+	for _, e := range r.entities {
+		if e.Mob != nil && e.Mob.Target == id {
+			e.Mob.Target = 0
+			e.Mob.State = aiLeash
+		}
+	}
+
+	r.log.Info("player frozen after disconnect", "entity", uint32(id), "name", p.entity.Name)
+}
+
+// thaw resumes a frozen player on a new connection.
+func (r *Room) thaw(id EntityID, sink Sink) bool {
+	p, ok := r.players[id]
+	if !ok {
+		return false
+	}
+
+	p.frozen = false
+	p.sink = sink
+
+	// Forget what the previous connection was told: the new client has no
+	// baseline, so every visible entity must be sent again in full rather than
+	// as a delta against something it never received.
+	clear(p.sent)
+	p.ackSeq = 0
+
+	sink.Send(&mmov1.ServerMessage{
+		Body: &mmov1.ServerMessage_Welcome{Welcome: &mmov1.Welcome{
+			EntityId:   uint32(id),
+			InstanceId: uint64(r.cfg.InstanceID),
+			Tick:       r.tick,
+			TickMs:     uint32(TickPeriod.Milliseconds()),
+			MapId:      r.cfg.MapID,
+			Self:       p.entity.state(true),
+		}},
+	})
+
+	r.log.Info("player resumed after reconnect", "entity", uint32(id), "name", p.entity.Name)
+	return true
+}
+
+func (h *localHandle) Freeze(ctx context.Context, id EntityID) {
+	select {
+	case h.room.cmds <- freezeCmd{id: id}:
+	case <-ctx.Done():
+	}
+}
+
+func (h *localHandle) Thaw(ctx context.Context, id EntityID, sink Sink) bool {
+	result := make(chan bool, 1)
+	select {
+	case h.room.cmds <- thawCmd{id: id, sink: sink, result: result}:
+	case <-ctx.Done():
+		return false
+	}
+
+	select {
+	case ok := <-result:
+		return ok
+	case <-ctx.Done():
+		return false
 	}
 }

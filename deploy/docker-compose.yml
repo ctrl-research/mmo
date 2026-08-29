@@ -1,5 +1,13 @@
 # Hobby-scale deployment: the whole game on one box.
 #
+# Every host port is overridable, because the standard ones are often already
+# taken on a developer machine:
+#
+#   POSTGRES_PORT=5433 REDIS_PORT=6380 docker compose -f deploy/docker-compose.yml up
+#
+# The container-side ports stay standard, so nothing inside the compose network
+# has to know about the override.
+#
 # Postgres and Redis are here from the start even though M0 uses neither, so
 # that persistence in M2 is a configuration change rather than an
 # infrastructure project. Scaling out to many nodes replaces this file with
@@ -15,9 +23,13 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpassword}
       POSTGRES_DB: mmo
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      # Postgres 18 images store data in a major-version-specific subdirectory
+      # and expect the mount one level up, at /var/lib/postgresql. Mounting the
+      # older /var/lib/postgresql/data path makes the container refuse to start
+      # outright rather than fall back.
+      - postgres-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U mmo -d mmo"]
       interval: 5s
@@ -31,7 +43,7 @@ services:
     # disconnect, not data, so persistence is deliberately off.
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -55,8 +67,8 @@ services:
       DATABASE_URL: postgres://mmo:${POSTGRES_PASSWORD:-devpassword}@postgres:5432/mmo?sslmode=disable
       REDIS_URL: redis://redis:6379
     ports:
-      - "8080:8080"
-      - "127.0.0.1:9090:9090"
+      - "${GAME_PORT:-8080}:8080"
+      - "127.0.0.1:${ADMIN_PORT:-9090}:9090"
     depends_on:
       postgres:
         condition: service_healthy

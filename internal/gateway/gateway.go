@@ -16,29 +16,44 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	"github.com/ctrl-research/mmo/internal/auth"
 	"github.com/ctrl-research/mmo/internal/content"
 	"github.com/ctrl-research/mmo/internal/metrics"
+	"github.com/ctrl-research/mmo/internal/world"
 	"github.com/ctrl-research/mmo/internal/world/room"
+	"github.com/google/uuid"
 )
 
-// RoomProvider hands out a Handle for the room a connecting player belongs in.
+// World places a character into the simulation.
 //
-// M0 has a single room, so the implementation is trivial. M4 replaces it with
-// one that consults the directory, places the player in the least-full
-// channel, and returns a remote handle when the room lives on another node --
-// without the gateway changing, because it only ever sees a Handle.
-type RoomProvider interface {
-	Handle(ctx context.Context) (room.Handle, error)
+// The gateway deliberately knows nothing about leases, checkpoints, or which
+// node hosts which room. It hands over an authenticated identity and receives
+// something it can route packets to and close when the socket ends.
+type World interface {
+	// Enter takes ownership of a character and places it in a room.
+	Enter(ctx context.Context, accountID, characterID uuid.UUID, sink room.Sink) (world.PlayerSession, error)
 }
+
+// PlayerSession is one character in play.
+type PlayerSession = world.PlayerSession
 
 // Config configures a Gateway.
 type Config struct {
-	Rooms       RoomProvider
+	World       World
 	Maps        map[string]*content.Map
 	Tickets     *TicketStore
 	Metrics     *metrics.Metrics
 	Logger      *slog.Logger
 	ContentHash string
+
+	// Sessions redeems the single-use tickets issued over authenticated HTTP.
+	Sessions *auth.Sessions
+
+	// Identity serves the sign-in and character-selection endpoints. They are
+	// mounted here so the whole game -- page, API, and socket -- lives on one
+	// origin, which is what keeps the same-origin WebSocket check workable
+	// without an allowlist.
+	Identity interface{ Routes(*http.ServeMux) }
 
 	// ClientDir serves the built client from this directory. Empty disables
 	// static serving, which is what the Vite dev server wants during
@@ -61,7 +76,7 @@ type Config struct {
 
 // Gateway serves the game's HTTP and WebSocket endpoints.
 type Gateway struct {
-	rooms       RoomProvider
+	world       World
 	maps        map[string]*content.Map
 	tickets     *TicketStore
 	metrics     *metrics.Metrics
@@ -70,15 +85,23 @@ type Gateway struct {
 	origins     []string
 	devAuth     bool
 	clientDir   string
+	sessions    *auth.Sessions
+	identity    interface{ Routes(*http.ServeMux) }
 
-	mu       sync.Mutex
-	sessions map[*session]struct{}
+	// conns is the set of live connections, distinct from the auth sessions
+	// above: one is "who is connected right now", the other is "who is signed
+	// in".
+	mu    sync.Mutex
+	conns map[*session]struct{}
 }
 
 // New builds a Gateway.
 func New(cfg Config) (*Gateway, error) {
-	if cfg.Rooms == nil {
-		return nil, errors.New("gateway: RoomProvider is required")
+	if cfg.World == nil {
+		return nil, errors.New("gateway: a World is required")
+	}
+	if cfg.Sessions == nil {
+		return nil, errors.New("gateway: auth sessions are required")
 	}
 	if cfg.Tickets == nil {
 		cfg.Tickets = NewTicketStore()
@@ -93,7 +116,8 @@ func New(cfg Config) (*Gateway, error) {
 		cfg.Maps = map[string]*content.Map{}
 	}
 	return &Gateway{
-		rooms:       cfg.Rooms,
+		world:       cfg.World,
+		sessions:    cfg.Sessions,
 		maps:        cfg.Maps,
 		tickets:     cfg.Tickets,
 		metrics:     cfg.Metrics,
@@ -102,7 +126,8 @@ func New(cfg Config) (*Gateway, error) {
 		origins:     cfg.AllowedOrigins,
 		devAuth:     cfg.DevAuth,
 		clientDir:   cfg.ClientDir,
-		sessions:    make(map[*session]struct{}),
+		identity:    cfg.Identity,
+		conns:       make(map[*session]struct{}),
 	}, nil
 }
 
@@ -113,8 +138,9 @@ func (g *Gateway) Routes() http.Handler {
 	mux.HandleFunc("GET /ws", g.handleWebSocket)
 	mux.HandleFunc("GET /api/map/{id}/collision", g.handleMapCollision)
 	mux.HandleFunc("GET /api/map/{id}/source", g.handleMapSource)
-	if g.devAuth {
-		mux.HandleFunc("POST /api/dev/ticket", g.handleDevTicket)
+
+	if g.identity != nil {
+		g.identity.Routes(mux)
 	}
 	// Registered last and at the root, so it never shadows an API route.
 	if g.clientDir != "" {
@@ -132,65 +158,6 @@ func (g *Gateway) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	})
 }
 
-// handleDevTicket issues a ticket without authenticating anyone.
-//
-// This is the M0 stand-in for the OIDC flow that arrives in M2. It exists so
-// the game is playable before identity is built, and it is gated behind an
-// explicit flag so it cannot be switched on by accident.
-func (g *Gateway) handleDevTicket(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Name string `json:"name"`
-	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
-	}
-	name := sanitiseName(req.Name)
-	if name == "" {
-		http.Error(w, "name is required", http.StatusBadRequest)
-		return
-	}
-
-	id, err := g.tickets.Issue("dev:"+name, name)
-	if err != nil {
-		g.log.Error("issuing dev ticket", "err", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
-		"ticket":    id,
-		"expiresIn": int(TicketTTL.Seconds()),
-	})
-}
-
-// sanitiseName trims a display name and bounds its length. It deliberately
-// does not reject unusual characters: rendering is the renderer's problem, and
-// the name never reaches a query, a shell, or a template.
-func sanitiseName(s string) string {
-	const maxName = 24
-	out := make([]rune, 0, maxName)
-	for _, r := range s {
-		if r < 0x20 || r == 0x7f {
-			continue // control characters
-		}
-		out = append(out, r)
-		if len(out) == maxName {
-			break
-		}
-	}
-	// Trim surrounding spaces without pulling in strings for one call.
-	start, end := 0, len(out)
-	for start < end && out[start] == ' ' {
-		start++
-	}
-	for end > start && out[end-1] == ' ' {
-		end--
-	}
-	return string(out[start:end])
-}
-
 func (g *Gateway) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		OriginPatterns: g.origins,
@@ -206,7 +173,7 @@ func (g *Gateway) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	s := newSession(conn, g, g.log.With("remote", r.RemoteAddr))
 
 	g.mu.Lock()
-	g.sessions[s] = struct{}{}
+	g.conns[s] = struct{}{}
 	g.mu.Unlock()
 
 	g.metrics.Connections.Inc()
@@ -214,7 +181,7 @@ func (g *Gateway) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		g.mu.Lock()
-		delete(g.sessions, s)
+		delete(g.conns, s)
 		g.mu.Unlock()
 		g.metrics.Connections.Dec()
 	}()
@@ -225,8 +192,8 @@ func (g *Gateway) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 // Shutdown closes every live session.
 func (g *Gateway) Shutdown(ctx context.Context) error {
 	g.mu.Lock()
-	sessions := make([]*session, 0, len(g.sessions))
-	for s := range g.sessions {
+	sessions := make([]*session, 0, len(g.conns))
+	for s := range g.conns {
 		sessions = append(sessions, s)
 	}
 	g.mu.Unlock()
@@ -240,7 +207,7 @@ func (g *Gateway) Shutdown(ctx context.Context) error {
 	deadline := time.After(2 * time.Second)
 	for {
 		g.mu.Lock()
-		n := len(g.sessions)
+		n := len(g.conns)
 		g.mu.Unlock()
 		if n == 0 {
 			return nil

@@ -106,6 +106,14 @@ type player struct {
 	// layer is the visibility layer this player's mobs and drops live in.
 	// From M5 it is the party ID; until then, one per player.
 	layer LayerID
+
+	// characterID is the durable identity this session is playing, used when
+	// checkpointing and when releasing the ownership lease.
+	characterID string
+
+	// frozen marks a player whose connection dropped. They remain in the world
+	// but take no input, run no physics, and cannot be harmed.
+	frozen bool
 }
 
 type queuedInput struct {
@@ -338,7 +346,7 @@ func (r *Room) doTick() {
 func (r *Room) phaseIngestAndMove() {
 	for _, id := range r.playerOrder {
 		p := r.players[id]
-		if p == nil {
+		if p == nil || p.frozen {
 			continue
 		}
 		for _, in := range r.takeInputs(p) {

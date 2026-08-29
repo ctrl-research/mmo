@@ -15,13 +15,18 @@ import (
 
 	"github.com/ctrl-research/mmo/internal/content"
 	"github.com/ctrl-research/mmo/internal/directory"
+	"github.com/ctrl-research/mmo/internal/store"
 	"github.com/ctrl-research/mmo/internal/world/room"
 	"github.com/ctrl-research/mmo/internal/world/sim"
+	"github.com/google/uuid"
 )
 
 // Node hosts room instances.
 type Node struct {
 	dir      directory.Directory
+	leases   directory.Leases
+	store    *store.Store
+	nodeID   string
 	content  *content.Content
 	log      *slog.Logger
 	observer room.Observer
@@ -34,10 +39,17 @@ type Node struct {
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
-	seed uint64
+	seed  uint64
+	grace time.Duration
 
 	mu    sync.Mutex
 	rooms map[directory.InstanceID]*hosted
+
+	// holding tracks characters kept in the world through a reconnect grace
+	// window, so a returning player resumes the character they left rather
+	// than being told it is already in play by their own dropped session.
+	holdMu  sync.Mutex
+	holding map[uuid.UUID]*Session
 }
 
 type hosted struct {
@@ -48,6 +60,9 @@ type hosted struct {
 // Config configures a Node.
 type Config struct {
 	Directory  directory.Directory
+	Leases     directory.Leases
+	Store      *store.Store
+	NodeID     string
 	Content    *content.Content
 	DefaultMap string
 	Logger     *slog.Logger
@@ -57,6 +72,11 @@ type Config struct {
 	// draws a fresh one, which is right for a real server; a fixed value makes
 	// a session reproducible, which is what tests and replay want.
 	Seed uint64
+
+	// ReconnectGrace overrides how long a character is held after a dropped
+	// connection. Zero uses the default; tests set it short so both the
+	// resume path and the expiry path are reachable without waiting a minute.
+	ReconnectGrace time.Duration
 }
 
 // NewNode builds a node. Call Start before use.
@@ -74,6 +94,11 @@ func NewNode(cfg Config) (*Node, error) {
 		cfg.Logger = slog.Default()
 	}
 
+	grace := cfg.ReconnectGrace
+	if grace <= 0 {
+		grace = DefaultReconnectGrace
+	}
+
 	seed := cfg.Seed
 	if seed == 0 {
 		// A fresh seed per process, so two servers started from the same image
@@ -82,14 +107,24 @@ func NewNode(cfg Config) (*Node, error) {
 		seed = uint64(time.Now().UnixNano())
 	}
 
+	nodeID := cfg.NodeID
+	if nodeID == "" {
+		nodeID = "node-1"
+	}
+
 	return &Node{
 		dir:        cfg.Directory,
+		leases:     cfg.Leases,
+		store:      cfg.Store,
+		nodeID:     nodeID,
 		content:    cfg.Content,
 		defaultMap: cfg.DefaultMap,
 		log:        cfg.Logger,
 		observer:   cfg.Observer,
 		seed:       seed,
+		grace:      grace,
 		rooms:      make(map[directory.InstanceID]*hosted),
+		holding:    make(map[uuid.UUID]*Session),
 	}, nil
 }
 
@@ -107,14 +142,18 @@ func (n *Node) Stop() {
 	n.wg.Wait()
 }
 
-// Handle places a connecting player and returns a handle to their room,
-// satisfying gateway.RoomProvider.
+// placeIn asks the directory for an instance of a map and ensures a room
+// exists for it.
 //
-// The flow is the same one M4 uses across many nodes: ask the directory for an
-// instance, then ensure a room exists for it. Today the answer is always local;
-// when it is not, this returns a remote handle and nothing above it changes.
-func (n *Node) Handle(ctx context.Context) (room.Handle, error) {
-	m := n.content.Maps[n.defaultMap]
+// This is the same flow M4 uses across many nodes: ask where the player
+// belongs, then make sure the room is running. Today the answer is always
+// local; when it is not, this returns a remote handle and nothing above it
+// changes.
+func (n *Node) placeIn(ctx context.Context, mapID string) (room.Handle, directory.InstanceID, error) {
+	m, ok := n.content.Maps[mapID]
+	if !ok {
+		return nil, 0, fmt.Errorf("world: unknown map %q", mapID)
+	}
 
 	key := directory.RoomKey{
 		MapID:     m.ID,
@@ -123,20 +162,16 @@ func (n *Node) Handle(ctx context.Context) (room.Handle, error) {
 
 	inst, err := n.dir.Join(ctx, key, m.Capacity)
 	if err != nil {
-		return nil, fmt.Errorf("world: placing player: %w", err)
+		return nil, 0, fmt.Errorf("world: placing player: %w", err)
 	}
 
-	h, err := n.ensureRoom(inst, m)
+	handle, err := n.ensureRoom(inst, m)
 	if err != nil {
 		// Release the slot we reserved, or capacity leaks on every failure.
 		_ = n.dir.Leave(ctx, inst.ID)
-		return nil, err
+		return nil, 0, err
 	}
-
-	// Wrap so that a player leaving the room also frees their directory slot.
-	// Without this the directory believes rooms are fuller than they are and
-	// eventually opens channels nobody needs.
-	return &trackedHandle{Handle: h, dir: n.dir, instance: inst.ID}, nil
+	return handle, inst.ID, nil
 }
 
 // ensureRoom returns the room for an instance, starting it if this node is not
@@ -200,17 +235,34 @@ func (n *Node) Rooms() int {
 	return len(n.rooms)
 }
 
-// trackedHandle frees a directory slot when its player leaves.
-type trackedHandle struct {
-	room.Handle
-	dir      directory.Directory
-	instance directory.InstanceID
-}
-
-func (h *trackedHandle) Leave(ctx context.Context, id room.EntityID) {
-	h.Handle.Leave(ctx, id)
-	_ = h.dir.Leave(ctx, h.instance)
-}
-
 // Content returns the loaded game data this node simulates.
 func (n *Node) Content() *content.Content { return n.content }
+
+// hold registers a session as resumable.
+func (n *Node) hold(characterID uuid.UUID, s *Session) {
+	n.holdMu.Lock()
+	defer n.holdMu.Unlock()
+	n.holding[characterID] = s
+}
+
+// forget stops holding a character for reconnection.
+func (n *Node) forget(characterID uuid.UUID) {
+	n.holdMu.Lock()
+	defer n.holdMu.Unlock()
+	delete(n.holding, characterID)
+}
+
+// held returns the session holding a character, if any.
+func (n *Node) held(characterID uuid.UUID) (*Session, bool) {
+	n.holdMu.Lock()
+	defer n.holdMu.Unlock()
+	s, ok := n.holding[characterID]
+	return s, ok
+}
+
+// Holding reports how many characters are waiting out a reconnect window.
+func (n *Node) Holding() int {
+	n.holdMu.Lock()
+	defer n.holdMu.Unlock()
+	return len(n.holding)
+}

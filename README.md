@@ -2,7 +2,7 @@
 
 A self-hosted, horizontally scalable 2D MMO — drawing on MapleStory's side-scrolling combat and channels, Path of Exile's passive tree and stat math, and Old School RuneScape's secondary skills.
 
-**Status: M1 complete** — the combat vertical slice runs. Two players share a map, see each other, and hunt their own private mobs: kill, gain experience, level up, and loot. Client-side prediction is verified bit-identical to the server. See `docs/roadmap.md`.
+**Status: M2 complete** — sign in, create a character, play, log out, and log back in to find everything where you left it. Two players share a map, see each other, and hunt their own private mobs. Client-side prediction is verified bit-identical to the server. See `docs/roadmap.md`.
 
 ## Design goals
 
@@ -48,6 +48,7 @@ Read the docs for detail, but the design rests on three things:
 ```
 mise install
 make client-install
+make services      # Postgres and Redis
 make run
 ```
 
@@ -64,9 +65,36 @@ on many machines — pass a different one:
 make run PORT=8088
 ```
 
-`--dev-auth`, which `make run` passes for you, issues game tickets with no
-identity check, because OIDC arrives in M2. Never enable it on anything
+`--dev-auth`, which `make run` passes for you, signs players in with no
+identity check and adds them to the allowlist. Never enable it on anything
 reachable by someone you do not trust.
+
+### Signing in with a real provider
+
+The server is an OIDC relying party, so any provider publishing a discovery
+document works. Copy `deploy/providers.example.toml`, fill in the client IDs,
+and start with:
+
+```
+./bin/mmo --providers=providers.toml --public-url=https://your.host --secure-cookies
+```
+
+Client secrets are read from the environment (`client_secret = "env:NAME"`), so
+the file can be committed while the secrets are not. The redirect URI
+registered with each provider must be exactly `<public-url>/auth/callback`.
+
+**The allowlist admits nobody until you add an entry.** That is deliberate —
+"empty means open" fails toward a server anyone can join. Add one with SQL for
+now:
+
+```sql
+INSERT INTO allowlist (provider, match_kind, match_value)
+VALUES ('', 'email', 'you@example.com');
+```
+
+`match_kind` is `subject`, `email`, or `email_domain`; an empty `provider`
+matches any. Removing an entry takes effect at that player's next sign-in,
+because the allowlist is re-checked every time rather than only at signup.
 
 ### Live reload
 

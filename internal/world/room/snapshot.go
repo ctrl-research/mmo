@@ -14,7 +14,10 @@ import (
 func (r *Room) phaseSnapshot() {
 	for _, id := range r.playerOrder {
 		p := r.players[id]
-		if p == nil {
+		// A frozen player has no connection to send to. Their entity is still
+		// visible to everyone else, so the world does not blink people in and
+		// out on every transient disconnect.
+		if p == nil || p.frozen {
 			continue
 		}
 		// Events first, then the snapshot: a client should learn that damage

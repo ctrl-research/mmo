@@ -11,6 +11,42 @@ jobs:
     name: Server
     runs-on: ubuntu-latest
     timeout-minutes: 20
+
+    # Persistence is tested against real Postgres and Redis rather than
+    # mocks. The behaviour that matters -- the fencing predicate, the unique
+    # index on character names, Lua script atomicity -- lives in those
+    # services. A mock would assert that the Go code calls the queries it
+    # already calls, and would pass happily while the actual constraint was
+    # wrong.
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: mmo
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: mmo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mmo -d mmo"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      MMO_TEST_DATABASE_URL: postgres://mmo:testpassword@localhost:5432/mmo?sslmode=disable
+      MMO_TEST_REDIS_ADDR: localhost:6379
+
     steps:
       - uses: actions/checkout@v4
 
@@ -56,6 +92,23 @@ jobs:
           if [ -n "$unformatted" ]; then
             echo "::error::These files need gofmt:"
             echo "$unformatted"
+            exit 1
+          fi
+
+      # A skipped database test looks identical to a passing one in the
+      # summary, so assert the services are actually reachable. Otherwise a
+      # broken service definition hides every persistence test behind a green
+      # tick.
+      - name: Verify test services are reachable
+        run: |
+          go test ./internal/store/ -run TestMigrationsApply -v 2>&1 | tee /tmp/store.log
+          if grep -q "SKIP" /tmp/store.log; then
+            echo "::error::Database tests skipped; the Postgres service is not reachable"
+            exit 1
+          fi
+          go test ./internal/directory/ -run TestAcquireGivesExclusiveOwnership -v 2>&1 | tee /tmp/dir.log
+          if grep -q "skipping Redis" /tmp/dir.log; then
+            echo "::error::Redis lease tests skipped; the Redis service is not reachable"
             exit 1
           fi
 

@@ -1,101 +1,90 @@
 import { GameLoop } from "@/game/loop";
 import { Scene } from "@/render/scene";
 import { Sim } from "@/sim/wasm";
+import { Shell } from "@/ui/screens";
+import type { Character } from "@/ui/api";
 import { toPixels } from "@/sim/fixed";
 import { isClimbing, isGrounded } from "@/sim/body";
 
 /**
- * Entry point: load the simulation, build the scene, connect, run.
+ * Entry point.
  *
- * The HUD is not decoration. This milestone exists to answer "does movement
- * feel right and does prediction hold", and neither question can be answered
- * without seeing correction size, replay depth, and round-trip time while
- * playing.
+ * The shell handles everything before the world -- signing in and choosing a
+ * character -- and hands over a single-use ticket. Only then is the simulation
+ * loaded and a socket opened.
+ *
+ * The HUD is not decoration. Correction size, replay depth, and round-trip
+ * time are the only way to tell whether prediction is holding while actually
+ * playing, which is what the milestone exit criteria turn on.
  */
 
 const overlay = document.getElementById("overlay") as HTMLDivElement;
-const nameInput = document.getElementById("name") as HTMLInputElement;
-const connectBtn = document.getElementById("connect") as HTMLButtonElement;
-const errorEl = document.getElementById("error") as HTMLDivElement;
 const hud = document.getElementById("hud") as HTMLDivElement;
 const stage = document.getElementById("stage") as HTMLDivElement;
 
 let loop: GameLoop | null = null;
+let scene: Scene | null = null;
+let sim: Sim | null = null;
+let status = "";
 
-async function main() {
-  nameInput.value = localStorage.getItem("mmo.name") ?? "";
-  nameInput.focus();
+const shell = new Shell(overlay, {
+  onPlay: (ticket, character, contentHash) => void enterWorld(ticket, character, contentHash),
+});
 
-  connectBtn.addEventListener("click", () => void start());
-  nameInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") void start();
-  });
-
-  // G toggles the authoritative-position ghost. If it separates from the drawn
-  // body, reconciliation is wrong, and seeing that live beats inferring it
-  // from a log.
+async function main(): Promise<void> {
+  // G overlays the server's authoritative position. If it separates from the
+  // drawn body, reconciliation is wrong, and seeing that live beats inferring
+  // it from a log.
   window.addEventListener("keydown", (e) => {
     if (e.code === "KeyG" && loop) {
-      const on = loop.toggleGhost();
-      setStatus(on ? "server ghost on" : "server ghost off");
+      setStatus(loop.toggleGhost() ? "server ghost on" : "server ghost off");
     }
   });
+
+  await shell.start();
+  startHud();
 }
 
-async function start() {
-  const name = nameInput.value.trim();
-  if (!name) {
-    errorEl.textContent = "Enter a name.";
-    return;
-  }
-
-  connectBtn.disabled = true;
-  errorEl.textContent = "";
-  localStorage.setItem("mmo.name", name);
-
+async function enterWorld(ticket: string, character: Character, contentHash: string): Promise<void> {
   try {
     setStatus("loading simulation...");
-    const sim = await Sim.load();
 
-    setStatus("building scene...");
-    const scene = await Scene.create(stage);
+    // Loaded once and reused: the WebAssembly module is a couple of megabytes,
+    // and re-instantiating it on every character switch would stall for no
+    // reason.
+    sim ??= await Sim.load();
+    scene ??= await Scene.create(stage);
+
+    scene.clearEntities();
 
     loop = new GameLoop(sim, scene, {
       onStatus: setStatus,
       onDisconnect: (reason) => {
-        overlay.hidden = false;
-        connectBtn.disabled = false;
-        errorEl.textContent = reason;
         loop = null;
+        void shell.resume(reason);
       },
     });
 
-    setStatus("connecting...");
-    await loop.connect(name);
-
-    overlay.hidden = true;
-    startHud();
+    setStatus(`connecting as ${character.name}...`);
+    await loop.connect(character.name, ticket, contentHash);
+    setStatus(`playing as ${character.name}`);
   } catch (err) {
-    errorEl.textContent = err instanceof Error ? err.message : String(err);
-    connectBtn.disabled = false;
     loop = null;
+    void shell.resume(err instanceof Error ? err.message : String(err));
   }
 }
 
-let status = "";
-function setStatus(text: string) {
+function setStatus(text: string): void {
   status = text;
 }
 
-function startHud() {
+function startHud(): void {
   const render = () => {
     if (loop) {
       const s = loop.stats;
       const b = s.body;
       const state = isClimbing(b) ? "climbing" : isGrounded(b) ? "grounded" : "airborne";
-
-      const expPct =
-        s.expToNext > 0n ? Number((s.exp * 100n) / s.expToNext).toFixed(0) : "--";
+      const expPct = s.expToNext > 0n ? Number((s.exp * 100n) / s.expToNext).toFixed(0) : "--";
 
       hud.innerHTML =
         `<b>${status}</b>\n` +
@@ -110,6 +99,9 @@ function startHud() {
         `others   ${s.entities}\n` +
         `net      ${s.snapshotsReceived} snaps, ${(s.bytesReceived / 1024).toFixed(1)} KiB\n` +
         `\n[g] toggle server ghost`;
+      hud.hidden = false;
+    } else {
+      hud.hidden = true;
     }
     requestAnimationFrame(render);
   };

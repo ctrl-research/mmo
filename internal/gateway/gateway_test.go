@@ -3,13 +3,19 @@ package gateway
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ctrl-research/mmo/internal/auth"
+	"github.com/ctrl-research/mmo/internal/store"
 
 	"github.com/coder/websocket"
 	"github.com/ctrl-research/mmo/internal/content/contenttest"
@@ -22,17 +28,36 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// testServer wires the full stack -- node, directory, gateway -- behind a real
-// HTTP server, so these tests exercise the actual protocol over a real socket
-// rather than a mock of it.
+// testServer wires the full stack -- store, leases, identity, world, gateway --
+// behind a real HTTP server.
+//
+// These tests exercise the actual protocol over a real socket, and now a real
+// database too: the parts most worth testing here are exactly the ones that
+// span components, like a ticket naming a character that then has to be
+// loaded, leased, and checkpointed.
 type testServer struct {
-	url  string
-	gw   *Gateway
-	node *world.Node
+	url    string
+	gw     *Gateway
+	node   *world.Node
+	store  *store.Store
+	leases directory.Leases
 }
 
 func newTestServer(t *testing.T) *testServer {
 	t.Helper()
+	return newTestServerWithGrace(t, 150*time.Millisecond)
+}
+
+// newTestServerWithGrace builds the stack with a chosen reconnect window, so
+// both the resume path and the expiry path are reachable without waiting out
+// the production minute.
+func newTestServerWithGrace(t *testing.T, grace time.Duration) *testServer {
+	t.Helper()
+
+	dbURL := os.Getenv("MMO_TEST_DATABASE_URL")
+	if dbURL == "" {
+		t.Skip("MMO_TEST_DATABASE_URL is not set; skipping gateway integration tests")
+	}
 
 	game, err := contenttest.Load()
 	if err != nil {
@@ -41,33 +66,70 @@ func newTestServer(t *testing.T) *testServer {
 
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mx := metrics.New(prometheus.NewRegistry())
+	ctx, cancel := context.WithCancel(context.Background())
+
+	st, err := store.Open(ctx, store.Config{URL: dbURL, Logger: log})
+	if err != nil {
+		cancel()
+		t.Fatalf("open store: %v", err)
+	}
+	if _, err := st.Pool().Exec(ctx, `TRUNCATE accounts, allowlist CASCADE`); err != nil {
+		cancel()
+		t.Fatalf("truncate: %v", err)
+	}
+
 	dir := directory.NewMemory("test-node")
+	leases := directory.NewMemoryLeases()
 
 	node, err := world.NewNode(world.Config{
 		Directory:  dir,
+		Leases:     leases,
+		Store:      st,
+		NodeID:     "test-node",
 		Content:    game,
 		DefaultMap: "test",
 		Logger:     log,
 		Observer:   mx,
 		// A fixed seed so these tests never depend on the roll of the day.
-		Seed: 0xC0FFEE,
+		Seed:           0xC0FFEE,
+		ReconnectGrace: grace,
 	})
 	if err != nil {
+		cancel()
 		t.Fatalf("new node: %v", err)
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
 	node.Start(ctx)
 
-	gw, err := New(Config{
-		Rooms:   node,
-		Maps:    game.Maps,
-		Tickets: NewTicketStore(),
-		Metrics: mx,
-		Logger:  log,
-		DevAuth: true,
+	sessions, err := auth.NewSessions(
+		[]byte("a-test-signing-secret-at-least-32-bytes"), auth.NewMemoryEphemeral(), false)
+	if err != nil {
+		cancel()
+		t.Fatalf("new sessions: %v", err)
+	}
+
+	identity, err := auth.NewService(auth.ServiceConfig{
+		Store:      st,
+		Sessions:   sessions,
+		Logger:     log,
+		DevAuth:    true,
+		DefaultMap: "test",
 	})
 	if err != nil {
+		cancel()
+		t.Fatalf("new identity service: %v", err)
+	}
+
+	gw, err := New(Config{
+		World:    node,
+		Maps:     game.Maps,
+		Sessions: sessions,
+		Metrics:  mx,
+		Logger:   log,
+		DevAuth:  true,
+		Identity: identity,
+	})
+	if err != nil {
+		cancel()
 		t.Fatalf("new gateway: %v", err)
 	}
 
@@ -76,30 +138,97 @@ func newTestServer(t *testing.T) *testServer {
 		srv.Close()
 		cancel()
 		node.Stop()
+		st.Close()
 	})
 
-	return &testServer{url: srv.URL, gw: gw, node: node}
+	return &testServer{url: srv.URL, gw: gw, node: node, store: st, leases: leases}
 }
 
+// ticket signs a player in, creates a character, and returns a ticket for it.
+//
+// This is the whole pre-game flow: identity and character selection happen
+// over authenticated HTTP, and only then is a single-use ticket issued for the
+// socket.
 func (ts *testServer) ticket(t *testing.T, name string) string {
 	t.Helper()
-	resp, err := http.Post(ts.url+"/api/dev/ticket", "application/json",
+
+	client := &http.Client{Jar: newJar()}
+
+	resp, err := client.Post(ts.url+"/auth/dev/login", "application/json",
+		strings.NewReader(`{"subject":"`+name+`"}`))
+	if err != nil {
+		t.Fatalf("dev login: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("dev login returned %d", resp.StatusCode)
+	}
+
+	created, err := client.Post(ts.url+"/api/characters", "application/json",
 		strings.NewReader(`{"name":"`+name+`"}`))
 	if err != nil {
-		t.Fatalf("ticket request: %v", err)
+		t.Fatalf("create character: %v", err)
+	}
+	defer created.Body.Close()
+	if created.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(created.Body)
+		t.Fatalf("create character returned %d: %s", created.StatusCode, body)
+	}
+	var character struct {
+		ID string `json:"id"`
+	}
+	json.NewDecoder(created.Body).Decode(&character)
+
+	return ts.ticketFor(t, client, character.ID)
+}
+
+// ticketFor issues a ticket for an existing character on an existing session.
+func (ts *testServer) ticketFor(t *testing.T, client *http.Client, characterID string) string {
+	t.Helper()
+
+	resp, err := client.Post(ts.url+"/api/ticket", "application/json",
+		strings.NewReader(`{"characterId":"`+characterID+`"}`))
+	if err != nil {
+		t.Fatalf("ticket: %v", err)
 	}
 	defer resp.Body.Close()
-
 	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("ticket status = %d, want 200", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("ticket returned %d: %s", resp.StatusCode, body)
 	}
+
 	var body struct {
 		Ticket string `json:"ticket"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		t.Fatalf("decode ticket: %v", err)
+	json.NewDecoder(resp.Body).Decode(&body)
+	if body.Ticket == "" {
+		t.Fatal("no ticket issued")
 	}
 	return body.Ticket
+}
+
+// jar is a minimal cookie jar; net/http/cookiejar rejects the bare IP that
+// httptest serves on.
+type jar struct{ cookies map[string]*http.Cookie }
+
+func newJar() *jar { return &jar{cookies: map[string]*http.Cookie{}} }
+
+func (j *jar) SetCookies(_ *url.URL, cookies []*http.Cookie) {
+	for _, c := range cookies {
+		if c.MaxAge < 0 {
+			delete(j.cookies, c.Name)
+			continue
+		}
+		j.cookies[c.Name] = c
+	}
+}
+
+func (j *jar) Cookies(_ *url.URL) []*http.Cookie {
+	out := make([]*http.Cookie, 0, len(j.cookies))
+	for _, c := range j.cookies {
+		out = append(out, c)
+	}
+	return out
 }
 
 // client is a minimal protocol client for tests.
@@ -361,7 +490,10 @@ func TestFullSharedRoomOpensANewChannel(t *testing.T) {
 	var firstInstance uint64
 	for i := 0; i < capacity; i++ {
 		c := ts.dial(t)
-		c.hello(ts.ticket(t, "player"), ProtocolVersion)
+		// Distinct names: character names are unique now, so a loop that
+		// reuses one would fail at character creation rather than testing
+		// anything about channels.
+		c.hello(ts.ticket(t, fmt.Sprintf("Player%d", i)), ProtocolVersion)
 		w := c.awaitWelcome()
 
 		if i == 0 {
@@ -422,41 +554,56 @@ func TestPingIsAnswered(t *testing.T) {
 	t.Fatal("no Pong received")
 }
 
-func TestDisconnectRemovesPlayerFromRoom(t *testing.T) {
-	ts := newTestServer(t)
+// A dropped connection holds the character rather than removing it, so a
+// transient blip mid-fight is not a wipe. It is removed once the window
+// expires.
+func TestDisconnectHoldsThenRemovesTheCharacter(t *testing.T) {
+	ts := newTestServerWithGrace(t, 300*time.Millisecond)
 
 	a := ts.dial(t)
-	a.hello(ts.ticket(t, "alice"), ProtocolVersion)
+	a.hello(ts.ticket(t, "Watcher"), ProtocolVersion)
 	a.awaitWelcome()
 
-	b := ts.dial(t)
-	b.hello(ts.ticket(t, "bob"), ProtocolVersion)
-	wb := b.awaitWelcome()
-	a.awaitSnapshots(5)
+	p := ts.signUp(t, "Leaver")
+	b := ts.connect(t, p)
+	bEntity := uint32(0)
+	for _, s := range collectSnapshots(a, 1500*time.Millisecond) {
+		for _, e := range s.GetEntered() {
+			if e.GetName() == "Leaver" {
+				bEntity = e.GetId()
+			}
+		}
+	}
+	if bEntity == 0 {
+		t.Fatal("the second player was never announced")
+	}
 
-	b.conn.Close(websocket.StatusNormalClosure, "leaving")
+	b.conn.Close(websocket.StatusNormalClosure, "dropping")
 
-	// Alice must eventually be told Bob's entity is gone.
+	// Held: still present, and the node knows it is resumable.
+	waitUntil(t, 2*time.Second, func() bool { return ts.node.Holding() > 0 })
+
+	// Expired: removed from the world.
 	removed := false
 	deadline := time.Now().Add(5 * time.Second)
 	for !removed && time.Now().Before(deadline) {
-		msgs, err := a.recv(2 * time.Second)
-		if err != nil {
-			break
-		}
-		for _, m := range msgs {
-			if s := m.GetSnapshot(); s != nil {
-				for _, id := range s.GetRemoved() {
-					if id == wb.GetEntityId() {
-						removed = true
-					}
+		for _, s := range collectSnapshots(a, 300*time.Millisecond) {
+			for _, id := range s.GetRemoved() {
+				if id == bEntity {
+					removed = true
 				}
 			}
 		}
 	}
 	if !removed {
-		t.Error("bob's entity was never removed after he disconnected")
+		t.Error("the character was never removed after its reconnect window expired")
 	}
+}
+
+// collectSnapshots drains snapshots for a while.
+func collectSnapshots(c *client, d time.Duration) []*mmov1.Snapshot {
+	_, snaps := c.collect(d)
+	return snaps
 }
 
 func TestMalformedFrameClosesConnection(t *testing.T) {
@@ -509,11 +656,11 @@ func TestHealthEndpoint(t *testing.T) {
 	}
 }
 
-func TestDevTicketRejectsEmptyName(t *testing.T) {
+func TestDevLoginRejectsAnEmptySubject(t *testing.T) {
 	ts := newTestServer(t)
 
-	resp, err := http.Post(ts.url+"/api/dev/ticket", "application/json",
-		strings.NewReader(`{"name":"   "}`))
+	resp, err := http.Post(ts.url+"/auth/dev/login", "application/json",
+		strings.NewReader(`{"subject":"   "}`))
 	if err != nil {
 		t.Fatalf("post: %v", err)
 	}
@@ -524,33 +671,21 @@ func TestDevTicketRejectsEmptyName(t *testing.T) {
 	}
 }
 
-// The dev ticket endpoint must not exist unless it was explicitly enabled.
-func TestDevAuthDisabledHidesTicketEndpoint(t *testing.T) {
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	gw, err := New(Config{
-		Rooms:   stubProvider{},
-		Metrics: metrics.New(prometheus.NewRegistry()),
-		Logger:  log,
-		DevAuth: false,
-	})
-	if err != nil {
-		t.Fatalf("new gateway: %v", err)
-	}
-	srv := httptest.NewServer(gw.Routes())
-	defer srv.Close()
+// Identity and character selection are mounted on the same origin as the game,
+// which is what keeps the same-origin WebSocket check workable without an
+// allowlist.
+func TestIdentityRoutesAreMountedOnTheGameOrigin(t *testing.T) {
+	ts := newTestServer(t)
 
-	resp, err := http.Post(srv.URL+"/api/dev/ticket", "application/json",
-		strings.NewReader(`{"name":"mallory"}`))
-	if err != nil {
-		t.Fatalf("post: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusOK {
-		t.Error("the dev ticket endpoint served a request with dev auth disabled")
+	for _, path := range []string{"/auth/providers", "/api/characters"} {
+		resp, err := http.Get(ts.url + path)
+		if err != nil {
+			t.Fatalf("get %s: %v", path, err)
+		}
+		resp.Body.Close()
+		// 401 is fine -- it means the route exists and requires a session.
+		if resp.StatusCode == http.StatusNotFound {
+			t.Errorf("%s is not mounted on the game origin", path)
+		}
 	}
 }
-
-type stubProvider struct{}
-
-func (stubProvider) Handle(context.Context) (room.Handle, error) { return nil, nil }
