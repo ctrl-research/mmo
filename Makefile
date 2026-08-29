@@ -53,6 +53,13 @@ generate: ## Regenerate protobuf types
 proto-breaking: ## Check the wire protocol for breaking changes against main
 	$(BUFTOOL) breaking --against '.git#branch=main'
 
+.PHONY: sprites
+sprites: ## Regenerate the pixel art (review the diff carefully)
+	$(GO) run ./cmd/spritegen
+	@echo
+	@echo "Sprites regenerated. A diff here means the art changed --"
+	@echo "look at it before committing."
+
 .PHONY: golden
 golden: ## Regenerate simulation golden fixtures (review the diff carefully)
 	$(GO) test ./internal/world/sim -update

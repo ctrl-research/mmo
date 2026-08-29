@@ -1,9 +1,10 @@
 /**
- * The M0 art direction is deliberately flat colour rather than sprites.
+ * Colours for everything that is not a sprite: the grid, health bars, damage
+ * numbers, and the tints applied over generated art.
  *
- * Placeholder art that looks like placeholder art keeps attention on whether
- * movement feels right, which is what this milestone is actually for. Sprites
- * and the layered paperdoll arrive with equipment in M3.
+ * The art itself carries its own palette (cmd/spritegen), because a sprite
+ * sheet and a colour table in two places drift. What is left here is the
+ * interface layer, which has no sprites and should not have any.
  */
 export const theme = {
   background: 0x0b0d12,
@@ -19,6 +20,10 @@ export const theme = {
   selfEdge: 0x8fb4ff,
   other: 0x7f8899,
   otherEdge: 0xa8b1c2,
+
+  // Other players wear the same mannequin, tinted, so two characters standing
+  // together are obviously the same kind of thing and still tellable apart.
+  otherTint: 0xb9c2d6,
 
   mob: 0xc25b5b,
   mobEdge: 0xe08585,

@@ -93,9 +93,9 @@
           "name": "pillar",
           "class": "solid",
           "x": 1024,
-          "y": 480,
+          "y": 512,
           "width": 96,
-          "height": 128,
+          "height": 96,
           "rotation": 0,
           "visible": true
         },

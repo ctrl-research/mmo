@@ -288,6 +288,10 @@ export class GameLoop {
         break;
       }
 
+      case "skillCast":
+        this.#scene.playAttack(e.body.value.casterId, this.#selfId);
+        break;
+
       case "died": {
         const d = e.body.value;
         if (d.killerId === this.#selfId && d.entityId !== this.#selfId) {

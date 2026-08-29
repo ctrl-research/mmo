@@ -53,14 +53,22 @@ type Tuning struct {
 	MaxSubstep   fixed.F // largest movement resolved in one collision pass
 }
 
-// DefaultTuning is the M0 movement feel: a roughly 96-unit jump reaching its
-// apex in 8 ticks (0.4 s), and a run speed of 8 units per tick (160/s).
+// DefaultTuning is the movement feel: a 144-unit jump reaching its apex in 9
+// ticks (0.45 s), and a run speed of 8 units per tick (160/s).
 //
-// With 32-unit tiles that is a three-tile jump and five tiles per second,
-// which lands close to MapleStory's pacing.
+// With 32-unit tiles that is a four-and-a-half-tile jump and five tiles per
+// second, close to MapleStory's pacing.
+//
+// The jump is sized against the maps rather than chosen and hoped for. Every
+// platform in every map sits 96 units -- three tiles -- above the surface
+// below it, and the interesting jumps are diagonal: 96 up and 96 across.
+// Clearing that needs both height and air time, which is why gravity is not
+// simply raised alongside the jump to keep the arc snappy: higher gravity
+// gives a shorter hang and less horizontal reach at height, and the diagonal
+// is what runs out first. MaxJumpHeight is the number to check a map against.
 func DefaultTuning() Tuning {
 	return Tuning{
-		Gravity:     fixed.FromInt(3),
+		Gravity:     fixed.FromInt(4),
 		TerminalVel: fixed.FromInt(40),
 
 		RunSpeed:    fixed.FromInt(8),
@@ -69,12 +77,12 @@ func DefaultTuning() Tuning {
 		AirAccel:    fixed.FromInt(1),
 		AirFric:     fixed.FromRatio(3, 10),
 
-		JumpVel:    fixed.FromInt(24),
+		JumpVel:    fixed.FromInt(36),
 		JumpCutNum: 1,
 		JumpCutDen: 2,
 
 		ClimbSpeed:  fixed.FromInt(5),
-		ClimbOffVel: fixed.FromInt(16),
+		ClimbOffVel: fixed.FromInt(20),
 
 		// Coyote time and jump buffering do not change what is possible, only
 		// how forgiving the controls feel. Both are worth having from the
@@ -88,4 +96,74 @@ func DefaultTuning() Tuning {
 		// single-pass move could otherwise skip straight through a floor.
 		MaxSubstep: fixed.FromInt(16),
 	}
+}
+
+// MaxJumpHeight is how far a held jump lifts a body, in world units.
+//
+// Closed form rather than simulated, because it is exact and because the
+// callers are tools and tests that have no world to step against: content
+// validation checks that no platform sits further above the ground beneath it
+// than this, which is the property that makes a map traversable at all.
+//
+// The body rises while velocity is upward, gaining v0-g, then v0-2g, and so on
+// until the step where velocity would turn downward. That is n = floor(v0/g)
+// steps, summing to n*v0 - g*n*(n+1)/2.
+func MaxJumpHeight(t *Tuning) fixed.F {
+	if t.Gravity <= 0 || t.JumpVel <= 0 {
+		return 0
+	}
+
+	// Both are fixed-point, so dividing the raw values gives the step count
+	// directly. Multiplying a fixed value by a plain count is a raw multiply:
+	// going through Mul would scale it twice.
+	n := int64(t.JumpVel) / int64(t.Gravity)
+	triangular := n * (n + 1) / 2
+
+	return fixed.F(int64(t.JumpVel)*n - int64(t.Gravity)*triangular)
+}
+
+// JumpReach is how far a running jump travels horizontally while at least
+// `height` above where it launched.
+//
+// This is the number that decides whether a diagonal ledge is reachable, and
+// it is not the same as the jump's total distance: near the apex a body is
+// barely moving upward but is still moving sideways, and near the ground it
+// has the whole arc left. A map with 96-unit steps and 96-unit horizontal
+// spacing needs reach at height, not reach at ground level.
+//
+// The arc is integrated rather than solved: it has to match Step's ordering
+// exactly, and the ordering is the part that would drift. No world is needed,
+// because this is the arc through open air -- which is the case a map wants
+// checked.
+func JumpReach(t *Tuning, height fixed.F) fixed.F {
+	if t.Gravity <= 0 || t.JumpVel <= 0 || t.RunSpeed <= 0 {
+		return 0
+	}
+
+	// Step applies gravity, then moves. Matching that here is what keeps this
+	// honest against the simulation rather than approximately like it.
+	vel := -t.JumpVel
+
+	var risen fixed.F
+	var lastAbove int64
+
+	// Counted from launch, not from when the height is first reached: landing
+	// on a ledge means being above it *and* far enough across at the same
+	// moment, so what matters is the displacement at the last tick still above
+	// it -- which includes everything covered on the way up.
+	for i := int64(1); i < 1000; i++ {
+		vel += t.Gravity
+		risen -= vel
+
+		if risen >= height {
+			lastAbove = i
+		}
+		if risen < 0 {
+			break
+		}
+	}
+
+	// A tick count is a plain scalar, so this is a raw multiply. Mul would
+	// treat the count as a fraction and give a reach of nearly nothing.
+	return fixed.F(int64(t.RunSpeed) * lastAbove)
 }

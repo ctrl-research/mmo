@@ -1,0 +1,61 @@
+{
+  "player": {
+    "frameW": 56,
+    "frameH": 48,
+    "bodyW": 24,
+    "bodyH": 48,
+    "pad": 16,
+    "anim": {
+      "attack": 10,
+      "climb": 8,
+      "fall": 7,
+      "idle": 0,
+      "jump": 6,
+      "run": 2
+    },
+    "lengths": {
+      "attack": 2,
+      "climb": 2,
+      "fall": 1,
+      "idle": 2,
+      "jump": 1,
+      "run": 4
+    }
+  },
+  "terrain": {
+    "tile": 32,
+    "index": {
+      "groundFill": 1,
+      "groundLeft": 2,
+      "groundRight": 3,
+      "groundTop": 0,
+      "platform": 4,
+      "rope": 5
+    }
+  },
+  "mobs": {
+    "32x28": {
+      "x": 0,
+      "w": 32,
+      "h": 28,
+      "frames": 2
+    },
+    "44x36": {
+      "x": 64,
+      "w": 44,
+      "h": 36,
+      "frames": 2
+    },
+    "64x56": {
+      "x": 152,
+      "w": 64,
+      "h": 56,
+      "frames": 2
+    }
+  },
+  "drops": {
+    "size": 20,
+    "coinFrames": 4,
+    "itemFrame": 4
+  }
+}
