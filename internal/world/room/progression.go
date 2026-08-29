@@ -87,6 +87,11 @@ func maxLifeFrom(p *PlayerState) uint32 {
 }
 
 // awardKill grants experience for a kill and handles any resulting levels.
+//
+// Shared with whoever was there to help. Partied members hunt in one layer, so
+// "in the killer's layer and within range" is exactly the set of people who
+// could have contributed -- no damage tracking, no tap rules, and nothing to
+// tune, because the layer already answers the question.
 func (r *Room) awardKill(killer *Entity, victim *Entity) {
 	if killer.Player == nil || victim.Mob == nil {
 		return
@@ -97,15 +102,69 @@ func (r *Room) awardKill(killer *Entity, victim *Entity) {
 		return
 	}
 
-	p := killer.Player
-	p.Exp += amount
+	share := r.expShare(killer, victim)
 
-	r.emitTo(killer.ID, &mmov1.Event{Body: &mmov1.Event_ExpGained{ExpGained: &mmov1.ExpGained{
-		Amount: uint64(amount),
-		Total:  uint64(p.Exp),
-	}}})
+	// Split evenly, with the remainder to the killer. Splitting evenly is the
+	// point: a party that has to argue about contribution is not a party.
+	each := amount / int64(len(share))
+	remainder := amount - each*int64(len(share))
 
-	r.applyLevels(killer)
+	for _, e := range share {
+		gained := each
+		if e.ID == killer.ID {
+			gained += remainder
+		}
+		if gained <= 0 {
+			continue
+		}
+
+		e.Player.Exp += gained
+		r.emitTo(e.ID, &mmov1.Event{Body: &mmov1.Event_ExpGained{ExpGained: &mmov1.ExpGained{
+			Amount: uint64(gained),
+			Total:  uint64(e.Player.Exp),
+			// Named so a player can tell a share from a solo kill, which is
+			// the difference between "the numbers look wrong" and "my party
+			// is nearby".
+			Shared: len(share) > 1,
+		}}})
+
+		r.applyLevels(e)
+	}
+}
+
+// expShare returns everyone who earns from a kill: the killer, plus any player
+// sharing their layer who was close enough to have been part of the fight.
+//
+// Range rather than the whole room, because a party member who fast-travelled
+// away mid-fight did not help, and a party that earns exp for being logged in
+// is a party that plays itself.
+func (r *Room) expShare(killer, victim *Entity) []*Entity {
+	share := []*Entity{killer}
+	if killer.HuntLayer == SharedLayer {
+		// A field boss is shared by everyone in the room, so layer says
+		// nothing about who was helping. Credit stays with the killer until
+		// there is damage attribution to do better.
+		return share
+	}
+
+	reach := r.content.Balance.Party.ExpShareRange
+	at := victim.Body.FeetCenter()
+
+	for _, id := range r.playerOrder {
+		p := r.players[id]
+		if p == nil || p.frozen || id == killer.ID {
+			continue
+		}
+		if p.entity.HuntLayer != killer.HuntLayer {
+			continue
+		}
+		feet := p.entity.Body.FeetCenter()
+		if (feet.X-at.X).Abs() > reach || (feet.Y-at.Y).Abs() > reach {
+			continue
+		}
+		share = append(share, p.entity)
+	}
+	return share
 }
 
 // applyLevels advances a character through as many levels as their experience

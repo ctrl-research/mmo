@@ -26,6 +26,8 @@ import (
 type Node struct {
 	dir      directory.Directory
 	leases   directory.Leases
+	presence directory.Presence
+	parties  directory.Parties
 	store    *store.Store
 	bus      bus.Bus
 	rooms3   *Registry
@@ -49,11 +51,15 @@ type Node struct {
 	mu    sync.Mutex
 	rooms map[directory.InstanceID]*hosted
 
-	// holding tracks characters kept in the world through a reconnect grace
-	// window, so a returning player resumes the character they left rather
-	// than being told it is already in play by their own dropped session.
-	holdMu  sync.Mutex
-	holding map[uuid.UUID]*Session
+	// sessions is every character this node has in play, including those
+	// waiting out a reconnect grace window -- which is what lets a returning
+	// player resume the character they left rather than being told it is
+	// already in play by their own dropped session.
+	//
+	// It is also the routing table for everything that arrives addressed to a
+	// character rather than to a room: whispers, party updates, guild chat.
+	holdMu   sync.Mutex
+	sessions map[uuid.UUID]*Session
 
 	// seenTokens is the highest fencing token accepted for each character, so
 	// a replayed or delayed transfer cannot resurrect one in a room it has
@@ -63,6 +69,20 @@ type Node struct {
 
 	transferSub bus.Subscription
 	hostSub     bus.Subscription
+	chatSubs    []bus.Subscription
+
+	// watched holds the refcounted subscriptions this node has taken out on
+	// behalf of its sessions: one per party, later one per guild. They come
+	// and go as members log in and move between nodes, which is why they are
+	// refcounted rather than opened once at startup.
+	watchMu sync.Mutex
+	watched map[string]*watchedSubject
+}
+
+// watchedSubject is one bus subscription shared by several local sessions.
+type watchedSubject struct {
+	sub  bus.Subscription
+	refs int
 }
 
 type hosted struct {
@@ -81,6 +101,14 @@ type Config struct {
 	// runs over it even when the destination is this same node, because a
 	// local shortcut would mean the distributed path is never exercised.
 	Bus bus.Bus
+
+	// Presence is who is online and which node holds them, so a whisper can
+	// find its recipient. Optional: without it, chat channels that name a
+	// character are refused rather than silently doing nothing.
+	Presence directory.Presence
+
+	// Parties owns party membership, which spans rooms and nodes.
+	Parties directory.Parties
 
 	// Rooms resolves an instance to a handle, wherever it is hosted. Shared
 	// between nodes in one process so a transfer can reach a room another node
@@ -156,6 +184,8 @@ func NewNode(cfg Config) (*Node, error) {
 	return &Node{
 		dir:        cfg.Directory,
 		leases:     cfg.Leases,
+		presence:   cfg.Presence,
+		parties:    cfg.Parties,
 		store:      cfg.Store,
 		nodeID:     nodeID,
 		content:    cfg.Content,
@@ -168,7 +198,8 @@ func NewNode(cfg Config) (*Node, error) {
 		grace:      grace,
 		idleTicks:  idleTicks,
 		rooms:      make(map[directory.InstanceID]*hosted),
-		holding:    make(map[uuid.UUID]*Session),
+		sessions:   make(map[uuid.UUID]*Session),
+		watched:    make(map[string]*watchedSubject),
 		seenTokens: make(map[uuid.UUID]int64),
 	}, nil
 }
@@ -191,6 +222,9 @@ func (n *Node) Start(ctx context.Context) error {
 	if err := n.serveHosting(n.ctx); err != nil {
 		return err
 	}
+	if err := n.serveChat(n.ctx); err != nil {
+		return err
+	}
 	return n.serveTransfers(n.ctx)
 }
 
@@ -209,6 +243,16 @@ func (n *Node) Stop() {
 	if n.hostSub != nil {
 		n.hostSub.Close()
 	}
+	for _, sub := range n.chatSubs {
+		sub.Close()
+	}
+
+	n.watchMu.Lock()
+	for _, w := range n.watched {
+		w.sub.Close()
+	}
+	n.watched = make(map[string]*watchedSubject)
+	n.watchMu.Unlock()
 	if n.cancel != nil {
 		n.cancel()
 	}
@@ -313,31 +357,97 @@ func (n *Node) Rooms() int {
 // Content returns the loaded game data this node simulates.
 func (n *Node) Content() *content.Content { return n.content }
 
-// hold registers a session as resumable.
+// hold registers a session, making it reachable and resumable.
 func (n *Node) hold(characterID uuid.UUID, s *Session) {
 	n.holdMu.Lock()
 	defer n.holdMu.Unlock()
-	n.holding[characterID] = s
+	n.sessions[characterID] = s
 }
 
 // forget stops holding a character for reconnection.
 func (n *Node) forget(characterID uuid.UUID) {
 	n.holdMu.Lock()
 	defer n.holdMu.Unlock()
-	delete(n.holding, characterID)
+	delete(n.sessions, characterID)
 }
 
 // held returns the session holding a character, if any.
 func (n *Node) held(characterID uuid.UUID) (*Session, bool) {
 	n.holdMu.Lock()
 	defer n.holdMu.Unlock()
-	s, ok := n.holding[characterID]
+	s, ok := n.sessions[characterID]
 	return s, ok
+}
+
+// localSessions returns every session on this node.
+//
+// A copy, because callers iterate it while delivering, and delivering can end
+// a session -- which would mutate the map underneath the walk.
+func (n *Node) localSessions() []*Session {
+	n.holdMu.Lock()
+	defer n.holdMu.Unlock()
+
+	out := make([]*Session, 0, len(n.sessions))
+	for _, s := range n.sessions {
+		out = append(out, s)
+	}
+	return out
 }
 
 // Holding reports how many characters are waiting out a reconnect window.
 func (n *Node) Holding() int {
 	n.holdMu.Lock()
 	defer n.holdMu.Unlock()
-	return len(n.holding)
+	return len(n.sessions)
+}
+
+// watch takes out a refcounted subscription on a subject.
+//
+// Refcounted because several local sessions can want the same subject -- two
+// members of one party logged in on this node -- and the subscription must
+// outlive the first of them to leave and no longer.
+func (n *Node) watch(subject string, fn bus.Handler) error {
+	n.watchMu.Lock()
+	defer n.watchMu.Unlock()
+
+	if w, ok := n.watched[subject]; ok {
+		w.refs++
+		return nil
+	}
+
+	sub, err := n.bus.Subscribe(n.ctx, subject, fn)
+	if err != nil {
+		return fmt.Errorf("world: subscribing to %s: %w", subject, err)
+	}
+	n.watched[subject] = &watchedSubject{sub: sub, refs: 1}
+	return nil
+}
+
+// unwatch releases one claim on a subject, closing the subscription when the
+// last one goes.
+func (n *Node) unwatch(subject string) {
+	n.watchMu.Lock()
+	w, ok := n.watched[subject]
+	if !ok {
+		n.watchMu.Unlock()
+		return
+	}
+
+	w.refs--
+	if w.refs > 0 {
+		n.watchMu.Unlock()
+		return
+	}
+	delete(n.watched, subject)
+	n.watchMu.Unlock()
+
+	w.sub.Close()
+}
+
+// Watching reports how many subjects this node is subscribed to on behalf of
+// its sessions, for metrics and tests.
+func (n *Node) Watching() int {
+	n.watchMu.Lock()
+	defer n.watchMu.Unlock()
+	return len(n.watched)
 }

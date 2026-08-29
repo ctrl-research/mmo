@@ -53,9 +53,18 @@ scatter_range = 0.0
 [party]
 exp_share_range = 600.0
 max_size = 6
+loot_lock_ms = 20000
 [rooms]
 spawn_activation_range = 800.0
 idle_ms = 60000
+[chat]
+max_length = 300
+[chat.per_minute]
+local = 30
+global = 6
+whisper = 20
+party = 30
+guild = 30
 `
 
 const Curves = `

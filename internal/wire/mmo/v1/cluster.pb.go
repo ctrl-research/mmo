@@ -122,6 +122,11 @@ type TransferRequest struct {
 	SpawnPoint string `protobuf:"bytes,5,opt,name=spawn_point,json=spawnPoint,proto3" json:"spawn_point,omitempty"`
 	InstanceId uint64 `protobuf:"varint,6,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
 	WaypointId string `protobuf:"bytes,12,opt,name=waypoint_id,json=waypointId,proto3" json:"waypoint_id,omitempty"`
+	// Which hostile-entity layer to join: the party ID while partied, the
+	// character ID otherwise. Sent rather than looked up at the destination,
+	// because arriving in the character's own layer and being re-keyed a moment
+	// later would spawn a whole mob population nobody ever sees.
+	LayerKey string `protobuf:"bytes,13,opt,name=layer_key,json=layerKey,proto3" json:"layer_key,omitempty"`
 	// Progression, which has its own database columns.
 	Level uint32 `protobuf:"varint,7,opt,name=level,proto3" json:"level,omitempty"`
 	Exp   int64  `protobuf:"varint,8,opt,name=exp,proto3" json:"exp,omitempty"`
@@ -212,6 +217,13 @@ func (x *TransferRequest) GetInstanceId() uint64 {
 func (x *TransferRequest) GetWaypointId() string {
 	if x != nil {
 		return x.WaypointId
+	}
+	return ""
+}
+
+func (x *TransferRequest) GetLayerKey() string {
+	if x != nil {
+		return x.LayerKey
 	}
 	return ""
 }
@@ -501,6 +513,405 @@ func (x *HostReply) GetError() string {
 	return ""
 }
 
+// ChatDelivery carries one line of chat between nodes.
+//
+// Everything but local chat crosses node boundaries: the recipients of a
+// global line, a whisper, or a party message are wherever they happen to be
+// logged in, and the sender's node has no way to reach them except through the
+// bus. Local chat never appears here -- it is delivered inside the room, which
+// is the whole meaning of the channel.
+type ChatDelivery struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Channel is the game's ChatChannel, carried as an int so cluster.proto does
+	// not have to import the client-facing schema. The gateway is the only thing
+	// that turns it back into a typed value.
+	Channel         uint32 `protobuf:"varint,1,opt,name=channel,proto3" json:"channel,omitempty"`
+	FromCharacterId string `protobuf:"bytes,2,opt,name=from_character_id,json=fromCharacterId,proto3" json:"from_character_id,omitempty"`
+	FromName        string `protobuf:"bytes,3,opt,name=from_name,json=fromName,proto3" json:"from_name,omitempty"`
+	Body            string `protobuf:"bytes,4,opt,name=body,proto3" json:"body,omitempty"`
+	ServerTimeMs    int64  `protobuf:"varint,5,opt,name=server_time_ms,json=serverTimeMs,proto3" json:"server_time_ms,omitempty"`
+	// ToCharacterId addresses a whisper. Empty on broadcast channels.
+	ToCharacterId string `protobuf:"bytes,6,opt,name=to_character_id,json=toCharacterId,proto3" json:"to_character_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChatDelivery) Reset() {
+	*x = ChatDelivery{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChatDelivery) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChatDelivery) ProtoMessage() {}
+
+func (x *ChatDelivery) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChatDelivery.ProtoReflect.Descriptor instead.
+func (*ChatDelivery) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ChatDelivery) GetChannel() uint32 {
+	if x != nil {
+		return x.Channel
+	}
+	return 0
+}
+
+func (x *ChatDelivery) GetFromCharacterId() string {
+	if x != nil {
+		return x.FromCharacterId
+	}
+	return ""
+}
+
+func (x *ChatDelivery) GetFromName() string {
+	if x != nil {
+		return x.FromName
+	}
+	return ""
+}
+
+func (x *ChatDelivery) GetBody() string {
+	if x != nil {
+		return x.Body
+	}
+	return ""
+}
+
+func (x *ChatDelivery) GetServerTimeMs() int64 {
+	if x != nil {
+		return x.ServerTimeMs
+	}
+	return 0
+}
+
+func (x *ChatDelivery) GetToCharacterId() string {
+	if x != nil {
+		return x.ToCharacterId
+	}
+	return ""
+}
+
+// PartyUpdate announces that a party changed, to every node holding a member.
+//
+// It carries the whole party rather than a delta for the same reason the
+// client-facing PartyState does: it is at most six members, and a node that
+// misses one incremental update would hold a roster that is quietly wrong.
+type PartyUpdate struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	PartyId           string                 `protobuf:"bytes,1,opt,name=party_id,json=partyId,proto3" json:"party_id,omitempty"`
+	LeaderCharacterId string                 `protobuf:"bytes,2,opt,name=leader_character_id,json=leaderCharacterId,proto3" json:"leader_character_id,omitempty"`
+	Members           []*PartyMemberInfo     `protobuf:"bytes,3,rep,name=members,proto3" json:"members,omitempty"`
+	// Disbanded marks the last update a party will ever send, so a node can drop
+	// its subscription rather than waiting to notice nothing arrives.
+	Disbanded bool `protobuf:"varint,4,opt,name=disbanded,proto3" json:"disbanded,omitempty"`
+	// Notice is what to tell the members happened, already phrased: "Alice
+	// joined the party". Composed by the node that made the change, because it
+	// is the only one that knows which change it was.
+	Notice string `protobuf:"bytes,5,opt,name=notice,proto3" json:"notice,omitempty"`
+	// Loot is how drops are assigned: "free-for-all" or "round-robin".
+	Loot          string `protobuf:"bytes,6,opt,name=loot,proto3" json:"loot,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PartyUpdate) Reset() {
+	*x = PartyUpdate{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PartyUpdate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PartyUpdate) ProtoMessage() {}
+
+func (x *PartyUpdate) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PartyUpdate.ProtoReflect.Descriptor instead.
+func (*PartyUpdate) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *PartyUpdate) GetPartyId() string {
+	if x != nil {
+		return x.PartyId
+	}
+	return ""
+}
+
+func (x *PartyUpdate) GetLeaderCharacterId() string {
+	if x != nil {
+		return x.LeaderCharacterId
+	}
+	return ""
+}
+
+func (x *PartyUpdate) GetMembers() []*PartyMemberInfo {
+	if x != nil {
+		return x.Members
+	}
+	return nil
+}
+
+func (x *PartyUpdate) GetDisbanded() bool {
+	if x != nil {
+		return x.Disbanded
+	}
+	return false
+}
+
+func (x *PartyUpdate) GetNotice() string {
+	if x != nil {
+		return x.Notice
+	}
+	return ""
+}
+
+func (x *PartyUpdate) GetLoot() string {
+	if x != nil {
+		return x.Loot
+	}
+	return ""
+}
+
+type PartyMemberInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CharacterId   string                 `protobuf:"bytes,1,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PartyMemberInfo) Reset() {
+	*x = PartyMemberInfo{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PartyMemberInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PartyMemberInfo) ProtoMessage() {}
+
+func (x *PartyMemberInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PartyMemberInfo.ProtoReflect.Descriptor instead.
+func (*PartyMemberInfo) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *PartyMemberInfo) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *PartyMemberInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+// PartyVitals is one member's health and whereabouts, pushed on a slow beat so
+// member frames are useful for somebody in another room.
+//
+// Separate from PartyUpdate because it is the only part that changes
+// continuously: folding it in would mean a roster broadcast every second.
+type PartyVitals struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CharacterId   string                 `protobuf:"bytes,1,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	Level         uint32                 `protobuf:"varint,2,opt,name=level,proto3" json:"level,omitempty"`
+	Hp            uint32                 `protobuf:"varint,3,opt,name=hp,proto3" json:"hp,omitempty"`
+	HpMax         uint32                 `protobuf:"varint,4,opt,name=hp_max,json=hpMax,proto3" json:"hp_max,omitempty"`
+	MapId         string                 `protobuf:"bytes,5,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	Online        bool                   `protobuf:"varint,6,opt,name=online,proto3" json:"online,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PartyVitals) Reset() {
+	*x = PartyVitals{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PartyVitals) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PartyVitals) ProtoMessage() {}
+
+func (x *PartyVitals) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PartyVitals.ProtoReflect.Descriptor instead.
+func (*PartyVitals) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *PartyVitals) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *PartyVitals) GetLevel() uint32 {
+	if x != nil {
+		return x.Level
+	}
+	return 0
+}
+
+func (x *PartyVitals) GetHp() uint32 {
+	if x != nil {
+		return x.Hp
+	}
+	return 0
+}
+
+func (x *PartyVitals) GetHpMax() uint32 {
+	if x != nil {
+		return x.HpMax
+	}
+	return 0
+}
+
+func (x *PartyVitals) GetMapId() string {
+	if x != nil {
+		return x.MapId
+	}
+	return ""
+}
+
+func (x *PartyVitals) GetOnline() bool {
+	if x != nil {
+		return x.Online
+	}
+	return false
+}
+
+// GuildUpdate tells every node holding a member that a guild changed.
+//
+// It carries no roster: unlike a party, a guild can have hundreds of members,
+// and broadcasting the whole thing on every join would be a lot of bytes for
+// something each node can read from Postgres. It says what changed and lets
+// the nodes that care reload.
+type GuildUpdate struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	GuildId string                 `protobuf:"bytes,1,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
+	// Notice is what to tell the members, already phrased.
+	Notice string `protobuf:"bytes,2,opt,name=notice,proto3" json:"notice,omitempty"`
+	// Disbanded marks the last update a guild will send.
+	Disbanded     bool `protobuf:"varint,3,opt,name=disbanded,proto3" json:"disbanded,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GuildUpdate) Reset() {
+	*x = GuildUpdate{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GuildUpdate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GuildUpdate) ProtoMessage() {}
+
+func (x *GuildUpdate) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GuildUpdate.ProtoReflect.Descriptor instead.
+func (*GuildUpdate) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GuildUpdate) GetGuildId() string {
+	if x != nil {
+		return x.GuildId
+	}
+	return ""
+}
+
+func (x *GuildUpdate) GetNotice() string {
+	if x != nil {
+		return x.Notice
+	}
+	return ""
+}
+
+func (x *GuildUpdate) GetDisbanded() bool {
+	if x != nil {
+		return x.Disbanded
+	}
+	return false
+}
+
 var File_mmo_v1_cluster_proto protoreflect.FileDescriptor
 
 const file_mmo_v1_cluster_proto_rawDesc = "" +
@@ -510,7 +921,7 @@ const file_mmo_v1_cluster_proto_rawDesc = "" +
 	"\breply_to\x18\x01 \x01(\tR\areplyTo\x12%\n" +
 	"\x0ecorrelation_id\x18\x02 \x01(\tR\rcorrelationId\x12\x18\n" +
 	"\apayload\x18\x03 \x01(\fR\apayload\x12\x14\n" +
-	"\x05error\x18\x04 \x01(\tR\x05error\"\xd4\x02\n" +
+	"\x05error\x18\x04 \x01(\tR\x05error\"\xf1\x02\n" +
 	"\x0fTransferRequest\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x1d\n" +
 	"\n" +
@@ -522,7 +933,8 @@ const file_mmo_v1_cluster_proto_rawDesc = "" +
 	"\vinstance_id\x18\x06 \x01(\x04R\n" +
 	"instanceId\x12\x1f\n" +
 	"\vwaypoint_id\x18\f \x01(\tR\n" +
-	"waypointId\x12\x14\n" +
+	"waypointId\x12\x1b\n" +
+	"\tlayer_key\x18\r \x01(\tR\blayerKey\x12\x14\n" +
 	"\x05level\x18\a \x01(\rR\x05level\x12\x10\n" +
 	"\x03exp\x18\b \x01(\x03R\x03exp\x12\x12\n" +
 	"\x04gold\x18\t \x01(\x03R\x04gold\x12\x14\n" +
@@ -548,7 +960,35 @@ const file_mmo_v1_cluster_proto_rawDesc = "" +
 	"\tHostReply\x12\x18\n" +
 	"\ahosting\x18\x01 \x01(\bR\ahosting\x12\x17\n" +
 	"\anode_id\x18\x02 \x01(\tR\x06nodeId\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05errorB\x8c\x01\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"\xd3\x01\n" +
+	"\fChatDelivery\x12\x18\n" +
+	"\achannel\x18\x01 \x01(\rR\achannel\x12*\n" +
+	"\x11from_character_id\x18\x02 \x01(\tR\x0ffromCharacterId\x12\x1b\n" +
+	"\tfrom_name\x18\x03 \x01(\tR\bfromName\x12\x12\n" +
+	"\x04body\x18\x04 \x01(\tR\x04body\x12$\n" +
+	"\x0eserver_time_ms\x18\x05 \x01(\x03R\fserverTimeMs\x12&\n" +
+	"\x0fto_character_id\x18\x06 \x01(\tR\rtoCharacterId\"\xd5\x01\n" +
+	"\vPartyUpdate\x12\x19\n" +
+	"\bparty_id\x18\x01 \x01(\tR\apartyId\x12.\n" +
+	"\x13leader_character_id\x18\x02 \x01(\tR\x11leaderCharacterId\x121\n" +
+	"\amembers\x18\x03 \x03(\v2\x17.mmo.v1.PartyMemberInfoR\amembers\x12\x1c\n" +
+	"\tdisbanded\x18\x04 \x01(\bR\tdisbanded\x12\x16\n" +
+	"\x06notice\x18\x05 \x01(\tR\x06notice\x12\x12\n" +
+	"\x04loot\x18\x06 \x01(\tR\x04loot\"H\n" +
+	"\x0fPartyMemberInfo\x12!\n" +
+	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\x9c\x01\n" +
+	"\vPartyVitals\x12!\n" +
+	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x14\n" +
+	"\x05level\x18\x02 \x01(\rR\x05level\x12\x0e\n" +
+	"\x02hp\x18\x03 \x01(\rR\x02hp\x12\x15\n" +
+	"\x06hp_max\x18\x04 \x01(\rR\x05hpMax\x12\x15\n" +
+	"\x06map_id\x18\x05 \x01(\tR\x05mapId\x12\x16\n" +
+	"\x06online\x18\x06 \x01(\bR\x06online\"^\n" +
+	"\vGuildUpdate\x12\x19\n" +
+	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12\x16\n" +
+	"\x06notice\x18\x02 \x01(\tR\x06notice\x12\x1c\n" +
+	"\tdisbanded\x18\x03 \x01(\bR\tdisbandedB\x8c\x01\n" +
 	"\n" +
 	"com.mmo.v1B\fClusterProtoP\x01Z7github.com/ctrl-research/mmo/internal/wire/mmo/v1;mmov1\xa2\x02\x03MXX\xaa\x02\x06Mmo.V1\xca\x02\x06Mmo\\V1\xe2\x02\x12Mmo\\V1\\GPBMetadata\xea\x02\aMmo::V1b\x06proto3"
 
@@ -564,7 +1004,7 @@ func file_mmo_v1_cluster_proto_rawDescGZIP() []byte {
 	return file_mmo_v1_cluster_proto_rawDescData
 }
 
-var file_mmo_v1_cluster_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_mmo_v1_cluster_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_mmo_v1_cluster_proto_goTypes = []any{
 	(*BusEnvelope)(nil),     // 0: mmo.v1.BusEnvelope
 	(*TransferRequest)(nil), // 1: mmo.v1.TransferRequest
@@ -572,13 +1012,19 @@ var file_mmo_v1_cluster_proto_goTypes = []any{
 	(*RoomClosed)(nil),      // 3: mmo.v1.RoomClosed
 	(*HostRequest)(nil),     // 4: mmo.v1.HostRequest
 	(*HostReply)(nil),       // 5: mmo.v1.HostReply
+	(*ChatDelivery)(nil),    // 6: mmo.v1.ChatDelivery
+	(*PartyUpdate)(nil),     // 7: mmo.v1.PartyUpdate
+	(*PartyMemberInfo)(nil), // 8: mmo.v1.PartyMemberInfo
+	(*PartyVitals)(nil),     // 9: mmo.v1.PartyVitals
+	(*GuildUpdate)(nil),     // 10: mmo.v1.GuildUpdate
 }
 var file_mmo_v1_cluster_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	8, // 0: mmo.v1.PartyUpdate.members:type_name -> mmo.v1.PartyMemberInfo
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_mmo_v1_cluster_proto_init() }
@@ -592,7 +1038,7 @@ func file_mmo_v1_cluster_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mmo_v1_cluster_proto_rawDesc), len(file_mmo_v1_cluster_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

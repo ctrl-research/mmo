@@ -208,6 +208,7 @@ func (s *Session) transfer(ctx context.Context, target *content.Map, at arrival,
 		Gold:        snap.Progress.Gold,
 		State:       stateJSON,
 		LeaseToken:  s.lease.Token,
+		LayerKey:    s.layerKey(),
 	}, reply)
 
 	if err != nil {
@@ -274,6 +275,13 @@ func (s *Session) attach(ctx context.Context, target *content.Map) {
 			"map", target.ID)
 		return
 	}
+
+	// The map changed, and so may the node holding them, so a whisper aimed
+	// here would otherwise be addressed to where they used to be. The layer
+	// key has to be re-applied too: the destination room joined them under
+	// their character ID, which is wrong for somebody in a party.
+	s.announcePresence(ctx, false)
+	s.applyLayer(ctx)
 
 	// Stats and inventory again: the client keeps them across a map change,
 	// but the room it just joined has its own copy of the character and the
@@ -363,6 +371,10 @@ func (n *Node) acceptTransfer(ctx context.Context, payload []byte) (proto.Messag
 			MapID: m.ID,
 		},
 		State: state,
+		// The party while partied, the character otherwise. Sent rather than
+		// looked up, because the destination node may not be the one that can
+		// reach this character's party.
+		LayerKey: req.GetLayerKey(),
 		// Arriving through a portal places the character at the named spawn,
 		// not where they stood in the map they left -- those coordinates mean
 		// nothing here. A channel switch is the opposite: same map, same spot.

@@ -91,6 +91,28 @@ One binary, `cmd/mmo`, with roles selected at runtime:
 
 Nothing in the game logic changes between these two diagrams. Only the bus and directory implementations differ.
 
+## Everything that leaves a room
+
+Chat, parties, guilds, and presence are the first things that genuinely cross room and node boundaries in normal play, and they settle the shape everything after them follows. Two shapes, chosen per case rather than one applied everywhere:
+
+**A subject, and every interested node subscribed to it.** `chat.global` for everyone; `party.{id}.*` for one party; `guild.{id}.*` for one guild. The publisher does not know or care who is listening, which is what makes the NATS implementation a direct mapping rather than a translation. Subscriptions are refcounted per node and come and go as members log in, log out, and move between nodes.
+
+**An address, resolved through presence.** A whisper names one character, so it takes a lookup to find the node holding them and is published to that node alone. Broadcasting it everywhere so that one node keeps it would spread private messages across the cluster.
+
+The difference is not an inconsistency: a whisper genuinely has one recipient, and a party message genuinely has an audience that changes without the sender knowing.
+
+Local chat is the exception that proves the rule. It never touches the bus at all, because everyone who can hear it is already in the room — sending it anywhere else would be routing a message out of the process and back in.
+
+### What travels, and what does not
+
+Parties carry their whole roster in every update; guilds carry only a notice and let each node reload. That is a size decision, not an inconsistency: a party is at most six members and the delta would be most of the message anyway, while a guild can be hundreds of rows that every node already has a database connection to read.
+
+Nothing a *live session* holds can travel at all — the socket, and the channel a room reports portals and loot on, are in-process references to the node the player is connected to. That is why a room handoff hands them over separately (§ Room handoff) rather than packing them into the transfer.
+
+### Presence is the third seam
+
+`Presence` answers "who is online, and which node holds them". It is deliberately ephemeral: losing it costs everyone their friends list for a moment and nothing else, because the characters are still in their rooms, still leased, still checkpointing. That is what makes Redis its right home later and Postgres its wrong one — the same argument that puts parties in one place and guilds in the other.
+
 ## The two swappable seams
 
 Everything above rests on exactly two interfaces. Keeping the seam count at two is deliberate — each additional abstraction is a tax paid every day for a scaling event that may never come.
@@ -176,6 +198,16 @@ func (r *Room) Visible(viewer, e EntityID) bool {
 A player's layer key is **their party ID if partied, otherwise their character ID.** Partying up merges views: your mobs are replaced by your party's. That transition is visible — mobs despawn and a fresh set appears — which is expected behaviour, not a bug, and worth a short fade in the client.
 
 **Players are always in the shared layer.** You always see everyone in the room, chat with them, trade with them, and party with them. Only *hostile and lootable* entities are layered.
+
+### The layer key is the party
+
+A layer is keyed by party ID while partied and by character ID otherwise, so partying up merges the members' mob populations and leaving splits them again. It is the same code path with a different key, not a mode.
+
+Ground loot follows a player when their layer changes; mobs do not. The destination has its own population and moving them across would double it, but losing a drop because a friend sent an invitation is the kind of thing players remember.
+
+The layer is also what answers "who helped with this kill", without damage attribution or tap rules: everyone in the killer's layer, within the exp-share radius, earns a share. A party member who fast-travelled away mid-fight did not help, and a bystander in their own layer standing on the corpse did not either.
+
+Loot rules ride along with the key, because they are a property of the same thing — who shares this layer decides who may pick up what it drops. Free-for-all is the default and needs no rules to explain; round-robin assigns each drop to a member in turn and reserves it for them briefly, cycling only through members actually present, since a drop assigned to somebody in another room is loot nobody can reach.
 
 ### Layering is declared per spawn point, not per room
 

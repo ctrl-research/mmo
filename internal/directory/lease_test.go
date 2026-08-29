@@ -374,3 +374,32 @@ func TestLeaseValidity(t *testing.T) {
 		}
 	}
 }
+
+// The in-process counter starts at zero, so a server that has run before must
+// be told where the stored tokens got to. Without it every character that
+// played before the restart fails its first checkpoint -- correctly, because
+// the fencing predicate cannot tell a restarted counter from a stale writer.
+func TestSeedRaisesTheTokenCounter(t *testing.T) {
+	m := NewMemoryLeases()
+	m.Seed(42)
+
+	first, err := m.Acquire(context.Background(), "char-1", "node-a")
+	if err != nil {
+		t.Fatalf("acquire: %v", err)
+	}
+	if first.Token <= 42 {
+		t.Errorf("first token after seeding is %d, want above 42", first.Token)
+	}
+
+	// Seeding lower must not wind it back, or a second call at startup would
+	// reissue tokens that have already been handed out.
+	m.Seed(1)
+	second, err := m.Acquire(context.Background(), "char-2", "node-a")
+	if err != nil {
+		t.Fatalf("acquire: %v", err)
+	}
+	if second.Token <= first.Token {
+		t.Errorf("token went from %d to %d; it must only ever rise",
+			first.Token, second.Token)
+	}
+}

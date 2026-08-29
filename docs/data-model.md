@@ -162,13 +162,24 @@ item_instances  (...)   -- above
 item_events     (...)   -- above
 
 -- Social -----------------------------------------------------------------
-guilds          (id, name UNIQUE, created_at, leader_char_id, motd, level)
-guild_members   (guild_id, character_id, rank, joined_at)
-friends         (character_id, friend_char_id, PRIMARY KEY(character_id, friend_char_id))
-chat_mutes      (character_id, channel, until, reason)
+guilds          (id, name, normalised_name, motd, created_at, disbanded_at)
+                -- UNIQUE(normalised_name) WHERE disbanded_at IS NULL
+guild_members   (guild_id, character_id, rank, joined_at,
+                 PRIMARY KEY(guild_id, character_id))
+                -- UNIQUE(character_id): one guild per character, enforced
+                -- rather than assumed. rank: 1 member | 2 officer | 3 leader
+friends         (character_id, friend_id, created_at,
+                 PRIMARY KEY(character_id, friend_id), CHECK(character_id <> friend_id))
+chat_mutes      (id, character_id, expires_at, reason, created_by, created_at)
 ```
 
-Parties are **not** persisted — they are session state in Redis. A party does not survive a server restart, and pretending otherwise creates orphaned rows nobody cleans up.
+**Guilds are soft-deleted, not removed.** The roster is the record of who was in one, and hard-deleting takes that with it. An empty guild disbands itself: the roster is already gone, so there is nothing left to preserve.
+
+**Mutes are append-only**, like the item journal and for the same reason. A mute deleted when lifted leaves no answer to "was this player ever muted, and what for", so unmuting writes a new row with an expiry in the past and the most recent row wins.
+
+**Friends are one-way**, like OSRS. A mutual model needs a request, an accept, a decline, and a pending state, all so two people can see each other's online status — which is what a list is for and what a block list is against.
+
+Parties are **not** persisted — they are ephemeral state behind the `Parties` interface, in memory today and in Redis at scale. A party does not survive a server restart, and pretending otherwise creates orphaned rows nobody cleans up. The difference from a guild is the whole reason they live in different places: losing a party costs a regroup, and losing a guild would cost months.
 
 ## What must never be lost
 

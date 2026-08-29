@@ -32,13 +32,97 @@ type layerState struct {
 	// rand is an independent stream, so one player's drop luck never depends
 	// on how many other players happen to share the room.
 	rand *rng.Source
+
+	// loot decides who may pick up what this layer drops, and lootCursor is
+	// the round-robin position. Both are meaningless for a layer of one, which
+	// is every layer until somebody parties up.
+	loot       LootRule
+	lootCursor int
+}
+
+// LootRule decides who may pick up a party's drops.
+type LootRule uint8
+
+const (
+	// LootFreeForAll leaves every drop open to every member at once. The right
+	// default: it is what a group of friends expects, and it needs no rules
+	// to explain.
+	LootFreeForAll LootRule = iota
+
+	// LootRoundRobin assigns each drop to a member in turn, reserved for them
+	// briefly before anyone may take it. Fairer over an evening, and worth
+	// having for a party of strangers.
+	LootRoundRobin
+)
+
+func (l LootRule) String() string {
+	if l == LootRoundRobin {
+		return "round-robin"
+	}
+	return "free-for-all"
+}
+
+// nextLooter returns the entity a round-robin drop belongs to.
+//
+// Cycling through the players actually present in the layer rather than the
+// party roster, because a member in another room cannot pick anything up and
+// assigning to them would be loot nobody can reach.
+func (r *Room) nextLooter(layer LayerID, fallback EntityID) EntityID {
+	l, ok := r.layers[layer]
+	if !ok || l.loot != LootRoundRobin {
+		return fallback
+	}
+
+	var present []EntityID
+	for _, id := range r.playerOrder {
+		if p := r.players[id]; p != nil && p.layer == layer && !p.frozen {
+			present = append(present, id)
+		}
+	}
+	if len(present) <= 1 {
+		return fallback
+	}
+
+	// The cursor advances per drop rather than per kill, so a kill dropping
+	// three items spreads them rather than giving all three to one member.
+	l.lootCursor = (l.lootCursor + 1) % len(present)
+	return present[l.lootCursor]
+}
+
+// setLootRule changes how a layer's drops are assigned.
+func (r *Room) setLootRule(key string, rule LootRule) {
+	id, ok := r.layerKeys[key]
+	if !ok {
+		return
+	}
+	if l, ok := r.layers[id]; ok {
+		l.loot = rule
+	}
+}
+
+// layerIDFor maps a layer key -- a party ID, or a character ID when unpartied
+// -- to this room's internal numbering.
+//
+// Allocated sequentially rather than hashed. A 32-bit hash of a UUID collides
+// rarely, and rarely is the wrong word for it: a collision merges two
+// unrelated players' mob populations and loot, which is exactly the bug
+// layering exists to make impossible. Allocation order follows join order,
+// which is already part of the input log, so replay is unaffected.
+func (r *Room) layerIDFor(key string) LayerID {
+	if id, ok := r.layerKeys[key]; ok {
+		return id
+	}
+
+	r.nextLayer++
+	r.layerKeys[key] = r.nextLayer
+	return r.nextLayer
 }
 
 // layerFor returns the layer a player belongs to, creating it if needed.
 //
-// From M5 the key is the party ID, so partying up merges views. Until parties
-// exist, every player gets their own -- which is the same code path with a
-// different key, not a placeholder to be replaced.
+// The key is the party ID while partied and the character ID otherwise, so
+// partying up merges views and leaving splits them. Same code path, different
+// key.
 func (r *Room) layerFor(key LayerID) *layerState {
 	if l, ok := r.layers[key]; ok {
 		l.refs++
@@ -64,6 +148,54 @@ func (r *Room) layerFor(key LayerID) *layerState {
 	r.layers[key] = l
 	r.layerOrder = append(r.layerOrder, key)
 	return l
+}
+
+// moveToLayer moves a player's hostile-entity layer.
+//
+// This is what partying up means inside a room: the members stop having a mob
+// population each and start sharing one. Leaving splits it again. It is the
+// same operation in both directions, because a layer key is just a key -- the
+// party's ID while partied, the character's ID otherwise.
+func (r *Room) moveToLayer(id EntityID, key string) {
+	p, ok := r.players[id]
+	if !ok || key == "" {
+		return
+	}
+
+	to := r.layerIDFor(key)
+	if p.layer == to || to == SharedLayer {
+		return
+	}
+
+	from := p.layer
+
+	// Claim the destination first. Releasing first would tear down the old
+	// layer and, if the two happened to be the same, leave the player in a
+	// layer that no longer exists.
+	r.layerFor(to)
+
+	p.layer = to
+	p.entity.HuntLayer = to
+
+	// Ground loot follows the player rather than being destroyed with the
+	// layer they left. Mobs do not: the destination has its own population,
+	// and moving them across would double it. Losing a drop because a friend
+	// invited you to a party is the kind of thing players remember.
+	if r.lastInLayer(from) {
+		for _, e := range r.entities {
+			if e.Layer == from && e.Drop != nil {
+				e.Layer = to
+			}
+		}
+	}
+
+	r.releaseLayer(from)
+}
+
+// lastInLayer reports whether nobody else is using a layer.
+func (r *Room) lastInLayer(key LayerID) bool {
+	l, ok := r.layers[key]
+	return ok && l.refs <= 1
 }
 
 // releaseLayer drops a player's claim on a layer and tears it down when the

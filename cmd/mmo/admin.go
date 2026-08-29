@@ -34,12 +34,19 @@ import (
 //	mmo revoke jonathan             remove a rule
 //	mmo passwd jonathan             set a local account's password
 //	mmo give Sigrun weapon.iron_sword --rarity=rare --ilvl=40
+//	mmo mute Sigrun --for=24h --reason="advertising"
 const adminUsage = `Usage:
   mmo allow [flags] VALUE      allow someone to sign in
   mmo revoke [flags] VALUE     remove an allowlist rule
   mmo allowlist                list allowlist rules
   mmo passwd USERNAME          set a local account's password
   mmo give CHARACTER BASE_ID   place an item in a character's inventory
+  mmo mute CHARACTER           stop a character using chat
+  mmo unmute CHARACTER         lift a mute
+
+Flags for mute:
+  --for        how long, e.g. 24h or 30m; omit for indefinite
+  --reason     shown to the muted player, so a mute is not a silent failure
 
 Flags for allow and revoke:
   --provider   identity provider, or empty for any (default: local)
@@ -57,7 +64,7 @@ func runAdmin(args []string) (handled bool, err error) {
 	}
 
 	switch args[0] {
-	case "allow", "revoke", "allowlist", "passwd", "give":
+	case "allow", "revoke", "allowlist", "passwd", "give", "mute", "unmute":
 	default:
 		return false, nil
 	}
@@ -72,6 +79,8 @@ func runAdmin(args []string) (handled bool, err error) {
 	rarity := fs.String("rarity", "", "force a rarity: normal, magic, or rare")
 	ilvl := fs.Int("ilvl", 0, "item level, deciding which affix tiers can roll")
 	seed := fs.Uint64("seed", 0, "fixed roll seed, so a given item is reproducible")
+	muteFor := fs.Duration("for", 0, "how long to mute for; zero means indefinite")
+	reason := fs.String("reason", "", "why, shown to the muted player")
 	fs.Usage = func() { fmt.Fprint(os.Stderr, adminUsage) }
 
 	// Flags are separated from positional arguments before parsing, because
@@ -113,6 +122,10 @@ func runAdmin(args []string) (handled bool, err error) {
 		return true, adminPasswd(ctx, db, arg(0))
 	case "give":
 		return true, adminGive(ctx, db, arg(0), arg(1), *rarity, *ilvl, *seed)
+	case "mute":
+		return true, adminMute(ctx, db, arg(0), *muteFor, *reason)
+	case "unmute":
+		return true, adminUnmute(ctx, db, arg(0))
 	}
 	return true, nil
 }
@@ -361,4 +374,56 @@ func splitArgs(args []string) (flags, positional []string) {
 		}
 	}
 	return flags, positional
+}
+
+// adminMute stops a character using chat.
+func adminMute(ctx context.Context, db *store.Store, characterName string,
+	within time.Duration, reason string,
+) error {
+	if characterName == "" {
+		return errors.New("mute: give a character name")
+	}
+
+	c, err := db.CharacterByName(ctx, characterName)
+	if err != nil {
+		return err
+	}
+
+	var expires *time.Time
+	if within > 0 {
+		at := time.Now().Add(within)
+		expires = &at
+	}
+
+	if err := db.MuteCharacter(ctx, c.ID, expires, reason, "cli"); err != nil {
+		return err
+	}
+
+	until := "indefinitely"
+	if expires != nil {
+		until = "until " + expires.Format(time.RFC3339)
+	}
+	fmt.Printf("muted %s %s\n", c.Name, until)
+	if reason != "" {
+		fmt.Printf("reason: %s\n", reason)
+	}
+	return nil
+}
+
+// adminUnmute lifts a mute.
+func adminUnmute(ctx context.Context, db *store.Store, characterName string) error {
+	if characterName == "" {
+		return errors.New("unmute: give a character name")
+	}
+
+	c, err := db.CharacterByName(ctx, characterName)
+	if err != nil {
+		return err
+	}
+	if err := db.UnmuteCharacter(ctx, c.ID, "cli"); err != nil {
+		return err
+	}
+
+	fmt.Printf("unmuted %s\n", c.Name)
+	return nil
 }

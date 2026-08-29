@@ -37,6 +37,11 @@ scatter_range = 40.0
 exp_share_range = 600.0
 max_size = 6
 
+# Under round-robin loot, how long a drop is reserved for the member it was
+# assigned to. After it, anyone in the party may take it, so somebody who has
+# stepped away does not leave loot on the floor for the rest of the night.
+loot_lock_ms = 20000
+
 [rooms]
 # How close a player must be for a spawn point to produce mobs. Wider than
 # half a viewport, so mobs are already there when the screen reaches them
@@ -47,3 +52,19 @@ spawn_activation_range = 800.0
 # through a portal and back finds the room you left, with its mobs where you
 # left them, rather than a fresh one.
 idle_ms = 60000
+
+[chat]
+# The longest message accepted, in characters rather than bytes: a byte limit
+# quietly gives players of some languages less to say than others.
+max_length = 300
+
+# Sustained rate per channel. They cost different amounts to send -- a global
+# line reaches everyone online, a local one reaches a room -- so one shared
+# limit would either strangle local chat or leave global wide open. Buckets
+# start full, so a burst on arriving is not punished.
+[chat.per_minute]
+local = 30
+global = 6
+whisper = 20
+party = 30
+guild = 30

@@ -37,12 +37,14 @@ import (
 type cluster struct {
 	t *testing.T
 
-	a, b   *Node
-	dir    *directory.Memory
-	bus    bus.Bus
-	store  *store.Store
-	game   *content.Content
-	cancel context.CancelFunc
+	a, b     *Node
+	presence *directory.MemoryPresence
+	parties  *directory.MemoryParties
+	dir      *directory.Memory
+	bus      bus.Bus
+	store    *store.Store
+	game     *content.Content
+	cancel   context.CancelFunc
 }
 
 func newCluster(t *testing.T) *cluster {
@@ -67,6 +69,8 @@ func newCluster(t *testing.T) *cluster {
 	leases := directory.NewMemoryLeases()
 	msgBus := bus.NewInProc()
 	registry := NewRegistry()
+	presence := directory.NewMemoryPresence()
+	parties := directory.NewMemoryParties(game.Balance.Party.MaxSize)
 
 	node := func(id string) *Node {
 		n, err := NewNode(Config{
@@ -75,6 +79,8 @@ func newCluster(t *testing.T) *cluster {
 			Store:      st,
 			Bus:        msgBus,
 			Rooms:      registry,
+			Presence:   presence,
+			Parties:    parties,
 			NodeID:     id,
 			Content:    game,
 			DefaultMap: "test",
@@ -96,7 +102,10 @@ func newCluster(t *testing.T) *cluster {
 		return n
 	}
 
-	c := &cluster{t: t, dir: dir, bus: msgBus, store: st, game: game, cancel: cancel}
+	c := &cluster{
+		t: t, dir: dir, bus: msgBus, store: st, game: game,
+		presence: presence, parties: parties, cancel: cancel,
+	}
 	c.a = node("node-a")
 	c.b = node("node-b")
 
@@ -229,6 +238,114 @@ func (s *captureSink) welcomes() []string {
 		}
 	}
 	return out
+}
+
+// chat returns every chat line the client was sent.
+func (s *captureSink) chat() []*mmov1.ChatLine {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var out []*mmov1.ChatLine
+	for _, m := range s.messages {
+		if ev := m.GetEvent(); ev != nil && ev.GetChat() != nil {
+			out = append(out, ev.GetChat())
+		}
+	}
+	return out
+}
+
+// system returns every system notice the client was sent.
+func (s *captureSink) system() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var out []string
+	for _, m := range s.messages {
+		if ev := m.GetEvent(); ev != nil && ev.GetSystem() != nil {
+			out = append(out, ev.GetSystem().GetBody())
+		}
+	}
+	return out
+}
+
+// parties returns every party roster the client was sent, newest last.
+func (s *captureSink) partyStates() []*mmov1.PartyState {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var out []*mmov1.PartyState
+	for _, m := range s.messages {
+		if ev := m.GetEvent(); ev != nil && ev.GetParty() != nil {
+			out = append(out, ev.GetParty())
+		}
+	}
+	return out
+}
+
+// guildStates returns every guild roster the client was sent, newest last.
+func (s *captureSink) guildStates() []*mmov1.GuildState {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var out []*mmov1.GuildState
+	for _, m := range s.messages {
+		if ev := m.GetEvent(); ev != nil && ev.GetGuild() != nil {
+			out = append(out, ev.GetGuild())
+		}
+	}
+	return out
+}
+
+// guildInvites returns every guild invitation the client was shown.
+func (s *captureSink) guildInvites() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var out []string
+	for _, m := range s.messages {
+		if ev := m.GetEvent(); ev != nil && ev.GetGuildInvite() != nil {
+			out = append(out, ev.GetGuildInvite().GetGuildName())
+		}
+	}
+	return out
+}
+
+// friendLists returns every friends list the client was sent, newest last.
+func (s *captureSink) friendLists() []*mmov1.FriendList {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var out []*mmov1.FriendList
+	for _, m := range s.messages {
+		if ev := m.GetEvent(); ev != nil && ev.GetFriends() != nil {
+			out = append(out, ev.GetFriends())
+		}
+	}
+	return out
+}
+
+// invites returns every party invitation the client was shown.
+func (s *captureSink) invites() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var out []string
+	for _, m := range s.messages {
+		if ev := m.GetEvent(); ev != nil && ev.GetPartyInvite() != nil {
+			out = append(out, ev.GetPartyInvite().GetFromName())
+		}
+	}
+	return out
+}
+
+// heard reports whether a line with this body arrived on a channel.
+func (s *captureSink) heard(channel mmov1.ChatChannel, body string) bool {
+	for _, line := range s.chat() {
+		if line.GetChannel() == channel && line.GetBody() == body {
+			return true
+		}
+	}
+	return false
 }
 
 // refusals returns every reason the player was told they did not travel.

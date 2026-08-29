@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mmo/v1/game.proto.
  */
 export const file_mmo_v1_game: GenFile = /*@__PURE__*/
-  fileDesc("ChFtbW8vdjEvZ2FtZS5wcm90bxIGbW1vLnYxIlgKCEVudmVsb3BlEiUKBnNlcnZlchgBIAMoCzIVLm1tby52MS5TZXJ2ZXJNZXNzYWdlEiUKBmNsaWVudBgCIAMoCzIVLm1tby52MS5DbGllbnRNZXNzYWdlIr4CCg1DbGllbnRNZXNzYWdlEh4KBWhlbGxvGAEgASgLMg0ubW1vLnYxLkhlbGxvSAASIAoGaW50ZW50GAIgASgLMg4ubW1vLnYxLkludGVudEgAEhwKBHBpbmcYAyABKAsyDC5tbW8udjEuUGluZ0gAEhwKBGNhc3QYBCABKAsyDC5tbW8udjEuQ2FzdEgAEiQKCGludGVyYWN0GAUgASgLMhAubW1vLnYxLkludGVyYWN0SAASKQoLaXRlbV9hY3Rpb24YBiABKAsyEi5tbW8udjEuSXRlbUFjdGlvbkgAEi4KDm9wZW5fd29ybGRfbWFwGAcgASgLMhQubW1vLnYxLk9wZW5Xb3JsZE1hcEgAEiAKBnRyYXZlbBgIIAEoCzIOLm1tby52MS5UcmF2ZWxIAEIGCgRib2R5SgQICRAKIjoKBENhc3QSCwoDc2VxGAEgASgNEhAKCHNraWxsX2lkGAIgASgJEhMKC2ZhY2luZ19sZWZ0GAMgASgIIkEKCEludGVyYWN0EhEKCWVudGl0eV9pZBgBIAEoDRIiCgRraW5kGAIgASgOMhQubW1vLnYxLkludGVyYWN0S2luZCJlCgpJdGVtQWN0aW9uEiQKBGtpbmQYASABKA4yFi5tbW8udjEuSXRlbUFjdGlvbktpbmQSDwoHaXRlbV9pZBgCIAEoCRIMCgRzbG90GAMgASgNEhIKCmVxdWlwX3Nsb3QYBCABKAki6wEKDVNlcnZlck1lc3NhZ2USIgoHd2VsY29tZRgBIAEoCzIPLm1tby52MS5XZWxjb21lSAASJAoIc25hcHNob3QYAiABKAsyEC5tbW8udjEuU25hcHNob3RIABIeCgVldmVudBgDIAEoCzINLm1tby52MS5FdmVudEgAEhwKBHBvbmcYBCABKAsyDC5tbW8udjEuUG9uZ0gAEhwKBGtpY2sYBSABKAsyDC5tbW8udjEuS2lja0gAEiYKCWludmVudG9yeRgGIAEoCzIRLm1tby52MS5JbnZlbnRvcnlIAEIGCgRib2R5SgQIBxAKIkcKBUhlbGxvEg4KBnRpY2tldBgBIAEoCRIYChBwcm90b2NvbF92ZXJzaW9uGAIgASgNEhQKDGNvbnRlbnRfaGFzaBgDIAEoCSKDAQoHV2VsY29tZRIRCgllbnRpdHlfaWQYASABKA0SEwoLaW5zdGFuY2VfaWQYAiABKAQSDAoEdGljaxgDIAEoBBIPCgd0aWNrX21zGAQgASgNEg4KBm1hcF9pZBgFIAEoCRIhCgRzZWxmGAYgASgLMhMubW1vLnYxLkVudGl0eVN0YXRlIiQKBEtpY2sSDAoEY29kZRgBIAEoDRIOCgZyZWFzb24YAiABKAkiYwoGSW50ZW50EgsKA3NlcRgBIAEoDRIUCgxhY2tfc25hcHNob3QYAiABKAQSDgoGbW92ZV94GAMgASgREgwKBGp1bXAYBCABKAgSCgoCdXAYBSABKAgSDAoEZG93bhgGIAEoCCIeCgRQaW5nEhYKDmNsaWVudF90aW1lX21zGAEgASgEIjMKBFBvbmcSFgoOY2xpZW50X3RpbWVfbXMYASABKAQSEwoLc2VydmVyX3RpY2sYAiABKAQipQMKC0VudGl0eVN0YXRlEgoKAmlkGAEgASgNEiAKBGtpbmQYAiABKA4yEi5tbW8udjEuRW50aXR5S2luZBINCgVsYXllchgDIAEoDRIJCgF4GAQgASgREgkKAXkYBSABKBESCgoCdngYBiABKBESCgoCdnkYByABKBESCQoBdxgIIAEoERIJCgFoGAkgASgREg0KBWZsYWdzGAogASgNEgwKBGFuaW0YCyABKA0SCgoCaHAYDCABKA0SDgoGaHBfbWF4GA0gASgNEgwKBG5hbWUYDiABKAkSDgoGY295b3RlGA8gASgNEhMKC2p1bXBfYnVmZmVyGBAgASgNEhQKDGRyb3BfdGhyb3VnaBgRIAEoDRINCgVsZXZlbBgSIAEoDRILCgNleHAYEyABKAQSEwoLZXhwX3RvX25leHQYFCABKAQSCgoCbXAYFSABKA0SDgoGbXBfbWF4GBYgASgNEhEKCWRyb3BfaXRlbRgXIAEoCRIQCghkcm9wX3F0eRgYIAEoDRIRCglkcm9wX2dvbGQYGSABKA0SDgoGbW9iX2lkGBogASgJIpQBCgtFbnRpdHlEZWx0YRIKCgJpZBgBIAEoDRISCgpmaWVsZF9tYXNrGAIgASgNEgkKAXgYAyABKBESCQoBeRgEIAEoERIKCgJ2eBgFIAEoERIKCgJ2eRgGIAEoERINCgVmbGFncxgHIAEoDRIMCgRhbmltGAggASgNEgoKAmhwGAkgASgNEg4KBmhwX21heBgKIAEoDSLBAQoIU25hcHNob3QSDAoEdGljaxgBIAEoBBIVCg1iYXNlbGluZV90aWNrGAIgASgEEg8KB2Fja19zZXEYAyABKA0SJQoIZW50aXRpZXMYBCADKAsyEy5tbW8udjEuRW50aXR5RGVsdGESJAoHZW50ZXJlZBgFIAMoCzITLm1tby52MS5FbnRpdHlTdGF0ZRIPCgdyZW1vdmVkGAYgAygNEiEKBHNlbGYYByABKAsyEy5tbW8udjEuRW50aXR5U3RhdGUi6QMKBUV2ZW50Ei0KDXBsYXllcl9qb2luZWQYASABKAsyFC5tbW8udjEuUGxheWVySm9pbmVkSAASKQoLcGxheWVyX2xlZnQYAiABKAsyEi5tbW8udjEuUGxheWVyTGVmdEgAEiUKBmRhbWFnZRgDIAEoCzITLm1tby52MS5EYW1hZ2VEZWFsdEgAEiIKBGRpZWQYBCABKAsyEi5tbW8udjEuRW50aXR5RGllZEgAEicKCnNraWxsX2Nhc3QYBSABKAsyES5tbW8udjEuU2tpbGxDYXN0SAASJwoKZXhwX2dhaW5lZBgGIAEoCzIRLm1tby52MS5FeHBHYWluZWRIABIjCghsZXZlbF91cBgHIAEoCzIPLm1tby52MS5MZXZlbFVwSAASJwoKbG9vdF90YWtlbhgIIAEoCzIRLm1tby52MS5Mb290VGFrZW5IABIvCg53YXlwb2ludF9mb3VuZBgJIAEoCzIVLm1tby52MS5XYXlwb2ludEZvdW5kSAASLwoOcG9ydGFsX3JlZnVzZWQYCiABKAsyFS5tbW8udjEuUG9ydGFsUmVmdXNlZEgAEiUKCXdvcmxkX21hcBgMIAEoCzIQLm1tby52MS5Xb3JsZE1hcEgAQgYKBGJvZHlKBAgLEAxKBAgNEBAiZgoLRGFtYWdlRGVhbHQSEQoJc291cmNlX2lkGAEgASgNEhEKCXRhcmdldF9pZBgCIAEoDRIOCgZhbW91bnQYAyABKA0SEAoIY3JpdGljYWwYBCABKAgSDwoHZWxlbWVudBgFIAEoCSIyCgpFbnRpdHlEaWVkEhEKCWVudGl0eV9pZBgBIAEoDRIRCglraWxsZXJfaWQYAiABKA0iRQoJU2tpbGxDYXN0EhEKCWNhc3Rlcl9pZBgBIAEoDRIQCghza2lsbF9pZBgCIAEoCRITCgtmYWNpbmdfbGVmdBgDIAEoCCIqCglFeHBHYWluZWQSDgoGYW1vdW50GAEgASgEEg0KBXRvdGFsGAIgASgEIi0KB0xldmVsVXASDQoFbGV2ZWwYASABKA0SEwoLZXhwX3RvX25leHQYAiABKAQiQgoNV2F5cG9pbnRGb3VuZBITCgt3YXlwb2ludF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBm1hcF9pZBgDIAEoCSJLCg1Qb3J0YWxSZWZ1c2VkEhIKCnRhcmdldF9tYXAYASABKAkSFgoOcmVxdWlyZWRfbGV2ZWwYAiABKA0SDgoGcmVhc29uGAMgASgJIg4KDE9wZW5Xb3JsZE1hcCJkCgZUcmF2ZWwSFQoLd2F5cG9pbnRfaWQYASABKAlIABIdChNjaGFubmVsX2luc3RhbmNlX2lkGAIgASgESAASFQoLbmV3X2NoYW5uZWwYAyABKAhIAEINCgtkZXN0aW5hdGlvbiK3AQoIV29ybGRNYXASIAoEbWFwcxgBIAMoCzISLm1tby52MS5NYXBTdW1tYXJ5EioKCXdheXBvaW50cxgCIAMoCzIXLm1tby52MS5XYXlwb2ludFN1bW1hcnkSKAoIY2hhbm5lbHMYAyADKAsyFi5tbW8udjEuQ2hhbm5lbFN1bW1hcnkSFgoOY3VycmVudF9tYXBfaWQYBCABKAkSGwoTY3VycmVudF9pbnN0YW5jZV9pZBgFIAEoBCJhCgpNYXBTdW1tYXJ5Eg4KBm1hcF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEhEKCW1pbl9sZXZlbBgDIAEoBRIRCgltYXhfbGV2ZWwYBCABKAUSDwoHcHJpdmF0ZRgFIAEoCCJECg9XYXlwb2ludFN1bW1hcnkSEwoLd2F5cG9pbnRfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIOCgZtYXBfaWQYAyABKAkiagoOQ2hhbm5lbFN1bW1hcnkSEwoLaW5zdGFuY2VfaWQYASABKAQSDwoHY2hhbm5lbBgCIAEoDRIPCgdwbGF5ZXJzGAMgASgNEhAKCGNhcGFjaXR5GAQgASgNEg8KB2N1cnJlbnQYBSABKAgiagoJTG9vdFRha2VuEhEKCWVudGl0eV9pZBgBIAEoDRIPCgdpdGVtX2lkGAIgASgJEgsKA3F0eRgDIAEoDRIMCgRnb2xkGAQgASgNEg4KBmZhaWxlZBgFIAEoCBIOCgZyZWFzb24YBiABKAkilgEKCUludmVudG9yeRIiCgdjYXJyaWVkGAEgAygLMhEubW1vLnYxLkl0ZW1TdGFjaxIjCghlcXVpcHBlZBgCIAMoCzIRLm1tby52MS5JdGVtU3RhY2sSEAoIY2FwYWNpdHkYAyABKA0SDAoEZ29sZBgEIAEoBBIgCgVzdGF0cxgFIAMoCzIRLm1tby52MS5TdGF0VmFsdWUixwEKCUl0ZW1TdGFjaxIPCgdpdGVtX2lkGAEgASgJEg8KB2Jhc2VfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRIOCgZyYXJpdHkYBCABKAkSDAoEc2xvdBgFIAEoDRINCgVzdGFjaxgGIAEoDRISCgppdGVtX2xldmVsGAcgASgNEhIKCmVxdWlwX3Nsb3QYCCABKAkSFgoOcmVxdWlyZWRfbGV2ZWwYCSABKA0SHQoEbW9kcxgKIAMoCzIPLm1tby52MS5JdGVtTW9kIlQKB0l0ZW1Nb2QSDAoEc3RhdBgBIAEoCRIMCgRraW5kGAIgASgJEg0KBXZhbHVlGAMgASgSEgwKBHRpZXIYBCABKA0SEAoIaW1wbGljaXQYBSABKAgiKAoJU3RhdFZhbHVlEgwKBHN0YXQYASABKAkSDQoFdmFsdWUYAiABKBIiLwoMUGxheWVySm9pbmVkEhEKCWVudGl0eV9pZBgBIAEoDRIMCgRuYW1lGAIgASgJIh8KClBsYXllckxlZnQSEQoJZW50aXR5X2lkGAEgASgNKkUKDEludGVyYWN0S2luZBIdChlJTlRFUkFDVF9LSU5EX1VOU1BFQ0lGSUVEEAASFgoSSU5URVJBQ1RfS0lORF9MT09UEAEqpQEKDkl0ZW1BY3Rpb25LaW5kEiAKHElURU1fQUNUSU9OX0tJTkRfVU5TUEVDSUZJRUQQABIZChVJVEVNX0FDVElPTl9LSU5EX01PVkUQARIaChZJVEVNX0FDVElPTl9LSU5EX0VRVUlQEAISHAoYSVRFTV9BQ1RJT05fS0lORF9VTkVRVUlQEAMSHAoYSVRFTV9BQ1RJT05fS0lORF9ERVNUUk9ZEAQqgQEKCkVudGl0eUtpbmQSGwoXRU5USVRZX0tJTkRfVU5TUEVDSUZJRUQQABIWChJFTlRJVFlfS0lORF9QTEFZRVIQARITCg9FTlRJVFlfS0lORF9NT0IQAhIUChBFTlRJVFlfS0lORF9EUk9QEAMSEwoPRU5USVRZX0tJTkRfTlBDEAQqmwEKC0VudGl0eUZpZWxkEhwKGEVOVElUWV9GSUVMRF9VTlNQRUNJRklFRBAAEhQKEEVOVElUWV9GSUVMRF9QT1MQARIUChBFTlRJVFlfRklFTERfVkVMEAISFgoSRU5USVRZX0ZJRUxEX0ZMQUdTEAMSFQoRRU5USVRZX0ZJRUxEX0FOSU0QBBITCg9FTlRJVFlfRklFTERfSFAQBSqVAQoKRW50aXR5RmxhZxIbChdFTlRJVFlfRkxBR19VTlNQRUNJRklFRBAAEhgKFEVOVElUWV9GTEFHX0dST1VOREVEEAESGAoURU5USVRZX0ZMQUdfQ0xJTUJJTkcQAhIbChdFTlRJVFlfRkxBR19GQUNJTkdfTEVGVBADEhkKFUVOVElUWV9GTEFHX0pVTVBfSEVMRBAEQjlaN2dpdGh1Yi5jb20vY3RybC1yZXNlYXJjaC9tbW8vaW50ZXJuYWwvd2lyZS9tbW8vdjE7bW1vdjFiBnByb3RvMw");
+  fileDesc("ChFtbW8vdjEvZ2FtZS5wcm90bxIGbW1vLnYxIlgKCEVudmVsb3BlEiUKBnNlcnZlchgBIAMoCzIVLm1tby52MS5TZXJ2ZXJNZXNzYWdlEiUKBmNsaWVudBgCIAMoCzIVLm1tby52MS5DbGllbnRNZXNzYWdlIs4DCg1DbGllbnRNZXNzYWdlEh4KBWhlbGxvGAEgASgLMg0ubW1vLnYxLkhlbGxvSAASIAoGaW50ZW50GAIgASgLMg4ubW1vLnYxLkludGVudEgAEhwKBHBpbmcYAyABKAsyDC5tbW8udjEuUGluZ0gAEhwKBGNhc3QYBCABKAsyDC5tbW8udjEuQ2FzdEgAEiQKCGludGVyYWN0GAUgASgLMhAubW1vLnYxLkludGVyYWN0SAASKQoLaXRlbV9hY3Rpb24YBiABKAsyEi5tbW8udjEuSXRlbUFjdGlvbkgAEi4KDm9wZW5fd29ybGRfbWFwGAcgASgLMhQubW1vLnYxLk9wZW5Xb3JsZE1hcEgAEiAKBnRyYXZlbBgIIAEoCzIOLm1tby52MS5UcmF2ZWxIABIgCgRjaGF0GAkgASgLMhAubW1vLnYxLkNoYXRTZW5kSAASJAoFcGFydHkYCiABKAsyEy5tbW8udjEuUGFydHlBY3Rpb25IABIkCgVndWlsZBgLIAEoCzITLm1tby52MS5HdWlsZEFjdGlvbkgAEiYKBnNvY2lhbBgMIAEoCzIULm1tby52MS5Tb2NpYWxBY3Rpb25IAEIGCgRib2R5IjoKBENhc3QSCwoDc2VxGAEgASgNEhAKCHNraWxsX2lkGAIgASgJEhMKC2ZhY2luZ19sZWZ0GAMgASgIIkEKCEludGVyYWN0EhEKCWVudGl0eV9pZBgBIAEoDRIiCgRraW5kGAIgASgOMhQubW1vLnYxLkludGVyYWN0S2luZCJlCgpJdGVtQWN0aW9uEiQKBGtpbmQYASABKA4yFi5tbW8udjEuSXRlbUFjdGlvbktpbmQSDwoHaXRlbV9pZBgCIAEoCRIMCgRzbG90GAMgASgNEhIKCmVxdWlwX3Nsb3QYBCABKAki6wEKDVNlcnZlck1lc3NhZ2USIgoHd2VsY29tZRgBIAEoCzIPLm1tby52MS5XZWxjb21lSAASJAoIc25hcHNob3QYAiABKAsyEC5tbW8udjEuU25hcHNob3RIABIeCgVldmVudBgDIAEoCzINLm1tby52MS5FdmVudEgAEhwKBHBvbmcYBCABKAsyDC5tbW8udjEuUG9uZ0gAEhwKBGtpY2sYBSABKAsyDC5tbW8udjEuS2lja0gAEiYKCWludmVudG9yeRgGIAEoCzIRLm1tby52MS5JbnZlbnRvcnlIAEIGCgRib2R5SgQIBxAKIkcKBUhlbGxvEg4KBnRpY2tldBgBIAEoCRIYChBwcm90b2NvbF92ZXJzaW9uGAIgASgNEhQKDGNvbnRlbnRfaGFzaBgDIAEoCSKDAQoHV2VsY29tZRIRCgllbnRpdHlfaWQYASABKA0SEwoLaW5zdGFuY2VfaWQYAiABKAQSDAoEdGljaxgDIAEoBBIPCgd0aWNrX21zGAQgASgNEg4KBm1hcF9pZBgFIAEoCRIhCgRzZWxmGAYgASgLMhMubW1vLnYxLkVudGl0eVN0YXRlIiQKBEtpY2sSDAoEY29kZRgBIAEoDRIOCgZyZWFzb24YAiABKAkiYwoGSW50ZW50EgsKA3NlcRgBIAEoDRIUCgxhY2tfc25hcHNob3QYAiABKAQSDgoGbW92ZV94GAMgASgREgwKBGp1bXAYBCABKAgSCgoCdXAYBSABKAgSDAoEZG93bhgGIAEoCCIeCgRQaW5nEhYKDmNsaWVudF90aW1lX21zGAEgASgEIjMKBFBvbmcSFgoOY2xpZW50X3RpbWVfbXMYASABKAQSEwoLc2VydmVyX3RpY2sYAiABKAQipQMKC0VudGl0eVN0YXRlEgoKAmlkGAEgASgNEiAKBGtpbmQYAiABKA4yEi5tbW8udjEuRW50aXR5S2luZBINCgVsYXllchgDIAEoDRIJCgF4GAQgASgREgkKAXkYBSABKBESCgoCdngYBiABKBESCgoCdnkYByABKBESCQoBdxgIIAEoERIJCgFoGAkgASgREg0KBWZsYWdzGAogASgNEgwKBGFuaW0YCyABKA0SCgoCaHAYDCABKA0SDgoGaHBfbWF4GA0gASgNEgwKBG5hbWUYDiABKAkSDgoGY295b3RlGA8gASgNEhMKC2p1bXBfYnVmZmVyGBAgASgNEhQKDGRyb3BfdGhyb3VnaBgRIAEoDRINCgVsZXZlbBgSIAEoDRILCgNleHAYEyABKAQSEwoLZXhwX3RvX25leHQYFCABKAQSCgoCbXAYFSABKA0SDgoGbXBfbWF4GBYgASgNEhEKCWRyb3BfaXRlbRgXIAEoCRIQCghkcm9wX3F0eRgYIAEoDRIRCglkcm9wX2dvbGQYGSABKA0SDgoGbW9iX2lkGBogASgJIpQBCgtFbnRpdHlEZWx0YRIKCgJpZBgBIAEoDRISCgpmaWVsZF9tYXNrGAIgASgNEgkKAXgYAyABKBESCQoBeRgEIAEoERIKCgJ2eBgFIAEoERIKCgJ2eRgGIAEoERINCgVmbGFncxgHIAEoDRIMCgRhbmltGAggASgNEgoKAmhwGAkgASgNEg4KBmhwX21heBgKIAEoDSLBAQoIU25hcHNob3QSDAoEdGljaxgBIAEoBBIVCg1iYXNlbGluZV90aWNrGAIgASgEEg8KB2Fja19zZXEYAyABKA0SJQoIZW50aXRpZXMYBCADKAsyEy5tbW8udjEuRW50aXR5RGVsdGESJAoHZW50ZXJlZBgFIAMoCzITLm1tby52MS5FbnRpdHlTdGF0ZRIPCgdyZW1vdmVkGAYgAygNEiEKBHNlbGYYByABKAsyEy5tbW8udjEuRW50aXR5U3RhdGUi/wUKBUV2ZW50Ei0KDXBsYXllcl9qb2luZWQYASABKAsyFC5tbW8udjEuUGxheWVySm9pbmVkSAASKQoLcGxheWVyX2xlZnQYAiABKAsyEi5tbW8udjEuUGxheWVyTGVmdEgAEiUKBmRhbWFnZRgDIAEoCzITLm1tby52MS5EYW1hZ2VEZWFsdEgAEiIKBGRpZWQYBCABKAsyEi5tbW8udjEuRW50aXR5RGllZEgAEicKCnNraWxsX2Nhc3QYBSABKAsyES5tbW8udjEuU2tpbGxDYXN0SAASJwoKZXhwX2dhaW5lZBgGIAEoCzIRLm1tby52MS5FeHBHYWluZWRIABIjCghsZXZlbF91cBgHIAEoCzIPLm1tby52MS5MZXZlbFVwSAASJwoKbG9vdF90YWtlbhgIIAEoCzIRLm1tby52MS5Mb290VGFrZW5IABIvCg53YXlwb2ludF9mb3VuZBgJIAEoCzIVLm1tby52MS5XYXlwb2ludEZvdW5kSAASLwoOcG9ydGFsX3JlZnVzZWQYCiABKAsyFS5tbW8udjEuUG9ydGFsUmVmdXNlZEgAEiUKCXdvcmxkX21hcBgMIAEoCzIQLm1tby52MS5Xb3JsZE1hcEgAEiAKBGNoYXQYDSABKAsyEC5tbW8udjEuQ2hhdExpbmVIABInCgZzeXN0ZW0YDiABKAsyFS5tbW8udjEuU3lzdGVtTWVzc2FnZUgAEiMKBXBhcnR5GBAgASgLMhIubW1vLnYxLlBhcnR5U3RhdGVIABIrCgxwYXJ0eV9pbnZpdGUYESABKAsyEy5tbW8udjEuUGFydHlJbnZpdGVIABIjCgVndWlsZBgSIAEoCzISLm1tby52MS5HdWlsZFN0YXRlSAASKwoMZ3VpbGRfaW52aXRlGBMgASgLMhMubW1vLnYxLkd1aWxkSW52aXRlSAASJQoHZnJpZW5kcxgUIAEoCzISLm1tby52MS5GcmllbmRMaXN0SABCBgoEYm9keUoECAsQDEoECA8QECJmCgtEYW1hZ2VEZWFsdBIRCglzb3VyY2VfaWQYASABKA0SEQoJdGFyZ2V0X2lkGAIgASgNEg4KBmFtb3VudBgDIAEoDRIQCghjcml0aWNhbBgEIAEoCBIPCgdlbGVtZW50GAUgASgJIjIKCkVudGl0eURpZWQSEQoJZW50aXR5X2lkGAEgASgNEhEKCWtpbGxlcl9pZBgCIAEoDSJFCglTa2lsbENhc3QSEQoJY2FzdGVyX2lkGAEgASgNEhAKCHNraWxsX2lkGAIgASgJEhMKC2ZhY2luZ19sZWZ0GAMgASgIIjoKCUV4cEdhaW5lZBIOCgZhbW91bnQYASABKAQSDQoFdG90YWwYAiABKAQSDgoGc2hhcmVkGAMgASgIIi0KB0xldmVsVXASDQoFbGV2ZWwYASABKA0SEwoLZXhwX3RvX25leHQYAiABKAQiQgoNV2F5cG9pbnRGb3VuZBITCgt3YXlwb2ludF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBm1hcF9pZBgDIAEoCSJLCg1Qb3J0YWxSZWZ1c2VkEhIKCnRhcmdldF9tYXAYASABKAkSFgoOcmVxdWlyZWRfbGV2ZWwYAiABKA0SDgoGcmVhc29uGAMgASgJIg4KDE9wZW5Xb3JsZE1hcCJkCgZUcmF2ZWwSFQoLd2F5cG9pbnRfaWQYASABKAlIABIdChNjaGFubmVsX2luc3RhbmNlX2lkGAIgASgESAASFQoLbmV3X2NoYW5uZWwYAyABKAhIAEINCgtkZXN0aW5hdGlvbiK3AQoIV29ybGRNYXASIAoEbWFwcxgBIAMoCzISLm1tby52MS5NYXBTdW1tYXJ5EioKCXdheXBvaW50cxgCIAMoCzIXLm1tby52MS5XYXlwb2ludFN1bW1hcnkSKAoIY2hhbm5lbHMYAyADKAsyFi5tbW8udjEuQ2hhbm5lbFN1bW1hcnkSFgoOY3VycmVudF9tYXBfaWQYBCABKAkSGwoTY3VycmVudF9pbnN0YW5jZV9pZBgFIAEoBCJhCgpNYXBTdW1tYXJ5Eg4KBm1hcF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEhEKCW1pbl9sZXZlbBgDIAEoBRIRCgltYXhfbGV2ZWwYBCABKAUSDwoHcHJpdmF0ZRgFIAEoCCJECg9XYXlwb2ludFN1bW1hcnkSEwoLd2F5cG9pbnRfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIOCgZtYXBfaWQYAyABKAkiagoOQ2hhbm5lbFN1bW1hcnkSEwoLaW5zdGFuY2VfaWQYASABKAQSDwoHY2hhbm5lbBgCIAEoDRIPCgdwbGF5ZXJzGAMgASgNEhAKCGNhcGFjaXR5GAQgASgNEg8KB2N1cnJlbnQYBSABKAgiTgoIQ2hhdFNlbmQSJAoHY2hhbm5lbBgBIAEoDjITLm1tby52MS5DaGF0Q2hhbm5lbBIMCgRib2R5GAIgASgJEg4KBnRhcmdldBgDIAEoCSJ2CghDaGF0TGluZRIkCgdjaGFubmVsGAEgASgOMhMubW1vLnYxLkNoYXRDaGFubmVsEgwKBGZyb20YAiABKAkSDAoEYm9keRgDIAEoCRIQCghvdXRnb2luZxgEIAEoCBIWCg5zZXJ2ZXJfdGltZV9tcxgFIAEoAyJDCg1TeXN0ZW1NZXNzYWdlEgwKBGJvZHkYASABKAkSJAoHY2hhbm5lbBgCIAEoDjITLm1tby52MS5DaGF0Q2hhbm5lbCLcAQoLUGFydHlBY3Rpb24SJgoEa2luZBgBIAEoDjIYLm1tby52MS5QYXJ0eUFjdGlvbi5LaW5kEg4KBnRhcmdldBgCIAEoCSKUAQoES2luZBIUChBLSU5EX1VOU1BFQ0lGSUVEEAASDwoLS0lORF9JTlZJVEUQARIPCgtLSU5EX0FDQ0VQVBACEhAKDEtJTkRfREVDTElORRADEg4KCktJTkRfTEVBVkUQBBINCglLSU5EX0tJQ0sQBRIQCgxLSU5EX1BST01PVEUQBhIRCg1LSU5EX1NFVF9MT09UEAciigEKClBhcnR5U3RhdGUSEAoIcGFydHlfaWQYASABKAkSGwoTbGVhZGVyX2NoYXJhY3Rlcl9pZBgCIAEoCRIkCgdtZW1iZXJzGAMgAygLMhMubW1vLnYxLlBhcnR5TWVtYmVyEhkKEXNlbGZfY2hhcmFjdGVyX2lkGAQgASgJEgwKBGxvb3QYBSABKAkifAoLUGFydHlNZW1iZXISFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFbGV2ZWwYAyABKA0SCgoCaHAYBCABKA0SDgoGaHBfbWF4GAUgASgNEg4KBm1hcF9pZBgGIAEoCRIOCgZvbmxpbmUYByABKAgiNwoLUGFydHlJbnZpdGUSEQoJZnJvbV9uYW1lGAEgASgJEhUKDWV4cGlyZXNfaW5fbXMYAiABKAMi/gEKC0d1aWxkQWN0aW9uEiYKBGtpbmQYASABKA4yGC5tbW8udjEuR3VpbGRBY3Rpb24uS2luZBIOCgZ0YXJnZXQYAiABKAkitgEKBEtpbmQSFAoQS0lORF9VTlNQRUNJRklFRBAAEg8KC0tJTkRfQ1JFQVRFEAESDwoLS0lORF9JTlZJVEUQAhIPCgtLSU5EX0FDQ0VQVBADEhAKDEtJTkRfREVDTElORRAEEg4KCktJTkRfTEVBVkUQBRINCglLSU5EX0tJQ0sQBhIQCgxLSU5EX1BST01PVEUQBxIPCgtLSU5EX0RFTU9URRAIEhEKDUtJTkRfU0VUX01PVEQQCSJuCgpHdWlsZFN0YXRlEhAKCGd1aWxkX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEbW90ZBgDIAEoCRIkCgdtZW1iZXJzGAQgAygLMhMubW1vLnYxLkd1aWxkTWVtYmVyEgwKBHJhbmsYBSABKA0iXgoLR3VpbGRNZW1iZXISFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEcmFuaxgDIAEoDRINCgVsZXZlbBgEIAEoDRIOCgZvbmxpbmUYBSABKAgiSwoLR3VpbGRJbnZpdGUSEgoKZ3VpbGRfbmFtZRgBIAEoCRIRCglmcm9tX25hbWUYAiABKAkSFQoNZXhwaXJlc19pbl9tcxgDIAEoAyKpAQoMU29jaWFsQWN0aW9uEicKBGtpbmQYASABKA4yGS5tbW8udjEuU29jaWFsQWN0aW9uLktpbmQSDgoGdGFyZ2V0GAIgASgJImAKBEtpbmQSFAoQS0lORF9VTlNQRUNJRklFRBAAEhMKD0tJTkRfQUREX0ZSSUVORBABEhYKEktJTkRfUkVNT1ZFX0ZSSUVORBACEhUKEUtJTkRfTElTVF9GUklFTkRTEAMiMgoKRnJpZW5kTGlzdBIkCgdmcmllbmRzGAEgAygLMhMubW1vLnYxLkZyaWVuZEVudHJ5ImAKC0ZyaWVuZEVudHJ5EhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBWxldmVsGAMgASgNEg4KBm9ubGluZRgEIAEoCBIOCgZtYXBfaWQYBSABKAkiagoJTG9vdFRha2VuEhEKCWVudGl0eV9pZBgBIAEoDRIPCgdpdGVtX2lkGAIgASgJEgsKA3F0eRgDIAEoDRIMCgRnb2xkGAQgASgNEg4KBmZhaWxlZBgFIAEoCBIOCgZyZWFzb24YBiABKAkilgEKCUludmVudG9yeRIiCgdjYXJyaWVkGAEgAygLMhEubW1vLnYxLkl0ZW1TdGFjaxIjCghlcXVpcHBlZBgCIAMoCzIRLm1tby52MS5JdGVtU3RhY2sSEAoIY2FwYWNpdHkYAyABKA0SDAoEZ29sZBgEIAEoBBIgCgVzdGF0cxgFIAMoCzIRLm1tby52MS5TdGF0VmFsdWUixwEKCUl0ZW1TdGFjaxIPCgdpdGVtX2lkGAEgASgJEg8KB2Jhc2VfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRIOCgZyYXJpdHkYBCABKAkSDAoEc2xvdBgFIAEoDRINCgVzdGFjaxgGIAEoDRISCgppdGVtX2xldmVsGAcgASgNEhIKCmVxdWlwX3Nsb3QYCCABKAkSFgoOcmVxdWlyZWRfbGV2ZWwYCSABKA0SHQoEbW9kcxgKIAMoCzIPLm1tby52MS5JdGVtTW9kIlQKB0l0ZW1Nb2QSDAoEc3RhdBgBIAEoCRIMCgRraW5kGAIgASgJEg0KBXZhbHVlGAMgASgSEgwKBHRpZXIYBCABKA0SEAoIaW1wbGljaXQYBSABKAgiKAoJU3RhdFZhbHVlEgwKBHN0YXQYASABKAkSDQoFdmFsdWUYAiABKBIiLwoMUGxheWVySm9pbmVkEhEKCWVudGl0eV9pZBgBIAEoDRIMCgRuYW1lGAIgASgJIh8KClBsYXllckxlZnQSEQoJZW50aXR5X2lkGAEgASgNKkUKDEludGVyYWN0S2luZBIdChlJTlRFUkFDVF9LSU5EX1VOU1BFQ0lGSUVEEAASFgoSSU5URVJBQ1RfS0lORF9MT09UEAEqpQEKDkl0ZW1BY3Rpb25LaW5kEiAKHElURU1fQUNUSU9OX0tJTkRfVU5TUEVDSUZJRUQQABIZChVJVEVNX0FDVElPTl9LSU5EX01PVkUQARIaChZJVEVNX0FDVElPTl9LSU5EX0VRVUlQEAISHAoYSVRFTV9BQ1RJT05fS0lORF9VTkVRVUlQEAMSHAoYSVRFTV9BQ1RJT05fS0lORF9ERVNUUk9ZEAQqgQEKCkVudGl0eUtpbmQSGwoXRU5USVRZX0tJTkRfVU5TUEVDSUZJRUQQABIWChJFTlRJVFlfS0lORF9QTEFZRVIQARITCg9FTlRJVFlfS0lORF9NT0IQAhIUChBFTlRJVFlfS0lORF9EUk9QEAMSEwoPRU5USVRZX0tJTkRfTlBDEAQqmwEKC0VudGl0eUZpZWxkEhwKGEVOVElUWV9GSUVMRF9VTlNQRUNJRklFRBAAEhQKEEVOVElUWV9GSUVMRF9QT1MQARIUChBFTlRJVFlfRklFTERfVkVMEAISFgoSRU5USVRZX0ZJRUxEX0ZMQUdTEAMSFQoRRU5USVRZX0ZJRUxEX0FOSU0QBBITCg9FTlRJVFlfRklFTERfSFAQBSqVAQoKRW50aXR5RmxhZxIbChdFTlRJVFlfRkxBR19VTlNQRUNJRklFRBAAEhgKFEVOVElUWV9GTEFHX0dST1VOREVEEAESGAoURU5USVRZX0ZMQUdfQ0xJTUJJTkcQAhIbChdFTlRJVFlfRkxBR19GQUNJTkdfTEVGVBADEhkKFUVOVElUWV9GTEFHX0pVTVBfSEVMRBAEKqYBCgtDaGF0Q2hhbm5lbBIcChhDSEFUX0NIQU5ORUxfVU5TUEVDSUZJRUQQABIWChJDSEFUX0NIQU5ORUxfTE9DQUwQARIXChNDSEFUX0NIQU5ORUxfR0xPQkFMEAISGAoUQ0hBVF9DSEFOTkVMX1dISVNQRVIQAxIWChJDSEFUX0NIQU5ORUxfUEFSVFkQBBIWChJDSEFUX0NIQU5ORUxfR1VJTEQQBUI5WjdnaXRodWIuY29tL2N0cmwtcmVzZWFyY2gvbW1vL2ludGVybmFsL3dpcmUvbW1vL3YxO21tb3YxYgZwcm90bzM");
 
 /**
  * Envelope is exactly one WebSocket binary frame.
@@ -95,6 +95,30 @@ export type ClientMessage = Message<"mmo.v1.ClientMessage"> & {
      */
     value: Travel;
     case: "travel";
+  } | {
+    /**
+     * @generated from field: mmo.v1.ChatSend chat = 9;
+     */
+    value: ChatSend;
+    case: "chat";
+  } | {
+    /**
+     * @generated from field: mmo.v1.PartyAction party = 10;
+     */
+    value: PartyAction;
+    case: "party";
+  } | {
+    /**
+     * @generated from field: mmo.v1.GuildAction guild = 11;
+     */
+    value: GuildAction;
+    case: "guild";
+  } | {
+    /**
+     * @generated from field: mmo.v1.SocialAction social = 12;
+     */
+    value: SocialAction;
+    case: "social";
   } | { case: undefined; value?: undefined };
 };
 
@@ -844,6 +868,48 @@ export type Event = Message<"mmo.v1.Event"> & {
      */
     value: WorldMap;
     case: "worldMap";
+  } | {
+    /**
+     * @generated from field: mmo.v1.ChatLine chat = 13;
+     */
+    value: ChatLine;
+    case: "chat";
+  } | {
+    /**
+     * @generated from field: mmo.v1.SystemMessage system = 14;
+     */
+    value: SystemMessage;
+    case: "system";
+  } | {
+    /**
+     * @generated from field: mmo.v1.PartyState party = 16;
+     */
+    value: PartyState;
+    case: "party";
+  } | {
+    /**
+     * @generated from field: mmo.v1.PartyInvite party_invite = 17;
+     */
+    value: PartyInvite;
+    case: "partyInvite";
+  } | {
+    /**
+     * @generated from field: mmo.v1.GuildState guild = 18;
+     */
+    value: GuildState;
+    case: "guild";
+  } | {
+    /**
+     * @generated from field: mmo.v1.GuildInvite guild_invite = 19;
+     */
+    value: GuildInvite;
+    case: "guildInvite";
+  } | {
+    /**
+     * @generated from field: mmo.v1.FriendList friends = 20;
+     */
+    value: FriendList;
+    case: "friends";
   } | { case: undefined; value?: undefined };
 };
 
@@ -957,6 +1023,14 @@ export type ExpGained = Message<"mmo.v1.ExpGained"> & {
    * @generated from field: uint64 total = 2;
    */
   total: bigint;
+
+  /**
+   * Shared marks experience split with a party, so a player can tell a share
+   * from a solo kill rather than concluding the numbers look wrong.
+   *
+   * @generated from field: bool shared = 3;
+   */
+  shared: boolean;
 };
 
 /**
@@ -1271,6 +1345,663 @@ export const ChannelSummarySchema: GenMessage<ChannelSummary> = /*@__PURE__*/
   messageDesc(file_mmo_v1_game, 28);
 
 /**
+ * ChatSend is a player saying something.
+ *
+ * The server decides who hears it. A client naming its own audience -- a list
+ * of recipients, a room id -- would be a client deciding what other players
+ * see, which is the one thing it never gets to do.
+ *
+ * @generated from message mmo.v1.ChatSend
+ */
+export type ChatSend = Message<"mmo.v1.ChatSend"> & {
+  /**
+   * @generated from field: mmo.v1.ChatChannel channel = 1;
+   */
+  channel: ChatChannel;
+
+  /**
+   * @generated from field: string body = 2;
+   */
+  body: string;
+
+  /**
+   * Target is the recipient's character name, for whispers only. Ignored on
+   * every other channel.
+   *
+   * @generated from field: string target = 3;
+   */
+  target: string;
+};
+
+/**
+ * Describes the message mmo.v1.ChatSend.
+ * Use `create(ChatSendSchema)` to create a new message.
+ */
+export const ChatSendSchema: GenMessage<ChatSend> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 29);
+
+/**
+ * ChatLine is something said, delivered.
+ *
+ * @generated from message mmo.v1.ChatLine
+ */
+export type ChatLine = Message<"mmo.v1.ChatLine"> & {
+  /**
+   * @generated from field: mmo.v1.ChatChannel channel = 1;
+   */
+  channel: ChatChannel;
+
+  /**
+   * From is the speaker's display name, resolved by the server. A client
+   * never gets to say who a message is from.
+   *
+   * @generated from field: string from = 2;
+   */
+  from: string;
+
+  /**
+   * @generated from field: string body = 3;
+   */
+  body: string;
+
+  /**
+   * Whispered marks a whisper this player sent rather than received, so the
+   * client can render "to Alice: hello" instead of "Alice: hello". Without it
+   * the sender's own copy is indistinguishable from an incoming one.
+   *
+   * @generated from field: bool outgoing = 4;
+   */
+  outgoing: boolean;
+
+  /**
+   * ServerTimeMs is when the server accepted it, so a client can order lines
+   * that arrived out of order and show timestamps that agree between players.
+   *
+   * @generated from field: int64 server_time_ms = 5;
+   */
+  serverTimeMs: bigint;
+};
+
+/**
+ * Describes the message mmo.v1.ChatLine.
+ * Use `create(ChatLineSchema)` to create a new message.
+ */
+export const ChatLineSchema: GenMessage<ChatLine> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 30);
+
+/**
+ * SystemMessage is the server talking to one player: a refusal, a notice, a
+ * result. Kept separate from ChatLine because it has no speaker, and dressing
+ * it up as one would mean inventing a name for the server.
+ *
+ * @generated from message mmo.v1.SystemMessage
+ */
+export type SystemMessage = Message<"mmo.v1.SystemMessage"> & {
+  /**
+   * @generated from field: string body = 1;
+   */
+  body: string;
+
+  /**
+   * Channel the message is about, so the client can show it in the tab the
+   * player was typing in rather than always in the system tab.
+   *
+   * @generated from field: mmo.v1.ChatChannel channel = 2;
+   */
+  channel: ChatChannel;
+};
+
+/**
+ * Describes the message mmo.v1.SystemMessage.
+ * Use `create(SystemMessageSchema)` to create a new message.
+ */
+export const SystemMessageSchema: GenMessage<SystemMessage> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 31);
+
+/**
+ * PartyAction is a request to change party membership.
+ *
+ * Every one of these is checked against the party's actual state on the
+ * server: a client asking to kick somebody from a party it does not lead is
+ * asking, not doing.
+ *
+ * @generated from message mmo.v1.PartyAction
+ */
+export type PartyAction = Message<"mmo.v1.PartyAction"> & {
+  /**
+   * @generated from field: mmo.v1.PartyAction.Kind kind = 1;
+   */
+  kind: PartyAction_Kind;
+
+  /**
+   * A name rather than an ID because a name is what a player has: character
+   * IDs are never shown, so a client could only supply one it had scraped from
+   * a party it was already in.
+   * Target is a character name, for invite, kick, and promote, and the loot
+   * rule for KIND_SET_LOOT.
+   *
+   * @generated from field: string target = 2;
+   */
+  target: string;
+};
+
+/**
+ * Describes the message mmo.v1.PartyAction.
+ * Use `create(PartyActionSchema)` to create a new message.
+ */
+export const PartyActionSchema: GenMessage<PartyAction> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 32);
+
+/**
+ * @generated from enum mmo.v1.PartyAction.Kind
+ */
+export enum PartyAction_Kind {
+  /**
+   * @generated from enum value: KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: KIND_INVITE = 1;
+   */
+  INVITE = 1,
+
+  /**
+   * @generated from enum value: KIND_ACCEPT = 2;
+   */
+  ACCEPT = 2,
+
+  /**
+   * @generated from enum value: KIND_DECLINE = 3;
+   */
+  DECLINE = 3,
+
+  /**
+   * @generated from enum value: KIND_LEAVE = 4;
+   */
+  LEAVE = 4,
+
+  /**
+   * @generated from enum value: KIND_KICK = 5;
+   */
+  KICK = 5,
+
+  /**
+   * @generated from enum value: KIND_PROMOTE = 6;
+   */
+  PROMOTE = 6,
+
+  /**
+   * @generated from enum value: KIND_SET_LOOT = 7;
+   */
+  SET_LOOT = 7,
+}
+
+/**
+ * Describes the enum mmo.v1.PartyAction.Kind.
+ */
+export const PartyAction_KindSchema: GenEnum<PartyAction_Kind> = /*@__PURE__*/
+  enumDesc(file_mmo_v1_game, 32, 0);
+
+/**
+ * PartyState is the whole party, sent whenever any of it changes.
+ *
+ * Whole rather than incremental: a party is at most six members, the delta
+ * would be most of the message anyway, and a client that misses one
+ * incremental update shows a roster that is quietly wrong until somebody
+ * leaves. An empty member list means "you are not in a party".
+ *
+ * @generated from message mmo.v1.PartyState
+ */
+export type PartyState = Message<"mmo.v1.PartyState"> & {
+  /**
+   * @generated from field: string party_id = 1;
+   */
+  partyId: string;
+
+  /**
+   * @generated from field: string leader_character_id = 2;
+   */
+  leaderCharacterId: string;
+
+  /**
+   * @generated from field: repeated mmo.v1.PartyMember members = 3;
+   */
+  members: PartyMember[];
+
+  /**
+   * Self is the recipient's own character ID, so a client can find itself in
+   * the roster without matching on name.
+   *
+   * @generated from field: string self_character_id = 4;
+   */
+  selfCharacterId: string;
+
+  /**
+   * Loot is how drops are assigned: "free-for-all" or "round-robin".
+   *
+   * @generated from field: string loot = 5;
+   */
+  loot: string;
+};
+
+/**
+ * Describes the message mmo.v1.PartyState.
+ * Use `create(PartyStateSchema)` to create a new message.
+ */
+export const PartyStateSchema: GenMessage<PartyState> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 33);
+
+/**
+ * PartyMember is one member frame.
+ *
+ * Vitals are here rather than read from the snapshot because a party member in
+ * another room is not in the snapshot at all -- that is most of what a member
+ * frame is for.
+ *
+ * @generated from message mmo.v1.PartyMember
+ */
+export type PartyMember = Message<"mmo.v1.PartyMember"> & {
+  /**
+   * @generated from field: string character_id = 1;
+   */
+  characterId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: uint32 level = 3;
+   */
+  level: number;
+
+  /**
+   * @generated from field: uint32 hp = 4;
+   */
+  hp: number;
+
+  /**
+   * @generated from field: uint32 hp_max = 5;
+   */
+  hpMax: number;
+
+  /**
+   * MapId is where they are, which is what tells a player whether their party
+   * is together.
+   *
+   * @generated from field: string map_id = 6;
+   */
+  mapId: string;
+
+  /**
+   * Online is false for a member inside their reconnect window: still in the
+   * party, temporarily not in the world.
+   *
+   * @generated from field: bool online = 7;
+   */
+  online: boolean;
+};
+
+/**
+ * Describes the message mmo.v1.PartyMember.
+ * Use `create(PartyMemberSchema)` to create a new message.
+ */
+export const PartyMemberSchema: GenMessage<PartyMember> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 34);
+
+/**
+ * @generated from message mmo.v1.PartyInvite
+ */
+export type PartyInvite = Message<"mmo.v1.PartyInvite"> & {
+  /**
+   * @generated from field: string from_name = 1;
+   */
+  fromName: string;
+
+  /**
+   * ExpiresInMs is how long the invitation stands, so the client can show a
+   * prompt that goes away by itself rather than one that lingers after the
+   * answer stopped mattering.
+   *
+   * @generated from field: int64 expires_in_ms = 2;
+   */
+  expiresInMs: bigint;
+};
+
+/**
+ * Describes the message mmo.v1.PartyInvite.
+ * Use `create(PartyInviteSchema)` to create a new message.
+ */
+export const PartyInviteSchema: GenMessage<PartyInvite> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 35);
+
+/**
+ * GuildAction is a request to change a guild.
+ *
+ * Every one is checked against the requester's actual rank. A client asking to
+ * promote somebody in a guild it is not an officer of is asking, not doing.
+ *
+ * @generated from message mmo.v1.GuildAction
+ */
+export type GuildAction = Message<"mmo.v1.GuildAction"> & {
+  /**
+   * @generated from field: mmo.v1.GuildAction.Kind kind = 1;
+   */
+  kind: GuildAction_Kind;
+
+  /**
+   * Target is a guild name for create, a character name for invite, kick,
+   * promote, and demote, and the message itself for set_motd.
+   *
+   * @generated from field: string target = 2;
+   */
+  target: string;
+};
+
+/**
+ * Describes the message mmo.v1.GuildAction.
+ * Use `create(GuildActionSchema)` to create a new message.
+ */
+export const GuildActionSchema: GenMessage<GuildAction> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 36);
+
+/**
+ * @generated from enum mmo.v1.GuildAction.Kind
+ */
+export enum GuildAction_Kind {
+  /**
+   * @generated from enum value: KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: KIND_CREATE = 1;
+   */
+  CREATE = 1,
+
+  /**
+   * @generated from enum value: KIND_INVITE = 2;
+   */
+  INVITE = 2,
+
+  /**
+   * @generated from enum value: KIND_ACCEPT = 3;
+   */
+  ACCEPT = 3,
+
+  /**
+   * @generated from enum value: KIND_DECLINE = 4;
+   */
+  DECLINE = 4,
+
+  /**
+   * @generated from enum value: KIND_LEAVE = 5;
+   */
+  LEAVE = 5,
+
+  /**
+   * @generated from enum value: KIND_KICK = 6;
+   */
+  KICK = 6,
+
+  /**
+   * @generated from enum value: KIND_PROMOTE = 7;
+   */
+  PROMOTE = 7,
+
+  /**
+   * @generated from enum value: KIND_DEMOTE = 8;
+   */
+  DEMOTE = 8,
+
+  /**
+   * @generated from enum value: KIND_SET_MOTD = 9;
+   */
+  SET_MOTD = 9,
+}
+
+/**
+ * Describes the enum mmo.v1.GuildAction.Kind.
+ */
+export const GuildAction_KindSchema: GenEnum<GuildAction_Kind> = /*@__PURE__*/
+  enumDesc(file_mmo_v1_game, 36, 0);
+
+/**
+ * GuildState is the whole guild, sent whenever any of it changes.
+ *
+ * An empty guild_id means "you are not in a guild". The roster is sent whole
+ * for the same reason a party's is: a client that misses one incremental
+ * update holds a roster that is quietly wrong.
+ *
+ * @generated from message mmo.v1.GuildState
+ */
+export type GuildState = Message<"mmo.v1.GuildState"> & {
+  /**
+   * @generated from field: string guild_id = 1;
+   */
+  guildId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string motd = 3;
+   */
+  motd: string;
+
+  /**
+   * @generated from field: repeated mmo.v1.GuildMember members = 4;
+   */
+  members: GuildMember[];
+
+  /**
+   * Rank is the recipient's own rank, so a client can grey out the buttons
+   * they cannot use rather than offering them and being refused.
+   *
+   * @generated from field: uint32 rank = 5;
+   */
+  rank: number;
+};
+
+/**
+ * Describes the message mmo.v1.GuildState.
+ * Use `create(GuildStateSchema)` to create a new message.
+ */
+export const GuildStateSchema: GenMessage<GuildState> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 37);
+
+/**
+ * @generated from message mmo.v1.GuildMember
+ */
+export type GuildMember = Message<"mmo.v1.GuildMember"> & {
+  /**
+   * @generated from field: string character_id = 1;
+   */
+  characterId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: uint32 rank = 3;
+   */
+  rank: number;
+
+  /**
+   * @generated from field: uint32 level = 4;
+   */
+  level: number;
+
+  /**
+   * Online is filled from presence, so a roster shows who is around now. A
+   * guild roster is mostly people who are not.
+   *
+   * @generated from field: bool online = 5;
+   */
+  online: boolean;
+};
+
+/**
+ * Describes the message mmo.v1.GuildMember.
+ * Use `create(GuildMemberSchema)` to create a new message.
+ */
+export const GuildMemberSchema: GenMessage<GuildMember> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 38);
+
+/**
+ * @generated from message mmo.v1.GuildInvite
+ */
+export type GuildInvite = Message<"mmo.v1.GuildInvite"> & {
+  /**
+   * @generated from field: string guild_name = 1;
+   */
+  guildName: string;
+
+  /**
+   * @generated from field: string from_name = 2;
+   */
+  fromName: string;
+
+  /**
+   * @generated from field: int64 expires_in_ms = 3;
+   */
+  expiresInMs: bigint;
+};
+
+/**
+ * Describes the message mmo.v1.GuildInvite.
+ * Use `create(GuildInviteSchema)` to create a new message.
+ */
+export const GuildInviteSchema: GenMessage<GuildInvite> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 39);
+
+/**
+ * SocialAction manages the friends list.
+ *
+ * @generated from message mmo.v1.SocialAction
+ */
+export type SocialAction = Message<"mmo.v1.SocialAction"> & {
+  /**
+   * @generated from field: mmo.v1.SocialAction.Kind kind = 1;
+   */
+  kind: SocialAction_Kind;
+
+  /**
+   * Target is a character name.
+   *
+   * @generated from field: string target = 2;
+   */
+  target: string;
+};
+
+/**
+ * Describes the message mmo.v1.SocialAction.
+ * Use `create(SocialActionSchema)` to create a new message.
+ */
+export const SocialActionSchema: GenMessage<SocialAction> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 40);
+
+/**
+ * @generated from enum mmo.v1.SocialAction.Kind
+ */
+export enum SocialAction_Kind {
+  /**
+   * @generated from enum value: KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: KIND_ADD_FRIEND = 1;
+   */
+  ADD_FRIEND = 1,
+
+  /**
+   * @generated from enum value: KIND_REMOVE_FRIEND = 2;
+   */
+  REMOVE_FRIEND = 2,
+
+  /**
+   * @generated from enum value: KIND_LIST_FRIENDS = 3;
+   */
+  LIST_FRIENDS = 3,
+}
+
+/**
+ * Describes the enum mmo.v1.SocialAction.Kind.
+ */
+export const SocialAction_KindSchema: GenEnum<SocialAction_Kind> = /*@__PURE__*/
+  enumDesc(file_mmo_v1_game, 40, 0);
+
+/**
+ * FriendList is the whole list, sent when it changes or is asked for.
+ *
+ * Requested rather than pushed on every change in presence: a client that
+ * wants live status can ask again, and broadcasting every login to everybody
+ * who has ever added that character is a fan-out nobody needs.
+ *
+ * @generated from message mmo.v1.FriendList
+ */
+export type FriendList = Message<"mmo.v1.FriendList"> & {
+  /**
+   * @generated from field: repeated mmo.v1.FriendEntry friends = 1;
+   */
+  friends: FriendEntry[];
+};
+
+/**
+ * Describes the message mmo.v1.FriendList.
+ * Use `create(FriendListSchema)` to create a new message.
+ */
+export const FriendListSchema: GenMessage<FriendList> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 41);
+
+/**
+ * @generated from message mmo.v1.FriendEntry
+ */
+export type FriendEntry = Message<"mmo.v1.FriendEntry"> & {
+  /**
+   * @generated from field: string character_id = 1;
+   */
+  characterId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: uint32 level = 3;
+   */
+  level: number;
+
+  /**
+   * @generated from field: bool online = 4;
+   */
+  online: boolean;
+
+  /**
+   * MapId is where they are, so a friends list answers "can I go and find
+   * them" rather than only "are they awake". Empty when offline.
+   *
+   * @generated from field: string map_id = 5;
+   */
+  mapId: string;
+};
+
+/**
+ * Describes the message mmo.v1.FriendEntry.
+ * Use `create(FriendEntrySchema)` to create a new message.
+ */
+export const FriendEntrySchema: GenMessage<FriendEntry> = /*@__PURE__*/
+  messageDesc(file_mmo_v1_game, 42);
+
+/**
  * @generated from message mmo.v1.LootTaken
  */
 export type LootTaken = Message<"mmo.v1.LootTaken"> & {
@@ -1315,7 +2046,7 @@ export type LootTaken = Message<"mmo.v1.LootTaken"> & {
  * Use `create(LootTakenSchema)` to create a new message.
  */
 export const LootTakenSchema: GenMessage<LootTaken> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 29);
+  messageDesc(file_mmo_v1_game, 43);
 
 /**
  * Inventory is the player's items, sent in full whenever they change.
@@ -1362,7 +2093,7 @@ export type Inventory = Message<"mmo.v1.Inventory"> & {
  * Use `create(InventorySchema)` to create a new message.
  */
 export const InventorySchema: GenMessage<Inventory> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 30);
+  messageDesc(file_mmo_v1_game, 44);
 
 /**
  * @generated from message mmo.v1.ItemStack
@@ -1432,7 +2163,7 @@ export type ItemStack = Message<"mmo.v1.ItemStack"> & {
  * Use `create(ItemStackSchema)` to create a new message.
  */
 export const ItemStackSchema: GenMessage<ItemStack> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 31);
+  messageDesc(file_mmo_v1_game, 45);
 
 /**
  * ItemMod is one rolled modifier, carrying enough to render a tooltip line
@@ -1478,7 +2209,7 @@ export type ItemMod = Message<"mmo.v1.ItemMod"> & {
  * Use `create(ItemModSchema)` to create a new message.
  */
 export const ItemModSchema: GenMessage<ItemMod> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 32);
+  messageDesc(file_mmo_v1_game, 46);
 
 /**
  * @generated from message mmo.v1.StatValue
@@ -1500,7 +2231,7 @@ export type StatValue = Message<"mmo.v1.StatValue"> & {
  * Use `create(StatValueSchema)` to create a new message.
  */
 export const StatValueSchema: GenMessage<StatValue> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 33);
+  messageDesc(file_mmo_v1_game, 47);
 
 /**
  * @generated from message mmo.v1.PlayerJoined
@@ -1522,7 +2253,7 @@ export type PlayerJoined = Message<"mmo.v1.PlayerJoined"> & {
  * Use `create(PlayerJoinedSchema)` to create a new message.
  */
 export const PlayerJoinedSchema: GenMessage<PlayerJoined> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 34);
+  messageDesc(file_mmo_v1_game, 48);
 
 /**
  * @generated from message mmo.v1.PlayerLeft
@@ -1539,7 +2270,7 @@ export type PlayerLeft = Message<"mmo.v1.PlayerLeft"> & {
  * Use `create(PlayerLeftSchema)` to create a new message.
  */
 export const PlayerLeftSchema: GenMessage<PlayerLeft> = /*@__PURE__*/
-  messageDesc(file_mmo_v1_game, 35);
+  messageDesc(file_mmo_v1_game, 49);
 
 /**
  * @generated from enum mmo.v1.InteractKind
@@ -1714,4 +2445,58 @@ export enum EntityFlag {
  */
 export const EntityFlagSchema: GenEnum<EntityFlag> = /*@__PURE__*/
   enumDesc(file_mmo_v1_game, 4);
+
+/**
+ * Chat channels.
+ *
+ * They differ in who hears you, not in what you can say, so they are one
+ * message with a channel rather than five messages. Local is the only one that
+ * never leaves the room; everything else crosses nodes over the bus.
+ *
+ * @generated from enum mmo.v1.ChatChannel
+ */
+export enum ChatChannel {
+  /**
+   * @generated from enum value: CHAT_CHANNEL_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Everyone in the room, whether or not they share a party. This is the
+   * channel that makes a shared room feel shared.
+   *
+   * @generated from enum value: CHAT_CHANNEL_LOCAL = 1;
+   */
+  LOCAL = 1,
+
+  /**
+   * Everyone online, rate-limited hardest because it reaches the most people.
+   *
+   * @generated from enum value: CHAT_CHANNEL_GLOBAL = 2;
+   */
+  GLOBAL = 2,
+
+  /**
+   * One named character.
+   *
+   * @generated from enum value: CHAT_CHANNEL_WHISPER = 3;
+   */
+  WHISPER = 3,
+
+  /**
+   * @generated from enum value: CHAT_CHANNEL_PARTY = 4;
+   */
+  PARTY = 4,
+
+  /**
+   * @generated from enum value: CHAT_CHANNEL_GUILD = 5;
+   */
+  GUILD = 5,
+}
+
+/**
+ * Describes the enum mmo.v1.ChatChannel.
+ */
+export const ChatChannelSchema: GenEnum<ChatChannel> = /*@__PURE__*/
+  enumDesc(file_mmo_v1_game, 5);
 

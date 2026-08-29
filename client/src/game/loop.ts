@@ -1,5 +1,24 @@
 import { Connection, describeClose } from "@/net/connection";
-import type { Event, Inventory, Snapshot, Welcome, WorldMap } from "@/net/connection";
+import type {
+  ChatLine,
+  Event,
+  FriendList,
+  GuildInvite,
+  GuildState,
+  Inventory,
+  PartyInvite,
+  PartyState,
+  Snapshot,
+  SystemMessage,
+  Welcome,
+  WorldMap,
+} from "@/net/connection";
+import {
+  ChatChannel,
+  GuildAction_Kind,
+  PartyAction_Kind,
+  SocialAction_Kind,
+} from "@/net/connection";
 import { Interpolator } from "./interpolator";
 import { InventoryState } from "./inventory";
 import { Predictor } from "./predictor";
@@ -46,6 +65,14 @@ export interface LoopCallbacks {
 
   /** Called when the character arrives somewhere else. */
   onMapChanged?(mapId: string): void;
+
+  onChat?(line: ChatLine): void;
+  onSystem?(msg: SystemMessage): void;
+  onParty?(state: PartyState): void;
+  onPartyInvite?(invite: PartyInvite): void;
+  onGuild?(state: GuildState): void;
+  onGuildInvite?(invite: GuildInvite): void;
+  onFriends?(list: FriendList): void;
 }
 
 export class GameLoop {
@@ -291,6 +318,34 @@ export class GameLoop {
         break;
       }
 
+      case "chat":
+        this.#cb.onChat?.(e.body.value);
+        break;
+
+      case "system":
+        this.#cb.onSystem?.(e.body.value);
+        break;
+
+      case "party":
+        this.#cb.onParty?.(e.body.value);
+        break;
+
+      case "partyInvite":
+        this.#cb.onPartyInvite?.(e.body.value);
+        break;
+
+      case "guild":
+        this.#cb.onGuild?.(e.body.value);
+        break;
+
+      case "guildInvite":
+        this.#cb.onGuildInvite?.(e.body.value);
+        break;
+
+      case "friends":
+        this.#cb.onFriends?.(e.body.value);
+        break;
+
       case "lootTaken": {
         const l = e.body.value;
         if (l.failed) {
@@ -392,6 +447,41 @@ export class GameLoop {
     }
 
     this.#ticksSimulated++;
+  }
+
+  /** Says something. The server decides who hears it. */
+  chat(channel: ChatChannel, body: string, target = ""): void {
+    this.#conn.sendChat(channel, body, target);
+  }
+
+  /** Asks to change party membership. */
+  party(kind: PartyAction_Kind, target = ""): void {
+    this.#conn.sendParty(kind, target);
+  }
+
+  /** Asks to change a guild. */
+  guild(kind: GuildAction_Kind, target = ""): void {
+    this.#conn.sendGuild(kind, target);
+  }
+
+  /** Asks to change the friends list. */
+  friends(kind: SocialAction_Kind, target = ""): void {
+    this.#conn.sendSocial(kind, target);
+  }
+
+  /**
+   * Stops sampling the keyboard, while a text field has it.
+   *
+   * Without this the character runs off across the map while its player writes
+   * a sentence -- and worse, the movement keys never come back up, because the
+   * keyup lands in the input.
+   */
+  setInputEnabled(enabled: boolean): void {
+    if (enabled) {
+      this.#input.attach();
+    } else {
+      this.#input.detach();
+    }
   }
 
   /** Asks the server for the world map. */

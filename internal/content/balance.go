@@ -26,6 +26,32 @@ type Balance struct {
 	Drops  DropBalance
 	Party  PartyBalance
 	Rooms  RoomBalance
+	Chat   ChatBalance
+}
+
+// ChatBalance limits what a player can say and how often.
+//
+// Per channel, because they cost different amounts: a global line reaches
+// everyone online and a local one reaches a room, so one deserves a much
+// tighter budget than the other. A single shared limit either strangles local
+// chat or leaves global wide open.
+type ChatBalance struct {
+	// MaxLength is the longest message accepted, in characters (not bytes --
+	// a limit in bytes silently gives players of some languages less to say).
+	MaxLength int
+
+	// PerMinute is the sustained rate for each channel. A player starts with
+	// a full bucket, so a burst on arriving is not punished.
+	PerMinute map[string]int
+}
+
+// ChatLimit returns the per-minute allowance for a channel, falling back to
+// the local rate for anything unnamed.
+func (b ChatBalance) ChatLimit(channel string) int {
+	if n, ok := b.PerMinute[channel]; ok {
+		return n
+	}
+	return b.PerMinute["local"]
 }
 
 // RoomBalance tunes the two things that keep a layered room inside its tick
@@ -90,6 +116,11 @@ type DropBalance struct {
 type PartyBalance struct {
 	ExpShareRange fixed.F
 	MaxSize       int
+
+	// LootLockTicks is how long a round-robin drop is reserved for the member
+	// it was assigned to. After it, anyone in the party may take it, so a
+	// member who has stepped away does not leave loot on the floor forever.
+	LootLockTicks int
 }
 
 type balanceFile struct {
@@ -111,12 +142,18 @@ type balanceFile struct {
 	Party struct {
 		ExpShareRange float64 `toml:"exp_share_range"`
 		MaxSize       int     `toml:"max_size"`
+		LootLockMs    int     `toml:"loot_lock_ms"`
 	} `toml:"party"`
 
 	Rooms struct {
 		SpawnActivationRange float64 `toml:"spawn_activation_range"`
 		IdleMs               int     `toml:"idle_ms"`
 	} `toml:"rooms"`
+
+	Chat struct {
+		MaxLength int            `toml:"max_length"`
+		PerMinute map[string]int `toml:"per_minute"`
+	} `toml:"chat"`
 }
 
 func (c *Content) loadBalance(fsys fs.FS, rec *hashRecorder) error {
@@ -147,10 +184,15 @@ func (c *Content) loadBalance(fsys fs.FS, rec *hashRecorder) error {
 		Party: PartyBalance{
 			ExpShareRange: toFixedValue(f.Party.ExpShareRange),
 			MaxSize:       f.Party.MaxSize,
+			LootLockTicks: msToTicks(f.Party.LootLockMs, TickRate),
 		},
 		Rooms: RoomBalance{
 			SpawnActivationRange: toFixedValue(f.Rooms.SpawnActivationRange),
 			IdleTicks:            msToTicks(f.Rooms.IdleMs, TickRate),
+		},
+		Chat: ChatBalance{
+			MaxLength: f.Chat.MaxLength,
+			PerMinute: f.Chat.PerMinute,
 		},
 	}
 
@@ -175,10 +217,22 @@ func (b Balance) validate() error {
 		return fmt.Errorf("balance: pickup_range must be positive, or nothing could be looted")
 	case b.Party.MaxSize <= 0:
 		return fmt.Errorf("balance: party max_size must be positive")
+	case b.Party.LootLockTicks < 0:
+		return fmt.Errorf("balance: party loot_lock_ms cannot be negative")
 	case b.Rooms.SpawnActivationRange <= 0:
 		return fmt.Errorf("balance: spawn_activation_range must be positive, or no mob would ever spawn")
 	case b.Rooms.IdleTicks <= 0:
 		return fmt.Errorf("balance: rooms idle_ms must be positive, or a room would be torn down the tick it empties")
+	case b.Chat.MaxLength <= 0:
+		return fmt.Errorf("balance: chat max_length must be positive, or nobody could say anything")
+	}
+
+	// Every channel needs a rate, including local -- it is the fallback, so a
+	// missing entry there would silently give every unnamed channel zero.
+	for _, channel := range []string{"local", "global", "whisper", "party", "guild"} {
+		if b.Chat.PerMinute[channel] <= 0 {
+			return fmt.Errorf("balance: chat per_minute.%s must be positive", channel)
+		}
 	}
 	return nil
 }
