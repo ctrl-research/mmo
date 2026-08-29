@@ -5,6 +5,10 @@
 # a label on every PR to get a release would mean releases silently stop the
 # first time someone forgets.
 #
+# The tag is created LAST, after the images are published. Tagging first
+# leaves a tag pointing at a release that does not exist whenever the build
+# fails, and re-running is then blocked by the already-exists guard.
+#
 # This calls images.yml rather than letting it fire on the tag push, and that
 # is not a stylistic choice: a tag created with GITHUB_TOKEN deliberately does
 # NOT trigger other workflows. GitHub suppresses it to stop workflows
@@ -31,14 +35,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  tag:
-    name: Tag
+  version:
+    name: Version
     # Closed is not merged: a PR closed without merging fires this same event.
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    permissions:
-      contents: write
     outputs:
       version: ${{ steps.next.outputs.version }}
 
@@ -111,9 +113,36 @@ jobs:
             echo "| From | #$PR |"
           } >> "$GITHUB_STEP_SUMMARY"
 
+  images:
+    name: Images
+    needs: version
+    uses: ./.github/workflows/images.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+    permissions:
+      contents: read
+      packages: write
+
+  # Last, deliberately. Tagging first is what left 0.1.0 tagged with nothing
+  # published when the image build failed -- and the "already exists" guard
+  # above then blocked every re-run, so the release could not be retried at
+  # all. With the tag last, a failed build leaves no tag and re-running the
+  # workflow recomputes the same version and retries cleanly.
+  tag:
+    name: Tag
+    needs: [version, images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Create and push the tag
         env:
-          VERSION: ${{ steps.next.outputs.version }}
+          VERSION: ${{ needs.version.outputs.version }}
           TITLE: ${{ github.event.pull_request.title }}
           PR: ${{ github.event.pull_request.number }}
         run: |
@@ -125,13 +154,3 @@ jobs:
 
           $TITLE (#$PR)"
           git push origin "$VERSION"
-
-  images:
-    name: Images
-    needs: tag
-    uses: ./.github/workflows/images.yml
-    with:
-      version: ${{ needs.tag.outputs.version }}
-    permissions:
-      contents: read
-      packages: write

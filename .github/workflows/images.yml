@@ -87,7 +87,16 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # The Go and npm layers dominate the build; without a cache every
-          # push re-downloads the full dependency tree for both images.
-          cache-from: type=gha,scope=${{ matrix.component }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+          # Registry cache rather than type=gha. GHA cache blob keys are
+          # content-addressed and GLOBAL -- `scope` namespaces the manifest,
+          # not the blobs -- and both Dockerfiles open with the same
+          # golang:1.26-alpine + `go mod download` stage. Run concurrently,
+          # the two jobs reserve identical blob keys at the same moment and
+          # one loses with "failed to reserve cache". Registry cache writes to
+          # a distinct ref per component, so there is nothing to contend on.
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/cache:${{ matrix.component }}
+          # ignore-error because a cache is an optimisation and a release is
+          # not. Without it a cache-export failure fails the build AFTER the
+          # image has been pushed and the tag already exists, which is exactly
+          # how 0.1.0 ended up tagged with nothing published.
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}/cache:${{ matrix.component }},mode=max,ignore-error=true
