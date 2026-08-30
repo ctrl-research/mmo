@@ -34,6 +34,7 @@ func FS() fstest.MapFS {
 		"maps/annex.tmj":       file(AnnexTMJ),
 		"maps/crypt.tmj":       file(CryptTMJ),
 		"dungeons/test.toml":   file(Dungeons),
+		"elites/test.toml":     file(Elites),
 	}
 }
 
@@ -59,6 +60,15 @@ mana_regen_in_combat = 0.004
 life_regen = 0.01
 combat_ms = 6000
 death_exp_penalty = 0.10
+[elites]
+champion_chance = 0.07
+rare_chance = 0.012
+champion_mods = [1, 2]
+rare_mods = [3, 4]
+champion_life = 2.5
+champion_exp = 3.0
+rare_life = 6.0
+rare_exp = 8.0
 [drops]
 ground_ms = 30000
 pickup_range = 48.0
@@ -486,6 +496,34 @@ const MapTMJ = `{
     ]
   }]
 }`
+
+// Elites gives the tier roll something to draw from: one purely statistical
+// modifier and one that does something when the mob dies, which is the two
+// shapes the runtime has to handle.
+const Elites = `
+[elite.test_brutal]
+name = "Brutal"
+weight = 10
+attack = 1.00
+armour = 1.00
+life = 1.00
+move_speed = 1.00
+
+[elite.test_volatile]
+name = "Volatile"
+weight = 10
+
+[[elite.test_volatile.on_death]]
+type = "area_persist"
+radius = 80.0
+duration_ms = 1000
+tick_ms = 500
+
+[[elite.test_volatile.on_death.effects]]
+type = "damage"
+element = "fire"
+base = { min = 5, max = 5 }
+`
 
 // CryptTMJ is a dungeon map: privately placed, with two mob spawn points that
 // the test dungeon below turns into two stages.

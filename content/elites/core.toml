@@ -1,0 +1,81 @@
+# Elite modifiers.
+#
+# A champion or rare mob is an ordinary mob that rolled one or more of these.
+# Each is a small change; the interesting fights come from the combinations.
+# Two slimes that rolled Brutal and Volatile are a different fight from two
+# that did not, at no content-authoring cost -- which is the whole reason this
+# is a pool of modifiers rather than a list of hand-made mobs.
+#
+# Weight is a share of the roll. The dramatic ones are rarer, so meeting
+# something genuinely nasty stays an event.
+
+# --- statistical ------------------------------------------------------------
+
+[elite.brutal]
+name = "Brutal"
+weight = 12
+attack = 0.60
+
+[elite.armoured]
+name = "Armoured"
+weight = 12
+armour = 1.20
+
+[elite.hulking]
+name = "Hulking"
+weight = 10
+life = 1.00
+attack = 0.20
+
+# Speed is the modifier players read fastest, because it changes how the fight
+# is fought rather than how long it takes.
+[elite.swift]
+name = "Swift"
+weight = 10
+move_speed = 0.65
+
+[elite.frenzied]
+name = "Frenzied"
+weight = 8
+attack = 0.35
+move_speed = 0.35
+
+# --- ones that do something -------------------------------------------------
+
+# Leaves a patch of fire where it fell. The reason to kill it somewhere other
+# than where you are standing.
+[elite.volatile]
+name = "Volatile"
+weight = 7
+
+[[elite.volatile.on_death]]
+type = "area_persist"
+radius = 90.0
+duration_ms = 3000
+tick_ms = 500
+
+[[elite.volatile.on_death.effects]]
+type = "damage"
+element = "fire"
+base = { min = 8, max = 14 }
+
+# A parting shot of cold, which slows whoever finished it off. Nastiest in a
+# pack, where the next one is already on you.
+[elite.hoarfrost]
+name = "Hoarfrost"
+weight = 6
+
+[[elite.hoarfrost.on_death]]
+type = "area_persist"
+radius = 120.0
+duration_ms = 4000
+tick_ms = 1000
+
+[[elite.hoarfrost.on_death.effects]]
+type = "apply_buff"
+buff = "chilled"
+
+[[elite.hoarfrost.on_death.effects]]
+type = "damage"
+element = "cold"
+base = { min = 4, max = 8 }

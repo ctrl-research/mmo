@@ -1674,7 +1674,14 @@ type EntityState struct {
 	DropGold uint32 `protobuf:"varint,25,opt,name=drop_gold,json=dropGold,proto3" json:"drop_gold,omitempty"`
 	// Content id of a mob, so the client can pick its sprite without the server
 	// sending a name string every time one spawns.
-	MobId         string `protobuf:"bytes,26,opt,name=mob_id,json=mobId,proto3" json:"mob_id,omitempty"`
+	MobId string `protobuf:"bytes,26,opt,name=mob_id,json=mobId,proto3" json:"mob_id,omitempty"`
+	// "normal", "champion", or "rare".
+	//
+	// Sent rather than inferred from the name, because the name is a sentence a
+	// designer wrote and the tier is a thing the client renders. A client
+	// deciding what to draw by looking for the word "Brutal" would be one
+	// renamed modifier away from wrong.
+	Tier          string `protobuf:"bytes,28,opt,name=tier,proto3" json:"tier,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1887,6 +1894,13 @@ func (x *EntityState) GetDropGold() uint32 {
 func (x *EntityState) GetMobId() string {
 	if x != nil {
 		return x.MobId
+	}
+	return ""
+}
+
+func (x *EntityState) GetTier() string {
+	if x != nil {
+		return x.Tier
 	}
 	return ""
 }
@@ -6147,7 +6161,7 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\x04Pong\x12$\n" +
 	"\x0eclient_time_ms\x18\x01 \x01(\x04R\fclientTimeMs\x12\x1f\n" +
 	"\vserver_tick\x18\x02 \x01(\x04R\n" +
-	"serverTick\"\xcf\x04\n" +
+	"serverTick\"\xe3\x04\n" +
 	"\vEntityState\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12&\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x12.mmo.v1.EntityKindR\x04kind\x12\x14\n" +
@@ -6176,7 +6190,8 @@ const file_mmo_v1_game_proto_rawDesc = "" +
 	"\tdrop_item\x18\x17 \x01(\tR\bdropItem\x12\x19\n" +
 	"\bdrop_qty\x18\x18 \x01(\rR\adropQty\x12\x1b\n" +
 	"\tdrop_gold\x18\x19 \x01(\rR\bdropGold\x12\x15\n" +
-	"\x06mob_id\x18\x1a \x01(\tR\x05mobId\"\xc9\x01\n" +
+	"\x06mob_id\x18\x1a \x01(\tR\x05mobId\x12\x12\n" +
+	"\x04tier\x18\x1c \x01(\tR\x04tier\"\xc9\x01\n" +
 	"\vEntityDelta\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x1d\n" +
 	"\n" +

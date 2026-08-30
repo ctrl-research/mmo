@@ -255,23 +255,39 @@ Nothing else in the vocabulary can express that, because every other effect reso
 
 ### Enhanced mobs
 
-Enhanced mobs roll modifiers at spawn time from a weighted pool, PoE rare-mob style. Each modifier is stat mods plus optional effects plus a visual aura, so the combination is emergent rather than enumerated:
+Enhanced mobs roll modifiers at spawn from a weighted pool in `content/elites/*.toml`. Each is a small change; the interesting fights come from the combinations, which is the whole reason this is a pool rather than a list of hand-made mobs.
 
 ```toml
-[elite_mod.vampiric]
-name = "Vampiric"
-weight = 10
-stat_mods = [{ stat = "life_leech", flat = 0.15 }]
-aura = "vfx/red_wisp"
+[elite.brutal]
+name = "Brutal"
+weight = 12
+attack = 0.60          # increases, as fractions
 
-[elite_mod.volatile]
+[elite.volatile]
 name = "Volatile"
-weight = 6
-on_death = [{ type = "area_persist", radius = 90, duration_ms = 800,
-              effects = [{ type = "damage", element = "fire", base = 60 }] }]
+weight = 7
+
+[[elite.volatile.on_death]]   # the ordinary effect vocabulary
+type = "area_persist"
+radius = 90.0
+duration_ms = 3000
+tick_ms = 500
+
+[[elite.volatile.on_death.effects]]
+type = "damage"
+element = "fire"
+base = { min = 8, max = 14 }
 ```
 
-A champion rolls 1–2 modifiers, a rare 3–4, with exp and drop quality scaled accordingly. Two vampiric-volatile slimes are a different fight from two ordinary ones, at no content-authoring cost.
+`attack`, `armour`, `life` and `move_speed` are increases on the mob's own numbers; `on_death` is the same effect vocabulary skills use, so a modifier that leaves a burning patch behind is content rather than code.
+
+The tiers are tuned in `[elites]` in `balance.toml`: how often each appears, how many modifiers it rolls, and how much its health and experience scale. Rare is rolled first and its chance is a subset of champion's — rolling them independently would make "rare" mean "champion that also passed a second check", which is a different number from the one written down.
+
+**A boss never rolls one.** A boss is its own design, and handing it Brutal on top of three phases would add randomness to the one fight that is supposed to be learnable.
+
+**A mob's stats are copied at spawn**, not read from its definition. The definition is shared, immutable content read concurrently by every room on the node — a champion that raised its own attack by editing it would raise it for every mob of that kind in the game.
+
+The client tints champions blue and rares gold, with a matching outline. The colour is the warning at a distance; the modifier list is in the name, shown when the mob is damaged like any other. Always-on names were tried and two adjacent champions are a solid bar of unreadable text.
 
 ## Drop tables
 

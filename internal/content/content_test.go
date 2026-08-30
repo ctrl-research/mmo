@@ -426,6 +426,15 @@ mana_regen_in_combat = 0.004
 life_regen = 0.01
 combat_ms = 6000
 death_exp_penalty = 0.10
+[elites]
+champion_chance = 0.07
+rare_chance = 0.012
+champion_mods = [1, 2]
+rare_mods = [3, 4]
+champion_life = 2.5
+champion_exp = 3.0
+rare_life = 6.0
+rare_exp = 8.0
 [drops]
 ground_ms = 120000
 pickup_range = 48.0

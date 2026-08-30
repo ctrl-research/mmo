@@ -63,6 +63,23 @@ type MobState struct {
 	// Boss is the encounter state, set on the first tick of a mob whose
 	// profile is "boss" and nil on everything else. See boss.go.
 	Boss *BossState
+
+	// Attack, Armour, MoveSpeed and Exp are this mob's own numbers rather than
+	// its definition's.
+	//
+	// They start as copies and elite modifiers change them. The definition is
+	// shared, immutable content read concurrently by every room on the node --
+	// a champion that raised its own attack by editing it would raise it for
+	// every slime in the game.
+	Attack    int
+	Armour    int
+	MoveSpeed fixed.F
+	Exp       int64
+
+	// Tier is normal, champion, or rare; Elites are what it rolled. See
+	// elite.go.
+	Tier   Tier
+	Elites []*content.Elite
 }
 
 // phaseAI steps every mob's behaviour.
@@ -286,7 +303,7 @@ func (r *Room) findTarget(e *Entity) EntityID {
 // it walks off ledges, lands on platforms, and obeys gravity without a second
 // movement implementation.
 func (r *Room) applyMobPhysics(e *Entity, moveX int32) {
-	tuning := r.tuningFor(e.Mob.Def)
+	tuning := r.tuningFor(e.Mob)
 	if moveX != 0 {
 		e.Body.FacingLeft = moveX < 0
 	}

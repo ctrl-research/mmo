@@ -179,6 +179,7 @@ func (e *Entity) state(includeSelf bool) *mmov1.EntityState {
 	}
 	if e.Mob != nil {
 		s.MobId = e.Mob.Def.ID
+		s.Tier = e.Mob.Tier.String()
 	}
 	if e.Drop != nil {
 		s.DropItem = e.Drop.ItemID

@@ -23,6 +23,7 @@ const TickRate = 20
 // for a literal that a designer might want to change.
 type Balance struct {
 	Combat CombatBalance
+	Elites EliteBalance
 	Drops  DropBalance
 	Party  PartyBalance
 	Rooms  RoomBalance
@@ -148,6 +149,26 @@ type CombatBalance struct {
 	DeathExpPenalty int
 }
 
+// EliteBalance decides how often an ordinary mob turns out to be something
+// worse, and how much worse.
+type EliteBalance struct {
+	// ChampionChance and RareChance are the odds a spawn is upgraded, in parts
+	// per million. Rare is rolled first, so the two do not compete.
+	ChampionChance int
+	RareChance     int
+
+	// ChampionMods and RareMods are how many modifiers each tier rolls.
+	ChampionMods [2]int
+	RareMods     [2]int
+
+	// LifeMult and ExpMult scale the tier as a whole, before any modifier's
+	// own contribution. A champion that was only a name would be a lie.
+	ChampionLife fixed.F
+	ChampionExp  fixed.F
+	RareLife     fixed.F
+	RareExp      fixed.F
+}
+
 type DropBalance struct {
 	// GroundTicks is how long a drop lies on the ground before vanishing.
 	GroundTicks int
@@ -186,6 +207,17 @@ type balanceFile struct {
 		CombatMs       int     `toml:"combat_ms"`
 		DeathExpPct    float64 `toml:"death_exp_penalty"`
 	} `toml:"combat"`
+
+	Elites struct {
+		ChampionChance float64 `toml:"champion_chance"`
+		RareChance     float64 `toml:"rare_chance"`
+		ChampionMods   []int   `toml:"champion_mods"`
+		RareMods       []int   `toml:"rare_mods"`
+		ChampionLife   float64 `toml:"champion_life"`
+		ChampionExp    float64 `toml:"champion_exp"`
+		RareLife       float64 `toml:"rare_life"`
+		RareExp        float64 `toml:"rare_exp"`
+	} `toml:"elites"`
 
 	Drops struct {
 		GroundMs     int     `toml:"ground_ms"`
@@ -237,6 +269,16 @@ func (c *Content) loadBalance(fsys fs.FS, rec *hashRecorder) error {
 			CombatTicks:       msToTicks(f.Combat.CombatMs, TickRate),
 			DeathExpPenalty:   ratioToPPM(f.Combat.DeathExpPct),
 		},
+		Elites: EliteBalance{
+			ChampionChance: ratioToPPM(f.Elites.ChampionChance),
+			RareChance:     ratioToPPM(f.Elites.RareChance),
+			ChampionMods:   modRange(f.Elites.ChampionMods),
+			RareMods:       modRange(f.Elites.RareMods),
+			ChampionLife:   toFixedValue(f.Elites.ChampionLife),
+			ChampionExp:    toFixedValue(f.Elites.ChampionExp),
+			RareLife:       toFixedValue(f.Elites.RareLife),
+			RareExp:        toFixedValue(f.Elites.RareExp),
+		},
 		Drops: DropBalance{
 			GroundTicks:  msToTicks(f.Drops.GroundMs, TickRate),
 			PickupRange:  toFixedValue(f.Drops.PickupRange),
@@ -258,6 +300,22 @@ func (c *Content) loadBalance(fsys fs.FS, rec *hashRecorder) error {
 	}
 
 	return c.Balance.validate()
+}
+
+// modRange reads an authored [low, high] pair. A single value means exactly
+// that many, which is what a designer writing `champion_mods = [1]` means.
+func modRange(v []int) [2]int {
+	switch len(v) {
+	case 0:
+		return [2]int{0, 0}
+	case 1:
+		return [2]int{v[0], v[0]}
+	default:
+		if v[1] < v[0] {
+			return [2]int{v[1], v[0]}
+		}
+		return [2]int{v[0], v[1]}
+	}
 }
 
 func (b Balance) validate() error {
@@ -288,6 +346,16 @@ func (b Balance) validate() error {
 		return fmt.Errorf("balance: combat_ms must be positive, or nobody would ever count as being in combat")
 	case b.Combat.DeathExpPenalty < 0 || b.Combat.DeathExpPenalty >= 1_000_000:
 		return fmt.Errorf("balance: death_exp_penalty must be in [0, 1); at 1.0 a death would erase the whole level")
+	case b.Elites.ChampionChance < 0 || b.Elites.ChampionChance >= 1_000_000:
+		return fmt.Errorf("balance: elites champion_chance must be in [0, 1)")
+	case b.Elites.RareChance < 0 || b.Elites.RareChance >= 1_000_000:
+		return fmt.Errorf("balance: elites rare_chance must be in [0, 1)")
+	case b.Elites.RareChance > b.Elites.ChampionChance:
+		return fmt.Errorf("balance: elites rare_chance is above champion_chance, so the rarer tier would be the common one")
+	case b.Elites.ChampionMods[0] < 0 || b.Elites.RareMods[0] < 0:
+		return fmt.Errorf("balance: elites cannot roll a negative number of modifiers")
+	case b.Elites.ChampionChance > 0 && b.Elites.ChampionMods[1] <= 0:
+		return fmt.Errorf("balance: champions can appear but roll no modifiers, so a champion would be a name and nothing else")
 	case b.Drops.GroundTicks <= 0:
 		return fmt.Errorf("balance: ground_ms must be positive, or drops would vanish instantly")
 	case b.Drops.PickupRange <= 0:

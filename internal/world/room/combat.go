@@ -378,7 +378,7 @@ func (r *Room) rollDamage(caster, target *Entity, eff *content.Effect, source *r
 
 func attackStat(e *Entity) int {
 	if e.Mob != nil {
-		return e.Mob.Def.Attack
+		return e.Mob.Attack
 	}
 	if e.Player != nil {
 		return e.Player.Attack()
@@ -388,7 +388,7 @@ func attackStat(e *Entity) int {
 
 func armourStat(e *Entity) int {
 	if e.Mob != nil {
-		return e.Mob.Def.Armour
+		return e.Mob.Armour
 	}
 	if e.Player != nil {
 		return e.Player.Armour()
@@ -485,6 +485,10 @@ func (r *Room) kill(killer, victim *Entity) {
 			r.awardKill(killer, victim)
 		}
 		r.rollDrops(killer, victim)
+
+		// Whatever its modifiers do when it dies, after the rewards: a
+		// Volatile mob that killed its killer must still have paid out.
+		r.eliteDeath(victim)
 
 	case victim.Player != nil:
 		r.downPlayer(victim)

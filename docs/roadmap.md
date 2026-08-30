@@ -388,7 +388,7 @@ work on a path a player waits on is extra work on a path a player waits on.
 - [x] Team-play mechanics that require coordination — a hit divided among everyone it lands on, so what one player cannot survive six can
 - [x] Boss health UI, telegraph rendering
 - [x] Instanced dungeon flow: entry requirements, lockouts, progression, completion
-- [ ] Enhanced mobs: champion and rare tiers rolling elite modifiers
+- [x] Enhanced mobs: champion and rare tiers rolling elite modifiers
 - [ ] Zone events: interactive triggers, timed spawns, mini-bosses
 - [x] Death and recovery: a downed state, a revive clock, a penalty, and spawn protection
 - [x] Wipe flow (a whole party down at once inside an instance)
@@ -425,6 +425,9 @@ the encounter stays authorable.
 | Both endings end it | `TestClearingTheLastStageEndsTheRun`, `TestAPartyAllDownAtOnceWipes`, and a wipe writes no lockout |
 | A dropped connection is not a death | `TestADisconnectedPlayerDoesNotWipeTheRun` and its inverse |
 | **A party shares one instance** | `TestAPartySharesOneDungeonInstance`, `TestAPartyWalkingIntoADungeonLandsTogether`, `TestLoggingBackInRejoinsThePartysInstance` |
+| A champion is a real change, not a name | `TestAChampionIsStrongerThanWhatItCameFrom` — health, damage and reward all move |
+| A champion never edits shared content | `TestAChampionDoesNotEditItsDefinition` — the definition is read concurrently by every room on the node |
+| A boss never rolls one | `TestABossNeverRollsElite` — randomness on top of three phases is not a fight you can learn |
 
 Progression is **spawning, not doors**. A stage's mobs do not exist until the
 stage before it is cleared, so "kill the guards, then the king" needs no keys

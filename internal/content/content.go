@@ -39,6 +39,9 @@ type Content struct {
 	// runs on any map, and every privately placed map has one.
 	Dungeons map[string]*Dungeon
 
+	// Elites are the modifiers a champion or rare mob rolls from.
+	Elites map[string]*Elite
+
 	// Waypoints indexes every fast-travel destination by its global ID.
 	//
 	// Fast travel names a waypoint without naming its map -- that is the point
@@ -70,6 +73,7 @@ func Load(fsys fs.FS) (*Content, error) {
 		Classes:  make(map[string]*Class),
 		Maps:     make(map[string]*Map),
 		Dungeons: make(map[string]*Dungeon),
+		Elites:   make(map[string]*Elite),
 	}
 
 	hasher := sha256.New()
@@ -98,6 +102,9 @@ func Load(fsys fs.FS) (*Content, error) {
 		// Dungeons last: every one of them is checked against the map it runs
 		// on and the spawn points that map declares.
 		{"dungeons", c.loadDungeons},
+		// After skills, because a modifier's on_death is the same effect
+		// vocabulary and is validated against the same buffs and skills.
+		{"elites", c.loadElites},
 	}
 
 	rec := &hashRecorder{h: hasher, fsys: fsys}

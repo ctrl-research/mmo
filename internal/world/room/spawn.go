@@ -208,10 +208,6 @@ func (r *Room) spawnMob(def *content.Mob, sp *spawnState, source *rng.Source) *E
 	}
 
 	body := sim.NewBody(at, def.Width, def.Height)
-	// Settle so a mob spawned on a platform is grounded on its first tick
-	// rather than spending one tick believing it is falling.
-	tuning := r.tuningFor(def)
-	sim.Settle(&body, r.cfg.World, &tuning)
 
 	e := r.spawnEntity(&Entity{
 		Kind:  KindMob,
@@ -225,8 +221,24 @@ func (r *Room) spawnMob(def *content.Mob, sp *spawnState, source *rng.Source) *E
 			Home:  at,
 			State: aiIdle,
 			Spawn: sp,
+			// Copies rather than references: elite modifiers change these, and
+			// the definition is shared content that every room on the node
+			// reads concurrently.
+			Attack:    def.Attack,
+			Armour:    def.Armour,
+			MoveSpeed: def.AI.MoveSpeed,
+			Exp:       def.Exp,
 		},
 	})
+
+	// Before the settle, so a Hulking mob is grounded at the size it will
+	// actually be rather than at its definition's.
+	r.rollElite(e, source)
+
+	// Settle so a mob spawned on a platform is grounded on its first tick
+	// rather than spending one tick believing it is falling.
+	tuning := r.tuningFor(e.Mob)
+	sim.Settle(&e.Body, r.cfg.World, &tuning)
 	return e
 }
 
@@ -236,12 +248,12 @@ func (r *Room) spawnMob(def *content.Mob, sp *spawnState, source *rng.Source) *E
 // they behave correctly on the map geometry without a second movement
 // implementation. Only their speed differs, so the tuning is the player's with
 // RunSpeed replaced.
-func (r *Room) tuningFor(def *content.Mob) sim.Tuning {
+func (r *Room) tuningFor(m *MobState) sim.Tuning {
 	t := r.cfg.Tuning
-	t.RunSpeed = def.AI.MoveSpeed
+	t.RunSpeed = m.MoveSpeed
 	// Mobs accelerate to their speed quickly; a slow ramp reads as sliding.
-	t.GroundAccel = def.AI.MoveSpeed
-	t.AirAccel = def.AI.MoveSpeed
+	t.GroundAccel = m.MoveSpeed
+	t.AirAccel = m.MoveSpeed
 	return t
 }
 

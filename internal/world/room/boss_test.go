@@ -29,8 +29,14 @@ func (h *harness) summonBoss(x, y int) *Entity {
 	}
 
 	at := sim.Vec{X: fixed.FromInt(x), Y: fixed.FromInt(y)}
+	mob := &MobState{
+		Def: def, Home: at, State: aiIdle,
+		Attack: def.Attack, Armour: def.Armour,
+		MoveSpeed: def.AI.MoveSpeed, Exp: def.Exp,
+	}
+
 	body := sim.NewBody(at, def.Width, def.Height)
-	tuning := h.room.tuningFor(def)
+	tuning := h.room.tuningFor(mob)
 	sim.Settle(&body, h.room.cfg.World, &tuning)
 
 	return h.room.spawnEntity(&Entity{
@@ -40,7 +46,7 @@ func (h *harness) summonBoss(x, y int) *Entity {
 		HP:    uint32(def.HP),
 		MaxHP: uint32(def.HP),
 		Name:  def.Name,
-		Mob:   &MobState{Def: def, Home: at, State: aiIdle},
+		Mob:   mob,
 	})
 }
 
