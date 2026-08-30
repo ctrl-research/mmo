@@ -21,6 +21,7 @@ import (
 
 	"github.com/ctrl-research/mmo/internal/content"
 	"github.com/ctrl-research/mmo/internal/directory"
+	"github.com/ctrl-research/mmo/internal/fixed"
 	"github.com/ctrl-research/mmo/internal/rng"
 	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
 	"github.com/ctrl-research/mmo/internal/world/items"
@@ -660,12 +661,73 @@ const (
 )
 
 // spawnBody returns a player-sized body resting at the room's spawn point.
+// spawnBody places a character at the map's spawn point, nudged aside if
+// somebody is already standing there.
+//
+// A spawn point is one exact position, and two characters placed on it are
+// pixel-identical: one sprite, one name label on top of another, and a player
+// who has just arrived reasonably concluding that nobody else is here. The
+// scatter is small -- a body width or two, enough to read as two people
+// standing together rather than as one person.
 func (r *Room) spawnBody() sim.Body {
-	b := sim.NewBody(r.cfg.Spawn, sim.PlayerSize.W, sim.PlayerSize.H)
+	at := r.cfg.Spawn
+	if step, ok := r.freeSpawnOffset(); ok {
+		at.X += step
+	}
+
+	b := sim.NewBody(at, sim.PlayerSize.W, sim.PlayerSize.H)
 	// Settle so a player who presses jump on their very first tick actually
 	// jumps, instead of being treated as airborne for one tick.
 	sim.Settle(&b, r.cfg.World, &r.cfg.Tuning)
 	return b
+}
+
+// spawnScatterStep is how far apart arrivals are placed. One body width, so
+// they touch rather than overlap.
+var spawnScatterStep = sim.PlayerSize.W
+
+// freeSpawnOffset finds a horizontal offset from the spawn point that nobody
+// is occupying, alternating either side so a crowd spreads rather than
+// trailing off in one direction.
+//
+// Best effort: with enough people on one point it gives up and stacks, which
+// is the honest outcome. Refusing to spawn somebody because the doorway is
+// busy would be very much worse than two overlapping sprites.
+func (r *Room) freeSpawnOffset() (fixed.F, bool) {
+	for i := 0; i < r.cfg.Capacity; i++ {
+		// 0, +1, -1, +2, -2, ... in body widths.
+		step := fixed.F(0)
+		if i > 0 {
+			step = spawnScatterStep * fixed.F((i+1)/2)
+			if i%2 == 0 {
+				step = -step
+			}
+		}
+
+		at := r.cfg.Spawn
+		at.X += step
+		body := sim.NewBody(at, sim.PlayerSize.W, sim.PlayerSize.H)
+		box := body.Bounds()
+
+		if !r.someoneStandingIn(box) {
+			return step, true
+		}
+	}
+	return 0, false
+}
+
+// someoneStandingIn reports whether a player's body overlaps a box.
+func (r *Room) someoneStandingIn(box sim.Rect) bool {
+	for _, id := range r.playerOrder {
+		p := r.players[id]
+		if p == nil {
+			continue
+		}
+		if box.Overlaps(p.entity.Body.Bounds()) {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *Room) String() string {

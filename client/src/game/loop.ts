@@ -152,6 +152,8 @@ export class GameLoop {
   #expToNext = 0n;
   #hp = 0;
   #hpMax = 0;
+  #mp = 0;
+  #mpMax = 0;
 
   // Bumped whenever the server confirms a kill this player made, so the HUD
   // can show progress without the client inferring it from state.
@@ -219,6 +221,8 @@ export class GameLoop {
       expToNext: this.#expToNext,
       hp: this.#hp,
       hpMax: this.#hpMax,
+      mp: this.#mp,
+      mpMax: this.#mpMax,
       kills: this.#kills,
     };
   }
@@ -297,6 +301,8 @@ export class GameLoop {
       this.#expToNext = snap.self.expToNext;
       this.#hp = snap.self.hp;
       this.#hpMax = snap.self.hpMax;
+      this.#mp = snap.self.mp;
+      this.#mpMax = snap.self.mpMax;
     }
     this.#interp.apply(snap, this.#selfId, performance.now());
   }

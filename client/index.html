@@ -260,6 +260,69 @@
 
       /* Skill bar and buff bar: permanently on screen, because both answer
          questions that only matter in the moment. */
+      /* Settings. Small and centred: there is one thing in it today, and a
+         full-screen panel for one slider would be a lie about how much is
+         configurable. */
+      #settings {
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        z-index: 16; width: min(340px, 92vw);
+        background: #12151c; border: 1px solid #2f3543; border-radius: 8px;
+        padding: 14px 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      }
+      #settings[hidden] { display: none; }
+
+      .settings-header {
+        display: flex; justify-content: space-between; align-items: baseline;
+        font-weight: 600; font-size: 13px; margin-bottom: 12px;
+      }
+      .settings-hint { color: #6b7280; font-size: 11px; font-weight: 400; }
+
+      .settings-row {
+        display: flex; align-items: center; gap: 10px; font-size: 12px;
+      }
+      .settings-label { color: #9aa3b2; min-width: 92px; }
+      .settings-slider { flex: 1; accent-color: #4a83ff; }
+      .settings-value { color: #e6e8ee; min-width: 44px; text-align: right; }
+      .settings-note { color: #6b7280; font-size: 11px; margin-top: 8px; }
+
+      /* Vitals: health, mana, experience. Directly above the skill bar,
+         because the two are read together -- what you can cast and whether
+         you can afford it. */
+      #vitals {
+        position: fixed; bottom: 68px; left: 50%; transform: translateX(-50%);
+        z-index: 12; display: flex; align-items: center; gap: 8px;
+        pointer-events: none;
+        background: rgba(11, 13, 18, 0.86); border: 1px solid #2f3543;
+        border-radius: 6px; padding: 6px 10px;
+      }
+      #vitals[hidden] { display: none; }
+
+      .vitals-level {
+        font-size: 12px; font-weight: 700; color: #e6e8ee;
+        letter-spacing: 0.04em; min-width: 44px;
+      }
+      .vitals-bars { display: flex; flex-direction: column; gap: 3px; }
+
+      .vital {
+        position: relative; width: 240px; height: 13px;
+        background: #0b0d12; border-radius: 3px; overflow: hidden;
+      }
+      /* Experience is progress rather than a resource, so it is thinner: it
+         should be readable without competing with the two bars that decide
+         whether you live. Not so thin that its own label does not fit. */
+      .vital.exp { height: 11px; }
+
+      .vital-fill { height: 100%; width: 0; transition: width 120ms linear; }
+      .hp .vital-fill { background: linear-gradient(90deg, #b33c3c, #e05a5a); }
+      .mp .vital-fill { background: linear-gradient(90deg, #2f5fa8, #4a83ff); }
+      .exp .vital-fill { background: linear-gradient(90deg, #7a6a1f, #e0b44a); }
+
+      .vital-text {
+        position: absolute; inset: 0; display: grid; place-items: center;
+        font-size: 9px; color: #e6e8ee; text-shadow: 0 1px 2px #000;
+      }
+      .vital.exp .vital-text { font-size: 8px; }
+
       #skillbar {
         position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
         z-index: 12; display: flex; gap: 4px;
@@ -334,8 +397,11 @@
 
       /* The death screen. Centred and unmissable: a character who stops
          responding with no explanation reads as the game having frozen. */
+      /* Below the panels rather than above them. It covers the whole screen,
+         so anything opened on top of it has to win or it cannot be read --
+         and being dead is not a reason to be unable to change a setting. */
       #death {
-        position: fixed; inset: 0; z-index: 18;
+        position: fixed; inset: 0; z-index: 14;
         display: grid; place-items: center; align-content: center; gap: 6px;
         background: rgba(11, 13, 18, 0.72); pointer-events: none;
         text-align: center;
@@ -527,6 +593,8 @@
     <div id="party" hidden></div>
     <div id="social" hidden></div>
     <div id="prompt" hidden></div>
+    <div id="settings" hidden></div>
+    <div id="vitals" hidden></div>
     <div id="skillbar" hidden></div>
     <div id="buffbar" hidden></div>
     <div id="passives" hidden></div>

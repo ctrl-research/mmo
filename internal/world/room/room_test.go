@@ -511,3 +511,65 @@ func selfX(t *testing.T, s *recordSink) int32 {
 }
 
 func (c inspectCmd) run(r *Room) { c.fn(r) }
+
+// Two characters arriving at one spawn point must not land on top of each
+// other.
+//
+// A spawn point is one exact position, so without scattering they are
+// pixel-identical: one sprite, one name label over another, and a player who
+// has just arrived reasonably concluding that nobody else is here. Reported
+// from play as "the second window cannot see the first" -- both windows were
+// drawing both characters, in exactly the same place.
+func TestArrivalsDoNotStackOnTheSpawnPoint(t *testing.T) {
+	h := newHarness(t)
+
+	alice, _ := h.join("alice")
+	bob, _ := h.join("bob")
+	h.tick(2)
+
+	a := h.entity(alice).Body.Bounds()
+	b := h.entity(bob).Body.Bounds()
+
+	if a.Overlaps(b) {
+		t.Errorf("alice at %v and bob at %v overlap; two characters on one "+
+			"spawn point render as one", a, b)
+	}
+}
+
+// A crowd spreads either side rather than trailing off in one direction, and
+// everybody still gets in.
+func TestACrowdedSpawnPointStillAdmitsEveryone(t *testing.T) {
+	h := newHarness(t)
+
+	var ids []EntityID
+	for _, name := range []string{"a", "b", "c", "d", "e"} {
+		id, _ := h.join(name)
+		ids = append(ids, id)
+	}
+	h.tick(2)
+
+	for i, first := range ids {
+		for _, second := range ids[i+1:] {
+			one := h.entity(first).Body.Bounds()
+			two := h.entity(second).Body.Bounds()
+			if one.Overlaps(two) {
+				t.Errorf("%s and %s overlap at %v and %v",
+					h.entity(first).Name, h.entity(second).Name, one, two)
+			}
+		}
+	}
+
+	// Spread both ways, not strung out to one side.
+	left, right := false, false
+	for _, id := range ids {
+		switch x := h.entity(id).Body.FeetCenter().X; {
+		case x < h.room.cfg.Spawn.X:
+			left = true
+		case x > h.room.cfg.Spawn.X:
+			right = true
+		}
+	}
+	if !left || !right {
+		t.Error("the crowd trailed off in one direction rather than spreading")
+	}
+}

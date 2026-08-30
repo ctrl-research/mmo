@@ -73,6 +73,12 @@ export class Scene {
   #mapSize = { w: 0, h: 0 };
   #showGhost = false;
 
+  // How much the world is magnified. The art is 32-pixel tiles drawn at
+  // 1:1, which on a modern display is a very long way away -- the character
+  // is 48 pixels tall on a 1440-pixel screen. Two is close enough to read
+  // faces and far enough to see what is about to hit you.
+  #zoom = DEFAULT_ZOOM;
+
   private constructor(app: Application, sprites: Sprites) {
     this.#app = app;
     this.#sprites = sprites;
@@ -116,6 +122,7 @@ export class Scene {
       scene.#effects.container,
     );
     scene.#selfLayer.addChild(scene.#ghostGfx, scene.#selfSprite, scene.#selfBars);
+    scene.#world.scale.set(scene.#zoom);
     scene.#ghostGfx.visible = false;
     return scene;
   }
@@ -335,13 +342,36 @@ export class Scene {
     this.#effects.clear();
   }
 
+  /** The current magnification. */
+  get zoom(): number {
+    return this.#zoom;
+  }
+
+  /**
+   * Sets the magnification, clamped to what the map can actually fill.
+   *
+   * Returns what it settled on, which is not always what was asked for.
+   */
+  setZoom(zoom: number): number {
+    this.#zoom = clamp(zoom, MIN_ZOOM, MAX_ZOOM);
+    this.#world.scale.set(this.#zoom);
+    return this.#zoom;
+  }
+
   /**
    * Centres on a point, clamped so the view never runs past the edge of the
    * map into empty space.
+   *
+   * Everything here is in *world* units until the last step. The camera has to
+   * reason about how much of the map fits on screen, and at a magnification of
+   * two that is half the pixels -- so the viewport is divided by the zoom
+   * before anything is compared to the map, and the result multiplied back at
+   * the end. Comparing screen pixels to world units directly is what makes a
+   * zoomed camera clamp to the wrong edge and jam against nothing.
    */
   #centreCamera(cx: number, cy: number): void {
-    const vw = this.#app.screen.width;
-    const vh = this.#app.screen.height;
+    const vw = this.#app.screen.width / this.#zoom;
+    const vh = this.#app.screen.height / this.#zoom;
 
     let x = vw / 2 - cx;
     let y = vh / 2 - cy;
@@ -351,8 +381,12 @@ export class Scene {
     x = this.#mapSize.w < vw ? (vw - this.#mapSize.w) / 2 : clamp(x, vw - this.#mapSize.w, 0);
     y = this.#mapSize.h < vh ? (vh - this.#mapSize.h) / 2 : clamp(y, vh - this.#mapSize.h, 0);
 
-    // Whole pixels: a fractional container offset makes 1px strokes shimmer.
-    this.#world.position.set(Math.round(x), Math.round(y));
+    // Whole *screen* pixels: a fractional container offset makes 1px strokes
+    // shimmer, and the offset is applied after scaling.
+    this.#world.position.set(
+      Math.round(x * this.#zoom),
+      Math.round(y * this.#zoom),
+    );
   }
 
   get ticker() {
@@ -615,6 +649,17 @@ function placeCharacter(
   sprite.position.set(Math.round(x + w / 2), Math.round(y + h));
   sprite.scale.x = isFacingLeft(body) ? -1 : 1;
 }
+
+/**
+ * Magnification limits.
+ *
+ * Below 1 the art is being shrunk, which on 32-pixel tiles turns detail into
+ * noise. Above 3 a character fills enough of the screen that a telegraph can
+ * land from outside it, which is the one thing the camera must never do.
+ */
+export const MIN_ZOOM = 1;
+export const MAX_ZOOM = 3;
+export const DEFAULT_ZOOM = 2;
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.min(Math.max(v, lo), hi);
