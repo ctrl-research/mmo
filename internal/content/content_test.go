@@ -421,6 +421,10 @@ hit_flash_ms = 150
 corpse_ms = 600
 downed_ms = 8000
 revive_grace_ms = 2500
+mana_regen = 0.02
+mana_regen_in_combat = 0.004
+life_regen = 0.01
+combat_ms = 6000
 death_exp_penalty = 0.10
 [drops]
 ground_ms = 120000

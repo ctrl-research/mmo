@@ -136,9 +136,10 @@ func (s *session) run(ctx context.Context) {
 
 		// A dropped socket holds the character for a grace period rather than
 		// removing it, so a transient blip mid-fight is not a wipe. Anything
-		// deliberate -- a kick, a lost lease, a shutdown -- ends it outright,
-		// because there is nothing to come back to.
-		if s.gracefulDisconnect() {
+		// deliberate -- a kick, a lost lease, a shutdown, or the client
+		// closing the socket itself -- ends it outright, because there is
+		// nothing to come back to.
+		if s.gracefulDisconnect() && !clientClosed(err) {
 			s.play.Disconnect(closeCtx)
 		} else {
 			s.play.Close(closeCtx)
@@ -512,6 +513,23 @@ func isExpectedClose(err error) bool {
 }
 
 var _ room.Sink = (*session)(nil)
+
+// clientClosed reports whether the client shut the connection down itself.
+//
+// A clean close is a statement of intent: the player switched character, or
+// left. Holding their old character for the reconnect window would leave it
+// standing in the world -- a second body on the spawn point that nobody is
+// playing and that other players can see. A network drop looks different
+// (1006, or a read error with no close frame at all) and is what the grace
+// period is actually for.
+func clientClosed(err error) bool {
+	switch websocket.CloseStatus(err) {
+	case websocket.StatusNormalClosure, websocket.StatusGoingAway:
+		return true
+	default:
+		return false
+	}
+}
 
 // gracefulDisconnect reports whether a closed connection should leave the
 // character held for reconnection.

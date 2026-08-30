@@ -43,6 +43,27 @@ downed_ms = 8000
 # a free opening.
 revive_grace_ms = 2500
 
+# Regeneration, as a share of maximum restored per second.
+#
+# Two mana rates rather than one. With none at all a caster who spends their
+# mana can never attack again; with a single generous rate there is never a
+# reason to stop casting. The lower in-combat rate makes a long fight something
+# to pace, and the higher out-of-combat one means the pacing is recovered by
+# stepping away rather than by logging out.
+#
+# At these values a full mana bar refills in about fifty seconds standing
+# still, and a fight sustains roughly a fifth of that.
+mana_regen = 0.02
+mana_regen_in_combat = 0.004
+
+# Health comes back out of combat only. Regenerating mid-fight would undo the
+# fight -- and slowly, because the alternative to walking away and waiting is
+# supposed to be a potion or a healer, not patience.
+life_regen = 0.01
+
+# How long after taking damage a character counts as being in combat.
+combat_ms = 6000
+
 # The share of progress toward the current level lost on death.
 #
 # Of progress *within* the level, not of total experience. A death therefore

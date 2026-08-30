@@ -11,15 +11,12 @@ export class InputSource {
   #held = new Set<string>();
   #attached = false;
 
-  // Edge-triggered actions, consumed by the simulation tick rather than
-  // sampled, so one press is exactly one action.
-  #attackPressed = false;
-  #lootPressed = false;
-
-  // The skill slot pressed since the last tick, or -1. One per tick rather
-  // than a queue: a player who mashes two keys in 50ms meant one of them, and
-  // the server would refuse the second for cooldown anyway.
-  #slotPressed = -1;
+  // The skill slot most recently pressed and still held, or -1.
+  //
+  // Most recently pressed rather than lowest: with two keys down the one the
+  // player reached for last is the one they meant, and holding a new key
+  // should take over from the old rather than be ignored until it is released.
+  #slotHeld = -1;
 
   attach(): void {
     if (this.#attached) return;
@@ -50,29 +47,36 @@ export class InputSource {
     e.preventDefault();
     this.#held.add(e.code);
 
-    if (ATTACK_KEYS.has(e.code)) this.#attackPressed = true;
-    if (LOOT_KEYS.has(e.code)) this.#lootPressed = true;
-
     const slot = SKILL_KEYS.indexOf(e.code);
-    if (slot >= 0) this.#slotPressed = slot;
+    if (slot >= 0) this.#slotHeld = slot;
   };
 
   #onUp = (e: KeyboardEvent) => {
     this.#held.delete(e.code);
+
+    // Releasing the key that was driving the bar hands it back to whichever
+    // other skill key is still down, if any. Without this, letting go of the
+    // newer of two held keys would stop casting entirely while a key was
+    // still pressed.
+    if (SKILL_KEYS.indexOf(e.code) === this.#slotHeld) {
+      this.#slotHeld = -1;
+      for (let i = SKILL_KEYS.length - 1; i >= 0; i--) {
+        if (this.#held.has(SKILL_KEYS[i]!)) {
+          this.#slotHeld = i;
+          break;
+        }
+      }
+    }
   };
 
   #onBlur = () => {
     this.#held.clear();
-    this.#attackPressed = false;
-    this.#lootPressed = false;
-    this.#slotPressed = -1;
+    this.#slotHeld = -1;
   };
 
-  /** Consumes the skill slot pressed since the last tick, or -1. */
-  takeSlot(): number {
-    const slot = this.#slotPressed;
-    this.#slotPressed = -1;
-    return slot;
+  /** The skill slot currently held, or -1. */
+  slotHeld(): number {
+    return this.#slotHeld;
   }
 
   /** Samples the current intent. */
@@ -94,24 +98,21 @@ export class InputSource {
   }
 
   /**
-   * Attack and loot are edge-triggered rather than held.
+   * Attack and loot are held, not edge-triggered.
    *
-   * Movement is a state the simulation samples every tick; an attack is an
-   * event. Sampling a held attack key would fire once per tick and be
-   * throttled by the cooldown anyway, but it would also mean a player who
-   * rests a finger on the key attacks forever -- which reads as the game
-   * playing itself.
+   * They were events at first, on the reasoning that a player resting a finger
+   * on the key would attack forever and the game would be playing itself. In
+   * practice the opposite is true: a fight is dozens of swings, and requiring
+   * a press for each one is not a decision, it is typing. Holding a key is
+   * still the player saying "keep going", and the repeat is paced by the
+   * cooldown rather than by how fast they can tap.
    */
-  takeAttack(): boolean {
-    const v = this.#attackPressed;
-    this.#attackPressed = false;
-    return v;
+  attackHeld(): boolean {
+    return this.#has(...ATTACK_KEYS);
   }
 
-  takeLoot(): boolean {
-    const v = this.#lootPressed;
-    this.#lootPressed = false;
-    return v;
+  lootHeld(): boolean {
+    return this.#has(...LOOT_KEYS);
   }
 
   #has(...codes: string[]): boolean {
@@ -119,7 +120,7 @@ export class InputSource {
   }
 }
 
-const ATTACK_KEYS = new Set(["KeyX", "ControlLeft", "ControlRight"]);
+const ATTACK_KEYS = ["KeyX", "ControlLeft", "ControlRight"];
 
 // The skill bar. Number keys, in order, which is what every game of this shape
 // uses and therefore what a player's hands already expect.
@@ -127,7 +128,7 @@ const SKILL_KEYS = [
   "Digit1", "Digit2", "Digit3", "Digit4",
   "Digit5", "Digit6", "Digit7", "Digit8",
 ];
-const LOOT_KEYS = new Set(["KeyZ", "KeyC"]);
+const LOOT_KEYS = ["KeyZ", "KeyC"];
 
 const GAME_KEYS = new Set([
   "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",

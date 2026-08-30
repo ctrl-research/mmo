@@ -449,6 +449,10 @@ func (r *Room) damage(source, target *Entity, amount int, critical bool, element
 		Element:  element,
 	}}}, target.Layer)
 
+	// Taking damage is what puts a character in combat, not dealing it: a
+	// player hitting something that cannot fight back is not in a fight.
+	r.markInCombat(target)
+
 	if target.HP == 0 {
 		r.kill(source, target)
 	}

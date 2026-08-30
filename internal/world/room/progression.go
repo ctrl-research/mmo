@@ -44,6 +44,18 @@ type PlayerState struct {
 	// cannot be harmed. Ends early the moment they attack.
 	SafeUntil uint64
 
+	// InCombatUntil is the tick until which this character counts as fighting,
+	// which slows mana regeneration and stops health regeneration entirely.
+	// Extended by taking damage. See regen.go.
+	InCombatUntil uint64
+
+	// ManaCarry and LifeCarry hold the fraction of a point regeneration has
+	// accumulated but not yet handed over, in millionths. Without them a rate
+	// that works out to less than one point a second is either zero or one,
+	// and at low levels every rate works out to less than one point a second.
+	ManaCarry int64
+	LifeCarry int64
+
 	// Stats is BaseStats with the character's buffs layered on, recomputed
 	// inside the room whenever a buff is applied or expires.
 	//
