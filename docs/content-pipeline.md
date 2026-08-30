@@ -414,6 +414,33 @@ Four knobs in `balance.toml`, all under `[combat]`:
 | `revive_grace_ms` | How long they cannot be harmed after coming back |
 | `death_exp_penalty` | The share of progress toward the *current level* that is lost |
 
+## Regeneration
+
+Also `[combat]`:
+
+| Key | What it decides |
+|---|---|
+| `mana_regen` | Fraction of maximum mana restored per second, out of combat |
+| `mana_regen_in_combat` | The same, while fighting — must not exceed the rate above |
+| `life_regen` | Fraction of maximum health per second, out of combat only |
+| `combat_ms` | How long after *taking* damage a character counts as fighting |
+
+Two mana rates rather than one. With none at all a caster who spends their mana
+can never attack again; with a single generous rate there is never a reason to
+stop casting. The lower in-combat rate makes a long fight something to pace,
+and the higher out-of-combat one means the pacing is recovered by stepping away
+rather than by logging out. Health returns out of combat only — regenerating
+mid-fight would undo the fight.
+
+Taking damage is what marks combat, not dealing it: a player hitting something
+that cannot fight back is not in a fight, and making them wait as though they
+were would punish clearing a zone.
+
+The fractions are carried between seconds rather than rounded. A fifth of a
+point per second either rounds to zero — and a level one caster with fifty mana
+regenerates nothing, forever — or is rounded up to one, which makes the two
+rates identical at that pool size and the distinction between them a lie.
+
 The penalty is deliberately a fraction of progress within the level rather than
 of total experience. A death therefore never costs a level, and never costs a
 level 90 character forty times what it costs a level 10 one — which is what a

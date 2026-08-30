@@ -59,6 +59,18 @@ const MAX_CATCHUP_TICKS = 5;
  */
 const LOOT_SEARCH_RADIUS = 120 * 256;
 
+/**
+ * How often a held key repeats, in ticks.
+ *
+ * Three ticks is 150 ms, comfortably inside the shortest cooldown in the game,
+ * so holding a key never misses one coming up -- and a twentieth of the
+ * traffic that sending on every tick would cost.
+ */
+const ACTION_REPEAT_TICKS = 3;
+
+/** How often looting repeats. Slower: nothing is lost by being late to a bag. */
+const LOOT_REPEAT_TICKS = 5;
+
 export interface LoopCallbacks {
   onStatus(text: string): void;
   onDisconnect(reason: string): void;
@@ -152,6 +164,13 @@ export class GameLoop {
   #expToNext = 0n;
   #hp = 0;
   #hpMax = 0;
+
+  // When the last repeated action and loot went out, so a held key paces
+  // itself rather than firing every tick.
+  #lastActionTick = -999;
+  #lastLootTick = -999;
+
+  #autoLoot = false;
   #mp = 0;
   #mpMax = 0;
 
@@ -544,26 +563,47 @@ export class GameLoop {
     // a request rather than an instruction.
     const facing = isFacingLeft(this.#predictor.body);
 
-    const slot = this.#input.takeSlot();
-    if (slot >= 0) {
-      const skill = this.#bar?.slots[slot]?.skillId;
-      if (skill) this.#conn.sendCast(seq, skill, facing);
+    // Held keys repeat, paced here rather than every tick. The server refuses
+    // a cast that is still on cooldown, so sending twenty a second would be
+    // twenty times the traffic to no effect -- and slow enough to miss a
+    // cooldown coming up is worse than slightly wasteful, so this sits well
+    // inside the shortest one.
+    if (this.#ticksSimulated - this.#lastActionTick >= ACTION_REPEAT_TICKS) {
+      // The attack key is slot one, so the game is playable without learning
+      // the bar first. A held skill key wins over it: it is the more specific
+      // thing the player asked for.
+      let slot = this.#input.slotHeld();
+      if (slot < 0 && this.#input.attackHeld()) slot = 0;
+
+      if (slot >= 0) {
+        const skill = this.#bar?.slots[slot]?.skillId;
+        if (skill) {
+          this.#conn.sendCast(seq, skill, facing);
+          this.#lastActionTick = this.#ticksSimulated;
+        }
+      }
     }
 
-    // The attack key is slot one, so the game is playable without learning
-    // the bar first.
-    if (this.#input.takeAttack()) {
-      const skill = this.#bar?.slots[0]?.skillId;
-      if (skill) this.#conn.sendCast(seq, skill, facing);
-    }
-
-    if (this.#input.takeLoot()) {
-      const b = this.#predictor.body;
-      const target = this.#interp.nearestDrop(b.x, b.y, LOOT_SEARCH_RADIUS);
-      if (target !== 0) this.#conn.sendLoot(target);
+    // Looting: held, or automatic. Automatic is a setting rather than the
+    // default, because walking over something and having it vanish into a bag
+    // is not always what a player wants.
+    if (this.#ticksSimulated - this.#lastLootTick >= LOOT_REPEAT_TICKS) {
+      if (this.#input.lootHeld() || this.#autoLoot) {
+        const b = this.#predictor.body;
+        const target = this.#interp.nearestDrop(b.x, b.y, LOOT_SEARCH_RADIUS);
+        if (target !== 0) {
+          this.#conn.sendLoot(target);
+          this.#lastLootTick = this.#ticksSimulated;
+        }
+      }
     }
 
     this.#ticksSimulated++;
+  }
+
+  /** Turns automatic looting on or off. */
+  setAutoLoot(on: boolean): void {
+    this.#autoLoot = on;
   }
 
   /** Says something. The server decides who hears it. */

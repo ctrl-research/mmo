@@ -591,7 +591,10 @@ func TestPingIsAnswered(t *testing.T) {
 // transient blip mid-fight is not a wipe. It is removed once the window
 // expires.
 func TestDisconnectHoldsThenRemovesTheCharacter(t *testing.T) {
-	ts := newTestServerWithGrace(t, 300*time.Millisecond)
+	// Long enough that "still there" and "already gone" are distinguishable.
+	// At 300ms the character was removed almost immediately either way, so the
+	// test could not tell a held character from one that had simply left.
+	ts := newTestServerWithGrace(t, 2*time.Second)
 
 	a := ts.dial(t)
 	a.hello(ts.ticket(t, "Watcher"), ProtocolVersion)
@@ -611,10 +614,25 @@ func TestDisconnectHoldsThenRemovesTheCharacter(t *testing.T) {
 		t.Fatal("the second player was never announced")
 	}
 
-	b.conn.Close(websocket.StatusNormalClosure, "dropping")
+	// A dropped connection, not a deliberate one: no close handshake, which
+	// is what a network failure actually looks like. Closing cleanly here
+	// would be the client saying it meant to leave, and that no longer holds
+	// the character at all -- which made this test pass for the wrong reason.
+	b.conn.CloseNow()
 
 	// Held: still present, and the node knows it is resumable.
 	waitUntil(t, 2*time.Second, func() bool { return ts.node.Holding() > 0 })
+
+	// And still in the world, which is the point of holding it. Checked well
+	// inside the window, so this is the character being kept rather than a
+	// removal that has not arrived yet.
+	for _, s := range collectSnapshots(a, 500*time.Millisecond) {
+		for _, id := range s.GetRemoved() {
+			if id == bEntity {
+				t.Fatal("a dropped character was removed inside its reconnect window")
+			}
+		}
+	}
 
 	// Expired: removed from the world.
 	removed := false
@@ -720,5 +738,55 @@ func TestIdentityRoutesAreMountedOnTheGameOrigin(t *testing.T) {
 		if resp.StatusCode == http.StatusNotFound {
 			t.Errorf("%s is not mounted on the game origin", path)
 		}
+	}
+}
+
+// A character the player deliberately left does not stay in the world.
+//
+// Switching character closes the socket cleanly, and until this was
+// distinguished from a dropped connection the character you had just left
+// stood on the spawn point for the whole reconnect window -- a second body
+// nobody was playing, visible to everyone else in the room.
+func TestLeavingDeliberatelyRemovesTheCharacterAtOnce(t *testing.T) {
+	// A long window, so a character that is merely being *held* cannot be
+	// mistaken for one that was removed.
+	ts := newTestServerWithGrace(t, 30*time.Second)
+
+	a := ts.dial(t)
+	a.hello(ts.ticket(t, "Watcher"), ProtocolVersion)
+	a.awaitWelcome()
+
+	p := ts.signUp(t, "Leaver")
+	b := ts.connect(t, p)
+
+	var bEntity uint32
+	for _, s := range collectSnapshots(a, 1500*time.Millisecond) {
+		for _, e := range s.GetEntered() {
+			if e.GetName() == "Leaver" {
+				bEntity = e.GetId()
+			}
+		}
+	}
+	if bEntity == 0 {
+		t.Fatal("the second player was never announced")
+	}
+
+	// Exactly what the client does when the player picks another character.
+	b.conn.Close(websocket.StatusNormalClosure, "switching character")
+
+	removed := false
+	deadline := time.Now().Add(4 * time.Second)
+	for !removed && time.Now().Before(deadline) {
+		for _, s := range collectSnapshots(a, 250*time.Millisecond) {
+			for _, id := range s.GetRemoved() {
+				if id == bEntity {
+					removed = true
+				}
+			}
+		}
+	}
+	if !removed {
+		t.Error("a character the player deliberately left was still in the " +
+			"world; switching character leaves a body behind")
 	}
 }

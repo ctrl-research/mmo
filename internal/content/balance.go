@@ -109,6 +109,26 @@ type CombatBalance struct {
 	// a punishment for its own sake.
 	DownedTicks int
 
+	// ManaRegen and ManaRegenInCombat are the fractions of maximum mana
+	// restored per second, in stat millionths.
+	//
+	// Two rates rather than one. Without any regeneration a caster who spends
+	// their mana can never attack again, which is where this started. With a
+	// single generous rate there is no reason to ever stop casting. The lower
+	// in-combat rate makes a long fight something to pace, and the higher
+	// out-of-combat one means the pacing is recovered by stepping away rather
+	// than by logging out.
+	ManaRegen         int
+	ManaRegenInCombat int
+
+	// LifeRegen is the fraction of maximum health restored per second, out of
+	// combat only. Regenerating health mid-fight would undo the fight.
+	LifeRegen int
+
+	// CombatTicks is how long after taking damage a character counts as being
+	// in combat.
+	CombatTicks int
+
 	// ReviveGraceTicks is how long a character who has just come back cannot
 	// be harmed.
 	//
@@ -160,6 +180,10 @@ type balanceFile struct {
 		CorpseMs       int     `toml:"corpse_ms"`
 		DownedMs       int     `toml:"downed_ms"`
 		ReviveGraceMs  int     `toml:"revive_grace_ms"`
+		ManaRegen      float64 `toml:"mana_regen"`
+		ManaRegenFight float64 `toml:"mana_regen_in_combat"`
+		LifeRegen      float64 `toml:"life_regen"`
+		CombatMs       int     `toml:"combat_ms"`
 		DeathExpPct    float64 `toml:"death_exp_penalty"`
 	} `toml:"combat"`
 
@@ -199,15 +223,19 @@ func (c *Content) loadBalance(fsys fs.FS, rec *hashRecorder) error {
 
 	c.Balance = Balance{
 		Combat: CombatBalance{
-			CritMultiplier:   toFixedValue(f.Combat.CritMultiplier),
-			ResistanceCap:    toFixedValue(f.Combat.ResistanceCap),
-			ArmourDivisor:    f.Combat.ArmourDivisor,
-			MinDamage:        f.Combat.MinDamage,
-			HitFlashTicks:    msToTicks(f.Combat.HitFlashMs, TickRate),
-			CorpseTicks:      msToTicks(f.Combat.CorpseMs, TickRate),
-			DownedTicks:      msToTicks(f.Combat.DownedMs, TickRate),
-			ReviveGraceTicks: msToTicks(f.Combat.ReviveGraceMs, TickRate),
-			DeathExpPenalty:  ratioToPPM(f.Combat.DeathExpPct),
+			CritMultiplier:    toFixedValue(f.Combat.CritMultiplier),
+			ResistanceCap:     toFixedValue(f.Combat.ResistanceCap),
+			ArmourDivisor:     f.Combat.ArmourDivisor,
+			MinDamage:         f.Combat.MinDamage,
+			HitFlashTicks:     msToTicks(f.Combat.HitFlashMs, TickRate),
+			CorpseTicks:       msToTicks(f.Combat.CorpseMs, TickRate),
+			DownedTicks:       msToTicks(f.Combat.DownedMs, TickRate),
+			ReviveGraceTicks:  msToTicks(f.Combat.ReviveGraceMs, TickRate),
+			ManaRegen:         ratioToPPM(f.Combat.ManaRegen),
+			ManaRegenInCombat: ratioToPPM(f.Combat.ManaRegenFight),
+			LifeRegen:         ratioToPPM(f.Combat.LifeRegen),
+			CombatTicks:       msToTicks(f.Combat.CombatMs, TickRate),
+			DeathExpPenalty:   ratioToPPM(f.Combat.DeathExpPct),
 		},
 		Drops: DropBalance{
 			GroundTicks:  msToTicks(f.Drops.GroundMs, TickRate),
@@ -248,6 +276,16 @@ func (b Balance) validate() error {
 		return fmt.Errorf("balance: downed_ms must be positive, or death would be a flicker rather than a setback")
 	case b.Combat.ReviveGraceTicks < 0:
 		return fmt.Errorf("balance: revive_grace_ms cannot be negative")
+	case b.Combat.ManaRegen <= 0:
+		return fmt.Errorf("balance: mana_regen must be positive, or a caster who runs dry can never cast again")
+	case b.Combat.ManaRegenInCombat < 0:
+		return fmt.Errorf("balance: mana_regen_in_combat cannot be negative")
+	case b.Combat.ManaRegenInCombat > b.Combat.ManaRegen:
+		return fmt.Errorf("balance: mana_regen_in_combat is above the out-of-combat rate, so leaving a fight would slow recovery")
+	case b.Combat.LifeRegen < 0:
+		return fmt.Errorf("balance: life_regen cannot be negative")
+	case b.Combat.CombatTicks <= 0:
+		return fmt.Errorf("balance: combat_ms must be positive, or nobody would ever count as being in combat")
 	case b.Combat.DeathExpPenalty < 0 || b.Combat.DeathExpPenalty >= 1_000_000:
 		return fmt.Errorf("balance: death_exp_penalty must be in [0, 1); at 1.0 a death would erase the whole level")
 	case b.Drops.GroundTicks <= 0:

@@ -486,6 +486,9 @@ func (r *Room) doTick() {
 	// back -- and before the snapshot, so they are never seen standing on the
 	// spawn point at zero health.
 	r.phaseRevive()
+	// After revive, so somebody who came back this tick starts recovering from
+	// the full bar they came back with rather than from what they died on.
+	r.phaseRegen()
 	// After revive, so a character who came back this tick is not counted
 	// among the fallen -- a party wiping on the tick its first member stood
 	// up would be the fight taken away from them.

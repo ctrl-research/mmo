@@ -148,6 +148,18 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
     sim ??= await Sim.load();
     scene ??= await Scene.create(stage);
 
+    // Whatever was playing before stops here, before anything new starts.
+    //
+    // Without this a character switch leaves the previous loop running: its
+    // socket stays open, so the character it was playing stays in the world as
+    // a second body standing on the spawn point, and two loops draw into one
+    // scene -- both calling drawSelf, both moving the camera, and each
+    // retiring sprites the other had just created. The visible symptoms are a
+    // ghost of the character you just left and other players flickering in and
+    // out.
+    loop?.stop();
+    loop = null;
+
     scene.clearEntities();
 
     const game = new GameLoop(sim, scene, {
@@ -243,6 +255,7 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
     // scene does not exist until a character is in the world.
     settings = new SettingsPanel(settingsEl, {
       onZoom: (zoom) => scene!.setZoom(zoom),
+      onAutoLoot: (on) => game.setAutoLoot(on),
     });
     settings.restore();
 
