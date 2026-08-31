@@ -298,6 +298,10 @@ type Room struct {
 	// See dungeon.go.
 	dungeon *dungeonRun
 
+	// events are the zone events that happen on this map, with their clocks.
+	// See event.go.
+	events []*eventState
+
 	// sharedSpawns are the spawn points every player in the room shares.
 	sharedSpawns []*spawnState
 
@@ -377,6 +381,7 @@ func New(cfg Config) *Room {
 		if d := cfg.Content.DungeonForMap(cfg.Map.ID); d != nil {
 			r.startDungeon(d)
 		}
+		r.startEvents()
 	}
 	return r
 }
@@ -493,6 +498,7 @@ func (r *Room) doTick() {
 	// among the fallen -- a party wiping on the tick its first member stood
 	// up would be the fight taken away from them.
 	r.phaseDungeon()
+	r.phaseEvents()
 	r.phaseDrops()
 	r.phaseSpawns()
 	r.phaseSnapshot()

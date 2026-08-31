@@ -15,6 +15,7 @@ import {
   KIND_DROP,
   KIND_MOB,
   KIND_PROJECTILE,
+  KIND_SHRINE,
   KIND_TELEGRAPH,
   type RenderedEntity,
 } from "@/game/interpolator";
@@ -433,9 +434,11 @@ class EntitySprite {
           fill:
             e.kind === KIND_TELEGRAPH
               ? theme.telegraph
-              : e.kind === KIND_MOB
-                ? tierTint(e.tier) || theme.mobEdge
-                : theme.nameText,
+              : e.kind === KIND_SHRINE
+                ? theme.shrine
+                : e.kind === KIND_MOB
+                  ? tierTint(e.tier) || theme.mobEdge
+                  : theme.nameText,
           // The one label that has to be readable over whatever it is drawn
           // on top of, because it is drawn on top of the floor of a fight.
           stroke: { color: 0x0b0d12, width: e.kind === KIND_TELEGRAPH ? 3 : 0 },
@@ -510,6 +513,24 @@ class EntitySprite {
 
       case KIND_TELEGRAPH: {
         this.#drawTelegraph(e, px, py, pw, ph, now);
+        break;
+      }
+
+      case KIND_SHRINE: {
+        // A ring that breathes. It has no art of its own and needs none: what
+        // it has to say is "this does something if you touch it", and a
+        // pulsing outline says that better than a static object would.
+        const pulse = 0.55 + 0.25 * Math.sin(now / 380 + e.id);
+        const r = Math.min(pw, ph) / 2;
+        const cx = px + pw / 2;
+        const cy = py + ph / 2;
+
+        this.#gfx
+          .circle(cx, cy, r)
+          .fill({ color: theme.shrine, alpha: 0.12 })
+          .stroke({ width: 2, color: theme.shrine, alpha: pulse })
+          .circle(cx, cy, r * 0.28)
+          .fill({ color: theme.shrineCore, alpha: pulse });
         break;
       }
 

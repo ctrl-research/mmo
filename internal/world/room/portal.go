@@ -37,6 +37,15 @@ func (r *Room) phasePortals() {
 
 		body := p.entity.Body.Bounds()
 
+		// Shrines are checked here for the same reason waypoints are: it is
+		// the one place per tick that already knows where everybody is
+		// standing.
+		for i := range r.mapDef.Shrines {
+			if r.mapDef.Shrines[i].Bounds.Overlaps(body) {
+				r.touchShrine(p.entity, r.mapDef.Shrines[i].Name)
+			}
+		}
+
 		if w, ok := r.mapDef.WaypointAt(body); ok && !p.knownWaypoints[w.ID] {
 			// Remembered locally as well as persisted, so a player standing on
 			// a waypoint does not generate one write per tick.

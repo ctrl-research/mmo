@@ -201,6 +201,11 @@ enum EntityKind {
   // so its disappearance is the attack landing rather than a separate
   // message the client has to correlate.
   ENTITY_KIND_TELEGRAPH = 7;
+
+  // A shrine: the thing a player walks into to start a zone event. An entity
+  // so the client can draw it -- a trigger nobody can see is a trigger they
+  // step into by accident.
+  ENTITY_KIND_SHRINE = 8;
 }
 
 // Bit positions in EntityDelta.field_mask.
@@ -364,6 +369,7 @@ message Event {
     BossPhase boss_phase = 26;
     Downed downed = 27;
     DungeonState dungeon = 28;
+    ZoneEvent zone = 29;
   }
   // 11 was MapChanged, replaced by a second Welcome: it carried strictly less
   // than the Welcome the destination room already sends, and two messages
@@ -409,6 +415,26 @@ message DungeonState {
   // How long before the party is sent home, once the run is over. Zero while
   // it is still running.
   uint32 ends_in_ms = 7;
+}
+
+// ZoneEvent announces a zone event starting or ending.
+//
+// The announcement is most of what makes an event an event rather than "more
+// slimes than usual": a player who does not know one has started cannot decide
+// to take part in it.
+message ZoneEvent {
+  string event_id = 1;
+  string name = 2;
+
+  // Whether it has started or ended.
+  bool active = 3;
+
+  // The line to show. Only sent on starting; ending is its own sentence and
+  // the client writes that one.
+  string message = 4;
+
+  // How long it runs, on starting. Zero when ending.
+  uint32 ends_in_ms = 5;
 }
 
 // Downed is sent to a character who has just died, carrying the two things

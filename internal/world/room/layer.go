@@ -145,6 +145,12 @@ func (r *Room) layerFor(key LayerID) *layerState {
 		l.spawns = append(l.spawns, newSpawnState(sp, key))
 	}
 
+	// An owner-layer point does not exist until somebody is there to own it,
+	// so anything that gates spawn points has to be told about them here as
+	// well as at startup. One left ungated produces its event's mobs
+	// continuously, with no event.
+	r.gateEventSpawns(l.spawns)
+
 	r.layers[key] = l
 	r.layerOrder = append(r.layerOrder, key)
 	return l

@@ -33,8 +33,10 @@ func FS() fstest.MapFS {
 		"maps/test.tmj":        file(MapTMJ),
 		"maps/annex.tmj":       file(AnnexTMJ),
 		"maps/crypt.tmj":       file(CryptTMJ),
+		"maps/glade.tmj":       file(GladeTMJ),
 		"dungeons/test.toml":   file(Dungeons),
 		"elites/test.toml":     file(Elites),
+		"events/test.toml":     file(Events),
 	}
 }
 
@@ -496,6 +498,72 @@ const MapTMJ = `{
     ]
   }]
 }`
+
+// GladeTMJ is a map for zone events, and exists so that they are not tested by
+// borrowing corners of the main test map.
+//
+// That was tried, and every borrowed spawn point or shrine broke a neighbour:
+// the shrine's bounds happened to sit where the boss tests place a player, and
+// the spawn point the shrine event used was the one the culling tests walk to.
+// A map is cheap; a shared fixture that three suites disagree about is not.
+const GladeTMJ = `{
+  "type": "map", "width": 40, "height": 10, "tilewidth": 32, "tileheight": 32,
+  "properties": [
+    {"name": "mapId", "type": "string", "value": "glade"},
+    {"name": "displayName", "type": "string", "value": "The Test Glade"},
+    {"name": "placement", "type": "string", "value": "shared"},
+    {"name": "capacity", "type": "int", "value": 8}
+  ],
+  "layers": [{
+    "name": "collision", "type": "objectgroup",
+    "objects": [
+      {"id": 1, "class": "solid", "x": 0, "y": 288, "width": 1280, "height": 32},
+      {"id": 2, "class": "spawn_point", "name": "start", "x": 100, "y": 288,
+       "properties": [{"name": "isDefault", "type": "bool", "value": true}]},
+      {"id": 3, "class": "mob_spawn", "name": "tide", "x": 200, "y": 288,
+       "properties": [
+         {"name": "mob_id", "type": "string", "value": "test_dummy"},
+         {"name": "layer", "type": "string", "value": "shared"},
+         {"name": "respawn_ms", "type": "int", "value": 500},
+         {"name": "max_alive", "type": "int", "value": 3},
+         {"name": "radius", "type": "int", "value": 0}
+       ]},
+      {"id": 4, "class": "shrine", "name": "test-shrine", "x": 700, "y": 240,
+       "width": 48, "height": 48},
+      {"id": 5, "class": "mob_spawn", "name": "summoned", "x": 740, "y": 288,
+       "properties": [
+         {"name": "mob_id", "type": "string", "value": "test_dummy"},
+         {"name": "layer", "type": "string", "value": "owner"},
+         {"name": "respawn_ms", "type": "int", "value": 500},
+         {"name": "max_alive", "type": "int", "value": 2},
+         {"name": "radius", "type": "int", "value": 0}
+       ]}
+    ]
+  }]
+}`
+
+// Events covers both triggers: one the world starts on a period, and one a
+// player starts by walking into a shrine.
+const Events = `
+[event.test_tide]
+name = "Test Tide"
+map = "glade"
+trigger = "timer"
+announce = "Something is coming."
+every_ms = 3000
+duration_ms = 5000
+spawns = ["tide"]
+
+[event.test_shrine]
+name = "Test Shrine"
+map = "glade"
+trigger = "shrine"
+shrine = "test-shrine"
+announce = "The shrine answers."
+cooldown_ms = 6000
+duration_ms = 3000
+spawns = ["summoned"]
+`
 
 // Elites gives the tier roll something to draw from: one purely statistical
 // modifier and one that does something when the mob dies, which is the two

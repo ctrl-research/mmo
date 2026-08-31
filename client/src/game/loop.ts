@@ -18,6 +18,7 @@ import type {
   SystemMessage,
   Welcome,
   WorldMap,
+  ZoneEvent,
 } from "@/net/connection";
 import {
   ChatChannel,
@@ -113,6 +114,9 @@ export interface LoopCallbacks {
 
   /** Called when a dungeon run opens a stage, is cleared, or wipes. */
   onDungeon?(state: DungeonState): void;
+
+  /** Called when a zone event starts or ends. */
+  onZoneEvent?(zone: ZoneEvent): void;
 
   /**
    * Called every frame with the current health of the entity the boss frame is
@@ -457,6 +461,10 @@ export class GameLoop {
 
       case "dungeon":
         this.#cb.onDungeon?.(e.body.value);
+        break;
+
+      case "zone":
+        this.#cb.onZoneEvent?.(e.body.value);
         break;
 
       case "lootTaken": {

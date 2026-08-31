@@ -70,6 +70,7 @@ export const KIND_DROP = 3;
 export const KIND_PROJECTILE = 5;
 export const KIND_AREA = 6;
 export const KIND_TELEGRAPH = 7;
+export const KIND_SHRINE = 8;
 
 // Field-mask bits, mirroring mmov1.EntityField.
 const FIELD_POS = 1 << 0;

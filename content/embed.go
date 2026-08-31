@@ -22,6 +22,7 @@ import "embed"
 //go:embed all:droptables
 //go:embed all:dungeons
 //go:embed all:elites
+//go:embed all:events
 //go:embed all:items
 //go:embed all:maps
 //go:embed all:mobs

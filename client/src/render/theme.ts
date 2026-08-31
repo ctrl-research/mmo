@@ -58,6 +58,12 @@ export const theme = {
   telegraph: 0xff4d4d,
   telegraphFill: 0xff8a5c,
 
+  // A shrine has to read as "this does something if you touch it" with no art
+  // of its own, so it is a bright ring that breathes. Deliberately cool, where
+  // a telegraph is hot: one is an invitation and the other is a warning.
+  shrine: 0x9fe3d0,
+  shrineCore: 0xe8fff8,
+
   nameText: 0xd7dce6,
   ghost: 0x2ecc71,
 } as const;
