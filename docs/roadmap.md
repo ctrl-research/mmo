@@ -389,16 +389,23 @@ work on a path a player waits on is extra work on a path a player waits on.
 - [x] Boss health UI, telegraph rendering
 - [x] Instanced dungeon flow: entry requirements, lockouts, progression, completion
 - [x] Enhanced mobs: champion and rare tiers rolling elite modifiers
-- [ ] Zone events: interactive triggers, timed spawns, mini-bosses
+- [x] Zone events: interactive triggers, timed spawns, mini-bosses
 - [x] Death and recovery: a downed state, a revive clock, a penalty, and spawn protection
 - [x] Wipe flow (a whole party down at once inside an instance)
 
 **Exit:** a six-player party clears a dungeon and kills a boss whose mechanics genuinely require coordination.
 
-The encounter half is done and the dungeon half is not. The order is deliberate:
-a dungeon with nothing worth fighting at the end of it is a corridor, and the
-entry rules, lockouts and completion state are all in service of an encounter
-that has to exist first.
+Every item is built and the mechanics are covered, but the exit itself is not
+yet evidence: nothing here has been through a real six-player clear. The
+split-damage test proves six shares add up to the solo hit, and
+`TestAPartySharesOneDungeonInstance` proves a party lands in one instance — the
+untested part is six humans, network and all, which is a play session rather
+than a test to write.
+
+The encounter came before the dungeon, deliberately: a dungeon with nothing
+worth fighting at the end of it is a corridor, and the entry rules, lockouts
+and completion state are all in service of an encounter that has to exist
+first.
 
 A boss is `profile = "boss"`: a Go state machine that runs phases written in
 content. Phases are entered as health falls and never left, each listing what
@@ -428,12 +435,38 @@ the encounter stays authorable.
 | A champion is a real change, not a name | `TestAChampionIsStrongerThanWhatItCameFrom` — health, damage and reward all move |
 | A champion never edits shared content | `TestAChampionDoesNotEditItsDefinition` — the definition is read concurrently by every room on the node |
 | A boss never rolls one | `TestABossNeverRollsElite` — randomness on top of three phases is not a fight you can learn |
+| An event's mobs do not exist before it starts | `TestAnEventsMobsDoNotExistBeforeItStarts` — an event whose spawns ran anyway is just a busier map |
+| A timed event runs, and only with somebody there | `TestATimedEventStartsAndProducesMobs`, `TestATimedEventWaitsForSomebodyToBeThere` — an empty room burning its period means a player arrives during the cooldown |
+| An event ends, and takes its mobs with it | `TestEndingAnEventClearsWhatItProduced` — otherwise the first run leaves the zone permanently harder |
+| A second run is a full wave, not a trickle | `TestAnEventWaitsOutItsCooldown`, `TestASecondRunProducesAFullWave` — the population counter has to reset with the run |
+| A shrine is the player's decision | `TestAShrineEventNeverStartsByItself`, `TestTouchingAShrineStartsItsEvent`, `TestAShrineIsAnEntityPlayersCanSee` |
+| A shrine is not a button | `TestAShrineCannotBeSpammed` — without the cooldown it is a thing somebody stands next to forever |
+| Bad event content does not load | `TestBrokenEventsAreRejected` (12 cases) — a renamed spawn point otherwise announces itself to the whole room and produces nothing |
 
 Progression is **spawning, not doors**. A stage's mobs do not exist until the
 stage before it is cleared, so "kill the guards, then the king" needs no keys
 and no geometry that changes underfoot — which also means the client's
 collision is never told anything, and prediction cannot drift over a wall that
 is solid on one side and not the other.
+
+Zone events reuse that gate rather than adding one. A gated spawn point
+produces nothing until something opens it, and "something" is a dungeon stage
+or a zone event with equal ease — so a timed slime tide and a dungeon's second
+room are the same three lines of spawn code with a different owner. They differ
+in exactly one flag: a dungeon stage produces its population **once** (a stage
+that respawned could never be cleared), and an event's points keep producing
+for as long as it runs (a tide that stopped after three slimes would not be a
+tide).
+
+The two triggers answer different questions and so get one knob each. A
+**timed** event is the world acting on its own, and is what makes standing in a
+zone worth doing; its `every_ms` is measured from the end of the last run, and
+it will not burn a period in an empty room. A **shrine** is the player choosing
+to start something, and is what makes walking past one a decision; its
+`cooldown_ms` is what stops it being a button. Giving both knobs to both
+triggers was the first thing tried, and it made "when does this start again"
+have two answers — which is one of them being wrong. The loader now refuses
+either combination by name.
 
 Private placement turned out to be keyed by **character**, not party — M4 built
 it with a comment saying the owner would become the party ID "from M5", and M5

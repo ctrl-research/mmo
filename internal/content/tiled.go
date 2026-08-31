@@ -39,6 +39,7 @@ const (
 	classMobSpawn   = "mob_spawn"
 	classPortal     = "portal"
 	classWaypoint   = "waypoint"
+	classShrine     = "shrine"
 )
 
 // SpawnLayer decides who fights a mob.
@@ -234,6 +235,9 @@ type Map struct {
 	// Waypoints are fast-travel destinations on this map.
 	Waypoints []Waypoint
 
+	// Shrines are the things a player touches to start a zone event.
+	Shrines []Shrine
+
 	// MinLevel and MaxLevel describe who the map is for. Advisory: shown on
 	// the world map so a player can tell where they are meant to go next,
 	// rather than enforced, since a portal's own requirement does that.
@@ -243,6 +247,31 @@ type Map struct {
 	// Source is the original Tiled file, retained so the client renders the
 	// very same document the collision geometry was derived from.
 	Source []byte
+}
+
+// Shrine is a place on a map that starts a zone event when touched.
+//
+// An entity rather than only a rectangle, because a trigger the player cannot
+// see is a trigger they step into by accident -- so the room spawns one and
+// the client draws it.
+type Shrine struct {
+	Name string
+
+	// At is the feet position the marker is drawn at.
+	At sim.Vec
+
+	// Bounds is the area that starts the event on contact.
+	Bounds sim.Rect
+}
+
+// HasShrine reports whether the map declares a shrine by that name.
+func (m *Map) HasShrine(name string) bool {
+	for _, s := range m.Shrines {
+		if s.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 // HasMobSpawn reports whether the map declares a mob spawn point by that name.
@@ -399,6 +428,18 @@ func (m *Map) addObject(mapName string, obj tmjObject) error {
 			TargetMap:     target,
 			TargetSpawn:   spawn,
 			RequiredLevel: level,
+		})
+
+	case classShrine:
+		if obj.Name == "" {
+			return fmt.Errorf("content: %s: shrine %d has no name, so no event could name it",
+				mapName, obj.ID)
+		}
+		bounds := rect(obj)
+		m.Shrines = append(m.Shrines, Shrine{
+			Name:   obj.Name,
+			At:     sim.Vec{X: bounds.CenterX(), Y: bounds.Bottom()},
+			Bounds: bounds,
 		})
 
 	case classWaypoint:

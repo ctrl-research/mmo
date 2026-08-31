@@ -16,6 +16,8 @@ content/
   passives/     tree.json            (the passive tree — tool-authored)
   classes/      *.toml
   droptables/   *.toml
+  dungeons/     *.toml               (private maps with stages)
+  events/       *.toml               (zone events: timed waves, shrines)
   maps/         *.tmj                (Tiled) + *.meta.toml
   curves/       exp.toml, secondary_exp.toml
   world/        waypoints.toml, portals.toml
@@ -314,16 +316,21 @@ Party loot rules (free-for-all, round-robin, need/greed, or instanced per-player
 
 Authored in **Tiled**, exported as TMJ. Tile layers are geometry; object layers carry gameplay, typed by Tiled custom properties:
 
-| Object type | Properties |
+| Object class | Properties |
 |---|---|
-| `spawn_point` | `mob_id`, `respawn_ms`, `max_alive`, `elite_chance`, `layer` |
-| `portal` | `target_map`, `target_spawn`, `requires` |
-| `platform` | `one_way` (drop-through), `moving`, `path` |
+| `solid` | collision geometry, no properties |
+| `platform` | `one_way` (drop-through) |
 | `rope` / `ladder` | climb geometry |
-| `npc` | `npc_id`, `dialogue_id` |
-| `event_trigger` | `event_id`, `condition`, `cooldown_ms` |
+| `spawn_point` | where *players* arrive: `isDefault` |
+| `mob_spawn` | `mob_id`, `respawn_ms`, `max_alive`, `radius`, `layer` |
+| `portal` | `target_map`, `target_spawn`, `required_level` |
 | `waypoint` | `waypoint_id` |
-| `boss_arena` | `boss_id`, `phases`, `entry_requirements` |
+| `shrine` | a name and a rectangle; the event names it (§ Zone events) |
+
+An object with an unrecognised class is a **load error**, not something
+ignored: a typo in a class name otherwise means a designer's spawn point simply
+never appears, with nothing to say why. (This is also why there is no `npc`
+class — quests and dialogue are out of scope, see `roadmap.md`.)
 
 `*.meta.toml` alongside each map carries what does not belong in Tiled: instance policy (`shared` / `private`), player capacity, BGM, level range, PvP flag, instance TTL.
 
@@ -419,6 +426,72 @@ renamed spawn point leaves a party in an empty room with no way to progress.
 
 Lockouts are per **character**, so a group carrying a friend through does not
 spend the friend's, and leaving a party cannot launder one.
+
+## Zone events
+
+An event is a stretch of time during which a map is a different place: an extra
+wave of things to fight, sometimes with a mini-boss at the head of it. It is the
+answer to a zone being finished once it has been cleared — nothing respawns into
+a *situation*, and an event is a situation. `content/events/*.toml`:
+
+```toml
+[event.slime_tide]
+name = "Slime Tide"
+map = "forest"
+trigger = "timer"
+announce = "The undergrowth churns -- slimes are pouring through the forest."
+every_ms = 180000      # measured from the end of the last run
+duration_ms = 75000
+spawns = ["tide"]      # spawn point names on the map
+
+[event.warden_call]
+name = "Call of the Warden"
+map = "forest"
+trigger = "shrine"
+shrine = "warden-call"  # a `shrine` object on the map
+announce = "Something heavy answers the shrine."
+cooldown_ms = 180000    # after it ends, before the shrine works again
+duration_ms = 90000
+spawns = ["warden"]
+```
+
+**Events reuse the dungeon's gate.** A gated spawn point produces nothing until
+something opens it, and that something is a dungeon stage or a zone event with
+equal ease — the same three lines of spawn code with a different owner. They
+differ in one flag: a dungeon stage produces its population once, while an
+event's points keep producing for as long as it runs. A tide that stopped after
+three slimes would not be a tide.
+
+**Two triggers, one knob each.**
+
+| Trigger | Starts when | The knob |
+|---|---|---|
+| `timer` | The period elapses and somebody is in the room | `every_ms` |
+| `shrine` | A player walks into the named shrine | `cooldown_ms` |
+
+Both knobs on both triggers was the first thing tried, and it gave "when does
+this start again" two answers — which is one of them being wrong. The loader
+now refuses either combination by name. A timed event also will not run in an
+empty room: burning a period with nobody there means the next player to arrive
+walks in during the cooldown.
+
+**Events end on the clock**, not on their mobs dying. `duration_ms` is
+mandatory: an event that only ended when its spawns were cleared would be
+permanent the first time a party gave up on one. Ending clears what the event
+produced and starts the wait, so the zone goes back to what it was rather than
+staying permanently busier after every run.
+
+A **shrine** is a `shrine`-class object in Tiled — a name and a rectangle, no
+properties. It is sent to the client as an entity so it can be seen and walked
+into, and contact is checked in the portal phase, next to the other "standing
+in a box does something" rule.
+
+The loader checks both directions. An event naming a spawn point or a shrine
+its map does not have fails to load; so does a shrine no event listens to,
+because a thing a player can walk into that does nothing is worse than no
+shrine at all. Both mistakes otherwise load cleanly and fail in play: an event
+naming a renamed spawn point announces itself to the whole room and produces
+nothing.
 
 ## Death
 

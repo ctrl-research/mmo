@@ -28,11 +28,23 @@ type spawnState struct {
 	// meaningless, but inside one it is half of "this stage is cleared".
 	spawned int
 
-	// gated marks a spawn point that belongs to a dungeon stage, stage is
-	// which one, and open is whether that stage has begun. A gated point that
-	// is not open produces nothing.
+	// once marks a gated point that produces its population exactly once per
+	// opening: dungeon stages, where respawning would mean a stage that can
+	// never be cleared. A zone event is the opposite -- a tide that stopped
+	// after three slimes would not be a tide -- so its points keep producing
+	// for as long as it runs.
+	once bool
+
+	// gated marks a spawn point that only produces when something says so --
+	// a dungeon stage or a zone event -- and open is whether that something is
+	// currently happening. A gated point that is not open produces nothing.
+	//
+	// stage is which dungeon stage owns it; event is which zone event does.
+	// Exactly one is meaningful, because a map is either a dungeon or a field
+	// map and never both.
 	gated bool
 	stage int
+	event string
 	open  bool
 }
 
@@ -68,11 +80,14 @@ func (r *Room) phaseSpawns() {
 
 func (r *Room) serviceSpawn(sp *spawnState, source *rng.Source) {
 	if sp.gated {
-		// A dungeon stage that has not begun produces nothing, and one that
-		// has produces its population exactly once. Respawning inside a
+		// Nothing at all until whatever owns this point says so.
+		if !sp.open {
+			return
+		}
+		// A dungeon stage produces its population once. Respawning inside a
 		// dungeon would mean a stage that can never be cleared -- the party
 		// would be fighting the same four slimes until the server gave out.
-		if !sp.open || sp.spawned >= sp.def.MaxAlive {
+		if sp.once && sp.spawned >= sp.def.MaxAlive {
 			return
 		}
 	}

@@ -44,6 +44,7 @@ import {
   type BossPhase,
   type Downed,
   type DungeonState,
+  type ZoneEvent,
 } from "@/gen/mmo/v1/game_pb";
 
 /** Bumped on any incompatible wire change; must match gateway.ProtocolVersion. */
@@ -383,5 +384,6 @@ export type {
   BossPhase,
   Downed,
   DungeonState,
+  ZoneEvent,
 };
 export { ChatChannel, PartyAction_Kind, GuildAction_Kind, SocialAction_Kind };

@@ -42,6 +42,9 @@ type Content struct {
 	// Elites are the modifiers a champion or rare mob rolls from.
 	Elites map[string]*Elite
 
+	// Events are the zone events, keyed by event id.
+	Events map[string]*Event
+
 	// Waypoints indexes every fast-travel destination by its global ID.
 	//
 	// Fast travel names a waypoint without naming its map -- that is the point
@@ -74,6 +77,7 @@ func Load(fsys fs.FS) (*Content, error) {
 		Maps:     make(map[string]*Map),
 		Dungeons: make(map[string]*Dungeon),
 		Elites:   make(map[string]*Elite),
+		Events:   make(map[string]*Event),
 	}
 
 	hasher := sha256.New()
@@ -105,6 +109,7 @@ func Load(fsys fs.FS) (*Content, error) {
 		// After skills, because a modifier's on_death is the same effect
 		// vocabulary and is validated against the same buffs and skills.
 		{"elites", c.loadElites},
+		{"events", c.loadEvents},
 	}
 
 	rec := &hashRecorder{h: hasher, fsys: fsys}
@@ -287,7 +292,10 @@ func (c *Content) verify() error {
 		}
 	}
 
-	return c.validateDungeons()
+	if err := c.validateDungeons(); err != nil {
+		return err
+	}
+	return c.validateEvents()
 }
 
 // hashRecorder accumulates a stable hash over every file that is read.
@@ -332,6 +340,20 @@ func listFiles(fsys fs.FS, dir, ext string) ([]string, error) {
 	}
 	sort.Strings(out)
 	return out, nil
+}
+
+// sortedKeys returns a map's keys in a stable order.
+//
+// Content is loaded into maps and iteration order is random, so anything that
+// walks a content map and makes a decision has to sort first -- otherwise a
+// replay makes different decisions from the run it is replaying.
+func sortedKeys[V any](m map[string]V) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // modifierToPPM converts an authored stat modifier to parts-per-million.

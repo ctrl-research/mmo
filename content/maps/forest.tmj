@@ -389,6 +389,94 @@
               "value": 80
             }
           ]
+        },
+        {
+          "id": 30,
+          "name": "tide",
+          "class": "mob_spawn",
+          "x": 760,
+          "y": 608,
+          "width": 0,
+          "height": 0,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "mob_id",
+              "type": "string",
+              "value": "slime_green"
+            },
+            {
+              "name": "layer",
+              "type": "string",
+              "value": "shared"
+            },
+            {
+              "name": "respawn_ms",
+              "type": "int",
+              "value": 2500
+            },
+            {
+              "name": "max_alive",
+              "type": "int",
+              "value": 8
+            },
+            {
+              "name": "radius",
+              "type": "int",
+              "value": 260
+            }
+          ]
+        },
+        {
+          "id": 31,
+          "name": "warden-call",
+          "class": "shrine",
+          "x": 1180,
+          "y": 560,
+          "width": 48,
+          "height": 48,
+          "rotation": 0,
+          "visible": true,
+          "properties": []
+        },
+        {
+          "id": 32,
+          "name": "warden",
+          "class": "mob_spawn",
+          "x": 1100,
+          "y": 608,
+          "width": 0,
+          "height": 0,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "mob_id",
+              "type": "string",
+              "value": "boar_wild"
+            },
+            {
+              "name": "layer",
+              "type": "string",
+              "value": "shared"
+            },
+            {
+              "name": "respawn_ms",
+              "type": "int",
+              "value": 60000
+            },
+            {
+              "name": "max_alive",
+              "type": "int",
+              "value": 3
+            },
+            {
+              "name": "radius",
+              "type": "int",
+              "value": 90
+            }
+          ]
         }
       ]
     }

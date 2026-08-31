@@ -1,0 +1,41 @@
+# Zone events.
+#
+# An event is a stretch of time during which a map is a different place. It is
+# the answer to a zone being finished once it is cleared: nothing respawns into
+# a *situation*, and an event is a situation.
+#
+# Two ways to start one, because they answer different questions. A timed event
+# is the world doing something on its own, and is what makes standing in a zone
+# worth doing. A shrine is the player choosing to start something, and is what
+# makes walking past one a decision.
+
+# The world doing something. Comes round on its own, and the announcement is
+# what turns it from "more slimes than usual" into an event somebody joins.
+[event.slime_tide]
+name = "Slime Tide"
+map = "forest"
+trigger = "timer"
+announce = "The undergrowth churns -- slimes are pouring through the forest."
+
+# The wait between runs, measured from the end of the last one.
+every_ms = 180000
+duration_ms = 75000
+
+spawns = ["tide"]
+
+# The player choosing. Nothing happens until somebody walks into the shrine,
+# which makes walking past it a decision rather than scenery.
+#
+# The cooldown matters more here than for the timed one: without it a shrine is
+# a button somebody stands next to and presses forever.
+[event.warden_call]
+name = "Call of the Warden"
+map = "forest"
+trigger = "shrine"
+shrine = "warden-call"
+announce = "Something heavy answers the shrine."
+
+cooldown_ms = 180000
+duration_ms = 90000
+
+spawns = ["warden"]

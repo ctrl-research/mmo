@@ -47,6 +47,11 @@ const (
 
 	// KindTelegraph is the marker a boss puts down before an attack lands.
 	KindTelegraph
+
+	// KindShrine is the marker a player walks into to start a zone event. An
+	// entity rather than only a rectangle, because a trigger nobody can see is
+	// a trigger they step into by accident.
+	KindShrine
 )
 
 func (k Kind) wire() mmov1.EntityKind {
@@ -65,6 +70,8 @@ func (k Kind) wire() mmov1.EntityKind {
 		return mmov1.EntityKind_ENTITY_KIND_AREA
 	case KindTelegraph:
 		return mmov1.EntityKind_ENTITY_KIND_TELEGRAPH
+	case KindShrine:
+		return mmov1.EntityKind_ENTITY_KIND_SHRINE
 	default:
 		return mmov1.EntityKind_ENTITY_KIND_UNSPECIFIED
 	}

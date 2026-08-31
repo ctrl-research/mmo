@@ -68,6 +68,7 @@ func (r *Room) startDungeon(d *content.Dungeon) {
 	// the party with the whole instance at once.
 	for _, sp := range r.allSpawns() {
 		sp.stage, sp.gated = d.StageFor(sp.def.Name)
+		sp.once = sp.gated
 	}
 	r.openStage(0)
 }

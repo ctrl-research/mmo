@@ -175,6 +175,18 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
       onParty: (state) => party?.update(state),
       onDowned: (down) => death?.show(down, performance.now()),
       onDungeon: (state) => dungeon?.update(state, performance.now()),
+
+      // Zone events go to chat rather than a frame of their own. They are
+      // announcements -- one line, twice per event -- and a panel that was
+      // empty except for ten seconds every three minutes would be worse than
+      // the line it replaced.
+      onZoneEvent: (zone) => {
+        chat?.note(
+          zone.active
+            ? zone.message || `${zone.name} has begun`
+            : `${zone.name} is over`,
+        );
+      },
       onBossPhase: (phase) => boss?.announce(phase, performance.now()),
       onBossHealth: (hp, hpMax) => boss?.track(hp, hpMax, performance.now()),
       bossEntityId: () => boss?.entityId ?? 0,
