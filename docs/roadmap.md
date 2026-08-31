@@ -621,7 +621,7 @@ names already follow and the only one that does not need re-tuning per map.
 *Only now, and only because the seams were built in M0.*
 
 - [x] `nats` bus implementation
-- [x] `redis` directory implementation
+- [x] `redis` directory implementation (and the presence table with it)
 - [ ] Split roles into separate deployments; k8s manifests
 - [ ] Headless bot client for load generation
 - [ ] Grafana dashboards checked in
@@ -712,6 +712,65 @@ channel switch to a channel that is running fine. Three call sites.
 | No live node is its own error | `TestRedisPlacementWithNoLiveNodeIsRefused` — `ErrNoLiveNode`, not `ErrNoCapacity`: capacity means the world is full, this means there is no world |
 | A restart keeps its place in the order | `TestRedisRegistrationOrderSurvivesARestart` — re-registering the *first* node, because re-registering the last cannot change the order however the score is assigned |
 | **Releasing leaves nothing behind** | `TestRedisReleaseLeavesNoBookkeepingBehind` and the TryRelease twin — found by mutation testing, and the load counter is the one that matters: a counter that only rises makes placement permanently wrong |
+
+### Presence
+
+The last read-only piece of shared state, and the smallest: two indexes,
+characters by ID and IDs by normalised name. It is what a whisper is routed
+through — "which node is holding Alice" is a question one node asks about a
+session on another, and with a table per process the answer was always "nobody".
+
+It went to Redis rather than Postgres because losing it costs everyone their
+friends list for a moment and nothing else. There is deliberately **no TTL**: a
+session announces once and re-announces on transfer, so a TTL would need a
+heartbeat per character. Instead a node clears its own records on startup
+(`ForgetNode`), which covers the restart case at no steady cost. What is not
+covered is a node that dies and never comes back, whose characters stay listed —
+that belongs with the chaos-testing item above, where a node death is actually
+simulated.
+
+**Lua cannot compute the lookup key.** The scripts need a record's normalised
+name to drop its stale name index, and `string.lower` is ASCII-only and does not
+trim, so it disagrees with `NormaliseName` for any name with an accent or a
+stray space. A disagreement there leaves a name pointing at a character forever,
+which reads as a whisper delivered to somebody who no longer answers to it. So
+the normalised form is *stored in the record* rather than derived: one definition
+of the lookup key, and it lives in Go.
+
+**The conformance suite found a bug in the implementation that already
+shipped.** Dropping a name index unconditionally revokes a name another
+character has taken over — names are unique, so this needs an announce and a
+rename to interleave across nodes, but "narrow" is not "impossible" and the
+symptom is a player nobody can whisper. Redis had the guard because writing Lua
+forces you to think about what is already in the key; `MemoryPresence` did not,
+and had been the only implementation for eight milestones. Asserting the
+contract against both is what surfaced it.
+
+Presence also had **no unit tests at all** before this — it was exercised only
+through the cluster suite, which meant a whisper reaching the wrong node would
+have been diagnosed as a chat bug.
+
+| Claim | How it was checked |
+| --- | --- |
+| Both tables behave identically | 15 shared tests, each run against Memory and Redis, plus 2 Redis-only |
+| A rename is not reachable under both names | `TestPresenceRenameDropsTheOldName` |
+| A contested name belongs to whoever holds it | `TestPresenceForgetDoesNotRevokeAContestedName`, `TestPresenceRenameDoesNotRevokeAContestedName` — the pair that found the Memory bug |
+| Normalisation is Go's, not Lua's | `TestPresenceHandlesNonASCIINames` — reintroducing `string.lower` makes it fail, which is the only reason to trust the stored `norm` field |
+| Dropping a record drops its name | `TestRedisPresenceLeavesNoOrphanedNames` — Redis-only because it is invisible through the interface: `ByName` resolves via `ByID`, so an orphaned name reads exactly like a name that was never there. Silent, unbounded, one entry per name the server has ever seen |
+| A node clears only its own | `TestPresenceForgetNodeClearsOnlyThatNode` |
+| Two nodes see one table | `TestRedisPresenceIsSharedBetweenNodes`, and the cross-node chat, whisper, friends and party-invite tests over real Redis |
+
+**The interface changed for the same reason the directory's did**: `ByName`,
+`ByID` and `List` returned no error, and an unreachable Redis answering "nobody
+is online by that name" is a wrong answer a caller acts on. Five call sites — a
+whisper now says it could not look the name up, and the friends list and guild
+roster log and show a partial list rather than an empty one.
+
+**One Redis client, not three.** `main.go` had been opening a pool per user —
+directory, leases, token storage — all to the same server. Adding presence would
+have made four, so `openRedis` now opens one and threads it through. The dead
+`Watch`/`watcher` machinery on `MemoryPresence` went at the same time: nothing
+outside the file referenced it, and friends lists poll `ByID`.
 
 ---
 

@@ -154,7 +154,10 @@ func (s *Session) invite(ctx context.Context, targetName string) (directory.Part
 		return directory.Party{}, errors.New("world: presence is not available")
 	}
 
-	who, ok := s.node.presence.ByName(ctx, targetName)
+	who, ok, err := s.node.presence.ByName(ctx, targetName)
+	if err != nil {
+		return directory.Party{}, fmt.Errorf("looking up %s: %w", strings.TrimSpace(targetName), err)
+	}
 	if !ok {
 		return directory.Party{}, fmt.Errorf("%s is not online", strings.TrimSpace(targetName))
 	}

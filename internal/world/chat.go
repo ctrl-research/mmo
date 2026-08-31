@@ -258,7 +258,14 @@ func (s *Session) whisper(ctx context.Context, target, body string, at int64) {
 		return
 	}
 
-	who, ok := s.node.presence.ByName(ctx, target)
+	who, ok, err := s.node.presence.ByName(ctx, target)
+	if err != nil {
+		// An unreachable presence table is not "nobody by that name". Saying so
+		// beats telling a player their friend is offline when they are not.
+		s.notify(mmov1.ChatChannel_CHAT_CHANNEL_WHISPER,
+			"could not look that name up just now")
+		return
+	}
 	if ok && who.Away {
 		// Delivering to a session whose socket has gone would drop the message
 		// silently, and a whisper that vanishes is worse than one refused.

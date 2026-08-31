@@ -113,7 +113,13 @@ func (s *Session) sendFriends(ctx context.Context) {
 		// reconnect window -- reads as offline, because from a friend's point
 		// of view that is what they are.
 		if s.node.presence != nil {
-			if who, ok := s.node.presence.ByID(ctx, f.CharacterID.String()); ok && !who.Away {
+			who, ok, err := s.node.presence.ByID(ctx, f.CharacterID.String())
+			if err != nil {
+				// A friends list worth showing beats no friends list. Logged so
+				// the reason for everyone looking offline is discoverable.
+				s.log.Warn("reading presence for the friends list", "err", err)
+			}
+			if ok && !who.Away {
 				entry.Online = true
 				entry.MapId = who.MapID
 			}

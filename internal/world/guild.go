@@ -184,7 +184,10 @@ func (s *Session) inviteToGuild(ctx context.Context, targetName string) error {
 		return errors.New("world: presence is not available")
 	}
 
-	who, ok := s.node.presence.ByName(ctx, targetName)
+	who, ok, err := s.node.presence.ByName(ctx, targetName)
+	if err != nil {
+		return fmt.Errorf("looking up %s: %w", strings.TrimSpace(targetName), err)
+	}
 	if !ok {
 		return fmt.Errorf("%s is not online", strings.TrimSpace(targetName))
 	}
@@ -374,7 +377,11 @@ func (s *Session) sendGuildState(ctx context.Context) {
 	for _, m := range roster {
 		online := false
 		if s.node.presence != nil {
-			_, online = s.node.presence.ByID(ctx, m.CharacterID.String())
+			var err error
+			_, online, err = s.node.presence.ByID(ctx, m.CharacterID.String())
+			if err != nil {
+				s.log.Warn("reading presence for the guild roster", "err", err)
+			}
 		}
 		state.Members = append(state.Members, &mmov1.GuildMember{
 			CharacterId: m.CharacterID.String(),

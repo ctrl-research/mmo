@@ -16,6 +16,25 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// openRedis opens the one Redis client everything shares, or nothing.
+//
+// Nil means no Redis was configured, which every caller reads as "use the
+// in-process implementation". Returning a nil client rather than a bool keeps
+// the choice in one place: a caller cannot forget to check a flag it was never
+// given.
+func openRedis(ctx context.Context, cfg config) (*redis.Client, func(), error) {
+	if cfg.redisAddr == "" {
+		return nil, func() {}, nil
+	}
+
+	client := redis.NewClient(&redis.Options{Addr: cfg.redisAddr})
+	if err := client.Ping(ctx).Err(); err != nil {
+		client.Close()
+		return nil, func() {}, fmt.Errorf("connecting to Redis at %s: %w", cfg.redisAddr, err)
+	}
+	return client, func() { client.Close() }, nil
+}
+
 // openCoordination sets up lease and token storage.
 //
 // Redis is optional at hobby scale. With one process, in-memory implementations
@@ -26,8 +45,8 @@ import (
 // It becomes required with several gateways, because a login can start on one
 // and its callback land on another, and because two processes cannot share an
 // in-memory lease table.
-func openCoordination(ctx context.Context, cfg config, db *store.Store, log *slog.Logger) (directory.Leases, auth.Ephemeral, func(), error) {
-	if cfg.redisAddr == "" {
+func openCoordination(ctx context.Context, cfg config, client *redis.Client, db *store.Store, log *slog.Logger) (directory.Leases, auth.Ephemeral, error) {
+	if client == nil {
 		log.Info("using in-process leases and token storage; " +
 			"set --redis-addr before running more than one process")
 
@@ -40,7 +59,7 @@ func openCoordination(ctx context.Context, cfg config, db *store.Store, log *slo
 		// it is right not to.
 		highest, err := db.HighestLeaseToken(ctx)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
 		leases.Seed(highest)
 		if highest > 0 {
@@ -48,19 +67,12 @@ func openCoordination(ctx context.Context, cfg config, db *store.Store, log *slo
 		}
 
 		ephemeral := auth.NewMemoryEphemeral()
-		return leases, ephemeral, func() {}, nil
-	}
-
-	client := redis.NewClient(&redis.Options{Addr: cfg.redisAddr})
-	if err := client.Ping(ctx).Err(); err != nil {
-		client.Close()
-		return nil, nil, nil, fmt.Errorf("connecting to Redis at %s: %w", cfg.redisAddr, err)
+		return leases, ephemeral, nil
 	}
 
 	log.Info("using Redis for leases and token storage", "addr", cfg.redisAddr)
 	return directory.NewRedisLeases(client, "mmo"),
 		auth.NewRedisEphemeral(client, "mmo"),
-		func() { client.Close() },
 		nil
 }
 
@@ -211,26 +223,34 @@ func openBus(cfg config, log *slog.Logger) (bus.Bus, error) {
 //
 // The Redis directory registers this node and heartbeats until it is closed,
 // which is what makes a node that dies stop receiving new rooms.
-func openDirectory(ctx context.Context, cfg config, log *slog.Logger) (directory.Directory, error) {
+func openDirectory(ctx context.Context, cfg config, client *redis.Client, log *slog.Logger) (directory.Directory, error) {
 	node := directory.NodeID(cfg.nodeID)
 
-	if cfg.redisAddr == "" {
+	if client == nil {
 		log.Info("using the in-process room directory; " +
 			"set --redis-addr before running more than one process")
 		return directory.NewMemory(node), nil
 	}
 
-	client := redis.NewClient(&redis.Options{Addr: cfg.redisAddr})
-	if err := client.Ping(ctx).Err(); err != nil {
-		client.Close()
-		return nil, fmt.Errorf("connecting to Redis at %s: %w", cfg.redisAddr, err)
-	}
-
 	dir, err := directory.NewRedis(ctx, client, "mmo", node)
 	if err != nil {
-		client.Close()
 		return nil, err
 	}
 	log.Info("using Redis for the room directory", "addr", cfg.redisAddr, "node", node)
 	return dir, nil
+}
+
+// openPresence chooses where "who is online, and on which node" lives.
+//
+// Shared through Redis when there is a Redis. With one process the in-memory
+// table is correct: the node asking where a character is, is the node holding
+// them.
+func openPresence(cfg config, client *redis.Client, log *slog.Logger) directory.Presence {
+	if client == nil {
+		log.Info("using the in-process presence table; " +
+			"set --redis-addr before running more than one process")
+		return directory.NewMemoryPresence()
+	}
+	log.Info("using Redis for presence", "addr", cfg.redisAddr)
+	return directory.NewRedisPresence(client, "mmo")
 }

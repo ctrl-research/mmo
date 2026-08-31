@@ -217,6 +217,19 @@ func (n *Node) Start(ctx context.Context) error {
 		reg.AddNode(directory.NodeID(n.nodeID))
 	}
 
+	// This node is holding nobody yet, so any presence still saying otherwise
+	// is left over from the process that died here. Clearing it stops whispers
+	// being routed at a socket that is gone -- and it has to happen before
+	// anything is served, or a character who logs in during the sweep is swept
+	// out with the stale ones.
+	if n.presence != nil {
+		if err := n.presence.ForgetNode(ctx, directory.NodeID(n.nodeID)); err != nil {
+			// Not fatal: stale presence costs a failed whisper, and refusing to
+			// start costs everything.
+			n.log.Warn("clearing stale presence for this node", "err", err)
+		}
+	}
+
 	// Listening before anything can arrive, or a character handed over during
 	// startup would find nobody home.
 	if err := n.serveHosting(n.ctx); err != nil {
