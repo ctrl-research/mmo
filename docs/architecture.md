@@ -127,8 +127,26 @@ type Bus interface {
 }
 ```
 
-- **`inproc`** — Go channels with a subject-tree router. Zero dependencies, used at hobby scale.
-- **`nats`** — NATS, used when roles are split across nodes.
+- **`inproc`** — Go channels with a subject-tree router. Zero dependencies, and the *correct* implementation when every role runs in one process rather than a stand-in for one.
+- **`nats`** — NATS, used when roles are split across nodes. Selected with `--nats-url`; unset keeps the bus in-process.
+
+Both are held to one contract by a conformance suite that runs every behaviour a
+caller can rely on against both implementations. Two suites would drift, and the
+drift would be invisible until the day roles are split and a subject that worked
+in one process stopped working.
+
+The one place they genuinely differ is request/reply. `inproc` has no notion of a
+reply, so it builds one from publish/subscribe — a private inbox subject and a
+correlation id in the envelope. NATS has request/reply natively, including a
+server-side answer to "is anybody listening", so it uses that. Observable
+behaviour is identical, which is what the suite asserts.
+
+**A NATS subscription is not live until it is flushed**, and that is worth
+knowing because it is not obvious: a subscribe is a protocol message like any
+other, so a caller that subscribes and then publishes can miss its own message.
+`Subscribe` flushes, so the postcondition every caller already assumes is
+actually true. `Publish` deliberately does not — a flush is a round trip, and one
+per message would turn the bus into a bottleneck at the rate rooms publish.
 
 Subjects are hierarchical and encode routing: `room.{instanceID}.input`, `chat.guild.{guildID}`, `party.{partyID}.event`, `char.{charID}.transfer`.
 
@@ -430,7 +448,7 @@ Recorded so they are not re-litigated, and so the cost of changing course later 
 
 | Decision | Deferred until | Why it is safe to defer |
 |---|---|---|
-| NATS bus | M9 | `Bus` interface makes it a swap. |
+| ~~NATS bus~~ | ~~M9~~ | **Done in M9, and it was a swap**: one new file behind the existing interface, and every cross-node test now runs over it unchanged. |
 | Redis directory | M9 | `Directory` interface makes it a swap. |
 | Kubernetes | M9 | Roles already split by flag; compose works until then. |
 | Grid-based AOI | Large open maps | Snapshot builder takes an AOI filter; whole-room is the trivial filter. |

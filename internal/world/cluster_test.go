@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -60,24 +61,31 @@ func newCluster(t *testing.T) *cluster {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// One directory and one bus, shared. Two registries would be more
-	// realistic still, but a room on another *process* needs a bus-backed
-	// handle, which is M9; sharing the registry is what stands in for that
-	// until then, and it is the only thing these two nodes share beyond what a
-	// real cluster would.
+	// One directory, shared. Two registries would be more realistic still, but
+	// a room on another *process* needs a bus-backed handle; sharing the
+	// registry is what stands in for that, and it is the only thing these two
+	// nodes share beyond what a real cluster would.
 	dir := directory.NewMemory("node-a")
 	leases := directory.NewMemoryLeases()
-	msgBus := bus.NewInProc()
 	registry := NewRegistry()
+
+	// A bus per node, so "two nodes" means two independent connections rather
+	// than two names for the same object. With MMO_TEST_NATS_URL set that is
+	// two connections to a real server, and every cross-node test below --
+	// portal transfer, global chat, a party invite -- runs over the transport
+	// the cluster will actually use. Without it they share one in-process bus,
+	// which is correct for a single process and is what CI runs when no server
+	// is available.
+	busA, busB := testBuses(t)
 	presence := directory.NewMemoryPresence()
 	parties := directory.NewMemoryParties(game.Balance.Party.MaxSize)
 
-	node := func(id string) *Node {
+	node := func(id string, nodeBus bus.Bus) *Node {
 		n, err := NewNode(Config{
 			Directory:  dir,
 			Leases:     leases,
 			Store:      st,
-			Bus:        msgBus,
+			Bus:        nodeBus,
 			Rooms:      registry,
 			Presence:   presence,
 			Parties:    parties,
@@ -103,19 +111,45 @@ func newCluster(t *testing.T) *cluster {
 	}
 
 	c := &cluster{
-		t: t, dir: dir, bus: msgBus, store: st, game: game,
+		t: t, dir: dir, bus: busA, store: st, game: game,
 		presence: presence, parties: parties, cancel: cancel,
 	}
-	c.a = node("node-a")
-	c.b = node("node-b")
+	c.a = node("node-a", busA)
+	c.b = node("node-b", busB)
 
 	t.Cleanup(func() {
 		cancel()
 		c.a.Stop()
 		c.b.Stop()
-		msgBus.Close()
 	})
 	return c
+}
+
+// testBuses returns one bus per node.
+//
+// Over NATS when MMO_TEST_NATS_URL is set, and one shared in-process bus
+// otherwise. Two connections rather than one is the point: a message that
+// crosses nodes has to cross a transport, and a shared object proves only that
+// two names refer to the same map.
+func testBuses(t *testing.T) (bus.Bus, bus.Bus) {
+	t.Helper()
+
+	url := os.Getenv("MMO_TEST_NATS_URL")
+	if url == "" {
+		shared := bus.NewInProc()
+		t.Cleanup(func() { shared.Close() })
+		return shared, shared
+	}
+
+	open := func(name string) bus.Bus {
+		b, err := bus.Connect(url)
+		if err != nil {
+			t.Fatalf("connect %s to nats at %s: %v", name, url, err)
+		}
+		t.Cleanup(func() { b.Close() })
+		return b
+	}
+	return open("node-a"), open("node-b")
 }
 
 // character creates an account and a character sitting in the test map.

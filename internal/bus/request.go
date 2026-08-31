@@ -134,17 +134,13 @@ func (b *InProc) Respond(ctx context.Context, pattern string, fn Responder) (Sub
 
 		reply, err := fn(msgCtx, subject, env.GetPayload())
 
-		out := &mmov1.BusEnvelope{CorrelationId: env.GetCorrelationId()}
-		if err != nil {
-			out.Error = err.Error()
-		} else if reply != nil {
-			payload, marshalErr := proto.Marshal(reply)
-			if marshalErr != nil {
-				out.Error = marshalErr.Error()
-			} else {
-				out.Payload = payload
-			}
-		}
+		// The framing is shared with the NATS implementation, because it is
+		// part of the contract rather than a transport detail: a caller must
+		// get the same error back whichever bus carried it. The correlation id
+		// is the part only this implementation needs, because only this one
+		// has to route the reply itself.
+		out := replyEnvelope(reply, err)
+		out.CorrelationId = env.GetCorrelationId()
 
 		// A background context: the message's context may already be done, and
 		// the requester is still waiting for an answer either way.

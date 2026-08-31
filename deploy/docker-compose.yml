@@ -3,7 +3,7 @@
 # Every host port is overridable, because the standard ones are often already
 # taken on a developer machine:
 #
-#   POSTGRES_PORT=5433 REDIS_PORT=6380 docker compose -f deploy/docker-compose.yml up
+#   POSTGRES_PORT=5433 REDIS_PORT=6380 NATS_PORT=4223 docker compose -f deploy/docker-compose.yml up
 #
 # The container-side ports stay standard, so nothing inside the compose network
 # has to know about the override.
@@ -50,6 +50,25 @@ services:
       timeout: 3s
       retries: 10
 
+  nats:
+    image: nats:2-alpine
+    # No persistence and no JetStream. Every subject on this bus is either
+    # best-effort -- a chat line, a presence update -- or retried by its caller,
+    # so a message that does not survive a restart costs nothing. Turning on
+    # persistence would add an operational burden for a guarantee nothing asks
+    # for.
+    command: ["--http_port", "8222"]
+    ports:
+      - "127.0.0.1:${NATS_PORT:-4222}:4222"
+      # The monitoring endpoint, for looking at subscription counts and slow
+      # consumers when a node misbehaves.
+      - "127.0.0.1:${NATS_MONITOR_PORT:-8222}:8222"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8222/healthz || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   server:
     build:
       context: ..
@@ -66,6 +85,10 @@ services:
     environment:
       DATABASE_URL: postgres://mmo:${POSTGRES_PASSWORD:-devpassword}@postgres:5432/mmo?sslmode=disable
       REDIS_URL: redis://redis:6379
+      # Left unset on purpose. One server process needs no network bus, and the
+      # in-process one is the correct implementation for it rather than a
+      # placeholder. Set NATS_URL=nats://nats:4222 when running more than one.
+      # NATS_URL: nats://nats:4222
     ports:
       - "${GAME_PORT:-8080}:8080"
       - "127.0.0.1:${ADMIN_PORT:-9090}:9090"
@@ -73,6 +96,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      nats:
         condition: service_healthy
     restart: unless-stopped
 

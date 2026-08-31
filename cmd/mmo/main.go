@@ -29,7 +29,6 @@ import (
 
 	gamedata "github.com/ctrl-research/mmo/content"
 	"github.com/ctrl-research/mmo/internal/auth"
-	"github.com/ctrl-research/mmo/internal/bus"
 	"github.com/ctrl-research/mmo/internal/content"
 	"github.com/ctrl-research/mmo/internal/directory"
 	"github.com/ctrl-research/mmo/internal/gateway"
@@ -64,6 +63,7 @@ type config struct {
 
 	databaseURL   string
 	redisAddr     string
+	natsURL       string
 	sessionSecret string
 	publicURL     string
 	secureCookies bool
@@ -149,10 +149,13 @@ func run() error {
 	dir := directory.NewMemory(directory.NodeID(cfg.nodeID))
 	defer dir.Close()
 
-	// In-process channels at this scale. Transfers run over it either way, so
-	// the distributed path is exercised from the first portal rather than
-	// first meeting reality in M9.
-	msgBus := bus.NewInProc()
+	// In-process channels unless a NATS URL says otherwise. Transfers run over
+	// the bus either way, so the distributed path is exercised from the first
+	// portal rather than first meeting reality when the roles are split.
+	msgBus, err := openBus(cfg, log)
+	if err != nil {
+		return err
+	}
 	defer msgBus.Close()
 
 	// Presence answers "where is this character", which is what a whisper
@@ -372,6 +375,8 @@ func parseFlags() config {
 		"Postgres connection string")
 	flag.StringVar(&cfg.redisAddr, "redis-addr", envOr("REDIS_ADDR", ""),
 		"Redis address; empty keeps leases and tokens in this process, which is correct for a single node")
+	flag.StringVar(&cfg.natsURL, "nats-url", envOr("NATS_URL", ""),
+		"NATS URL; empty keeps the message bus in this process, which is correct for a single node")
 	flag.StringVar(&cfg.sessionSecret, "session-secret", os.Getenv("SESSION_SECRET"),
 		"secret signing session tokens; a random one is generated if unset, which logs everyone out on restart")
 	flag.StringVar(&cfg.publicURL, "public-url", envOr("PUBLIC_URL", ""),

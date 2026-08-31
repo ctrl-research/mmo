@@ -43,9 +43,21 @@ jobs:
           --health-timeout 3s
           --health-retries 10
 
+      # The bus is tested against a real NATS server for the same reason the
+      # store is tested against real Postgres: the behaviour that matters --
+      # wildcard routing, no-responders, whether a subscription is live when
+      # Subscribe returns -- is the server's. A fake would have passed while
+      # subscriptions silently went unflushed, which is exactly the bug the real
+      # server found.
+      nats:
+        image: nats:2-alpine
+        ports:
+          - 4222:4222
+
     env:
       MMO_TEST_DATABASE_URL: postgres://mmo:testpassword@localhost:5432/mmo?sslmode=disable
       MMO_TEST_REDIS_ADDR: localhost:6379
+      MMO_TEST_NATS_URL: nats://localhost:4222
 
     steps:
       - uses: actions/checkout@v4

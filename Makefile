@@ -16,9 +16,10 @@ build: ## Build the server binary
 	$(GO) build -o bin/mmo ./cmd/mmo
 
 .PHONY: test
-test: ## Run all Go tests (database tests skip without --services)
+test: ## Run all Go tests (service-backed tests skip without `make services`)
 	MMO_TEST_DATABASE_URL="$(DATABASE_URL)" \
 	MMO_TEST_REDIS_ADDR="localhost:$(REDIS_PORT)" \
+	MMO_TEST_NATS_URL="nats://localhost:$(NATS_PORT)" \
 		$(GO) test ./...
 
 .PHONY: test-conformance
@@ -32,6 +33,7 @@ test-all: test test-conformance ## Run every test, Go and cross-build
 test-race: ## Run all Go tests under the race detector
 	MMO_TEST_DATABASE_URL="$(DATABASE_URL)" \
 	MMO_TEST_REDIS_ADDR="localhost:$(REDIS_PORT)" \
+	MMO_TEST_NATS_URL="nats://localhost:$(NATS_PORT)" \
 		$(GO) test -race ./...
 
 .PHONY: lint
@@ -84,19 +86,20 @@ wasm: ## Build the simulation as WebAssembly for client-side prediction
 # and similar, so it is easy to override: make run PORT=8088
 PORT ?= 8080
 
-# Local Postgres and Redis. Host ports are overridable because the standard
-# ones are often already taken.
+# Local Postgres, Redis, and NATS. Host ports are overridable because the
+# standard ones are often already taken.
 POSTGRES_PORT ?= 5433
 REDIS_PORT ?= 6379
+NATS_PORT ?= 4222
 DATABASE_URL ?= postgres://mmo:devpassword@localhost:$(POSTGRES_PORT)/mmo?sslmode=disable
 
 .PHONY: services
-services: ## Start Postgres and Redis
-	POSTGRES_PORT=$(POSTGRES_PORT) REDIS_PORT=$(REDIS_PORT) \
-		docker compose -f deploy/docker-compose.yml up -d postgres redis
+services: ## Start Postgres, Redis, and NATS
+	POSTGRES_PORT=$(POSTGRES_PORT) REDIS_PORT=$(REDIS_PORT) NATS_PORT=$(NATS_PORT) \
+		docker compose -f deploy/docker-compose.yml up -d postgres redis nats
 
 .PHONY: services-down
-services-down: ## Stop Postgres and Redis
+services-down: ## Stop Postgres, Redis, and NATS
 	docker compose -f deploy/docker-compose.yml down
 
 .PHONY: run
