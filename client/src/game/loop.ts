@@ -22,6 +22,8 @@ import type {
   Gathering,
   SecondaryExp,
   SecondarySkills,
+  StationMenu,
+  Crafting,
 } from "@/net/connection";
 import {
   ChatChannel,
@@ -88,6 +90,9 @@ const GATHER_REPEAT_TICKS = 6;
 /** How far the gather key looks for a node. Same reasoning as looting. */
 const GATHER_SEARCH_RADIUS = 120 * 256;
 
+/** How far the station key looks. Same reasoning again. */
+const STATION_SEARCH_RADIUS = 120 * 256;
+
 export interface LoopCallbacks {
   onStatus(text: string): void;
   onDisconnect(reason: string): void;
@@ -142,6 +147,12 @@ export interface LoopCallbacks {
 
   /** Called with the whole set of secondary skills, on entering the world. */
   onSecondarySkills?(skills: SecondarySkills): void;
+
+  /** Called when a station answers what it can make. */
+  onStationMenu?(menu: StationMenu): void;
+
+  /** Called when a crafting run starts, produces, or stops. */
+  onCrafting?(state: Crafting): void;
 
   /**
    * Called every frame with the current health of the entity the boss frame is
@@ -510,6 +521,14 @@ export class GameLoop {
         this.#cb.onSecondarySkills?.(e.body.value);
         break;
 
+      case "station":
+        this.#cb.onStationMenu?.(e.body.value);
+        break;
+
+      case "crafting":
+        this.#cb.onCrafting?.(e.body.value);
+        break;
+
       case "lootTaken": {
         const l = e.body.value;
         if (l.failed) {
@@ -678,6 +697,32 @@ export class GameLoop {
   /** Turns automatic looting on or off. */
   setAutoLoot(on: boolean): void {
     this.#autoLoot = on;
+  }
+
+  /**
+   * Asks the nearest station what it can make, and reports whether there was
+   * one to ask.
+   *
+   * The client picks the target the same way it picks a drop or a node: the
+   * obvious one, with the server still checking range. Returning false is what
+   * lets the caller leave the panel shut rather than opening an empty one.
+   */
+  openStation(): boolean {
+    const b = this.#predictor.body;
+    const target = this.#interp.nearestStation(b.x, b.y, STATION_SEARCH_RADIUS);
+    if (target === 0) return false;
+    this.#conn.sendStationMenu(target);
+    return true;
+  }
+
+  /** Asks to start making something at a station. */
+  craft(entityId: number, recipeId: string): void {
+    this.#conn.sendCraft(entityId, recipeId);
+  }
+
+  /** Asks to stop a crafting run. */
+  stopCraft(entityId: number): void {
+    this.#conn.sendCraft(entityId, "");
   }
 
   /** Says something. The server decides who hears it. */

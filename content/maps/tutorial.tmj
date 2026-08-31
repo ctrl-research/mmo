@@ -410,6 +410,60 @@
           "rotation": 0,
           "visible": true,
           "properties": []
+        },
+        {
+          "id": 30,
+          "name": "camp-anvil",
+          "class": "station",
+          "x": 40,
+          "y": 560,
+          "width": 56,
+          "height": 48,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "station_id",
+              "type": "string",
+              "value": "anvil"
+            }
+          ]
+        },
+        {
+          "id": 31,
+          "name": "camp-fire",
+          "class": "station",
+          "x": 150,
+          "y": 560,
+          "width": 56,
+          "height": 48,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "station_id",
+              "type": "string",
+              "value": "fire"
+            }
+          ]
+        },
+        {
+          "id": 32,
+          "name": "camp-cauldron",
+          "class": "station",
+          "x": 260,
+          "y": 560,
+          "width": 56,
+          "height": 48,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "station_id",
+              "type": "string",
+              "value": "cauldron"
+            }
+          ]
         }
       ]
     }

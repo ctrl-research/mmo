@@ -74,6 +74,14 @@ type Handle interface {
 	// Interact queues a request to act on a nearby entity.
 	Interact(ctx context.Context, id EntityID, target EntityID, kind InteractKind)
 
+	// Craft queues a request to make something at a station. An empty recipe
+	// stops whatever is running.
+	Craft(ctx context.Context, id EntityID, station EntityID, recipe string)
+
+	// ResolveCraft completes one run once the session has spent the inputs and
+	// stored the output, or found the inputs missing.
+	ResolveCraft(ctx context.Context, player EntityID, made bool, reason string)
+
 	// Say delivers a local chat line to everyone in the room.
 	//
 	// The only chat channel the room knows about: everyone who can hear it is
@@ -211,6 +219,22 @@ type interactCmd struct {
 	kind   InteractKind
 }
 
+// craftCmd is a player asking to make something at a station. An empty recipe
+// stops whatever is running.
+type craftCmd struct {
+	id      EntityID
+	station EntityID
+	recipe  string
+}
+
+// resolveCraftCmd carries the session's answer to one run: whether the
+// materials were there and the output was stored.
+type resolveCraftCmd struct {
+	player EntityID
+	made   bool
+	reason string
+}
+
 // InteractKind is what a player wants to do with a nearby entity.
 type InteractKind uint8
 
@@ -226,6 +250,9 @@ const (
 	// than a gather with no target, because "I am done" and "I mis-clicked"
 	// should not be the same message.
 	InteractStop
+
+	// InteractStation asks what a crafting station can make.
+	InteractStation
 )
 
 func (joinCmd) isCommand()          {}
@@ -242,6 +269,8 @@ func (setLayerCmd) isCommand()      {}
 func (inputCmd) isCommand()         {}
 func (castCmd) isCommand()          {}
 func (interactCmd) isCommand()      {}
+func (craftCmd) isCommand()         {}
+func (resolveCraftCmd) isCommand()  {}
 
 // handle dispatches one command. It runs on the room goroutine, so it may
 // touch room state freely.
@@ -276,6 +305,12 @@ func (r *Room) handle(c command) {
 		r.input(cmd.id, cmd.seq, cmd.in)
 	case castCmd:
 		r.queueCast(cmd.id, cmd.req)
+	case craftCmd:
+		if p, ok := r.players[cmd.id]; ok {
+			r.beginCraft(p, cmd.station, cmd.recipe)
+		}
+	case resolveCraftCmd:
+		r.resolveCraft(cmd.player, cmd.made, cmd.reason)
 	case interactCmd:
 		r.interact(cmd.id, cmd.target, cmd.kind)
 	default:
@@ -547,6 +582,9 @@ func (r *Room) interact(id EntityID, target EntityID, kind InteractKind) {
 		r.beginGather(p, target)
 	case InteractStop:
 		r.stopGather(p, "")
+		r.stopCraft(p, "")
+	case InteractStation:
+		r.stationMenu(p, target)
 	}
 }
 
@@ -618,8 +656,10 @@ func (r *Room) attach(id EntityID, a Attachment) bool {
 	}
 
 	// A reconnecting player is not mid-swing: their client has no idea it was
-	// gathering, so leaving the action running would tick away invisibly.
+	// gathering or crafting, so leaving either running would tick away
+	// invisibly -- and a craft left running would keep spending materials.
 	p.gather = gatherState{}
+	p.craft = craftState{}
 
 	// Forget what the previous connection was told: the new client has no
 	// baseline, so every visible entity must be sent again in full rather than
@@ -726,6 +766,20 @@ func (h *localHandle) SetLoadout(ctx context.Context, id EntityID, slots []Loado
 func (h *localHandle) SetStats(ctx context.Context, id EntityID, d Derived) {
 	select {
 	case h.room.cmds <- setStatsCmd{id: id, derived: d}:
+	case <-ctx.Done():
+	}
+}
+
+func (h *localHandle) Craft(ctx context.Context, id EntityID, station EntityID, recipe string) {
+	select {
+	case h.room.cmds <- craftCmd{id: id, station: station, recipe: recipe}:
+	case <-ctx.Done():
+	}
+}
+
+func (h *localHandle) ResolveCraft(ctx context.Context, player EntityID, made bool, reason string) {
+	select {
+	case h.room.cmds <- resolveCraftCmd{player: player, made: made, reason: reason}:
 	case <-ctx.Done():
 	}
 }

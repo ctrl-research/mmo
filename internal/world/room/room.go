@@ -141,6 +141,11 @@ type player struct {
 	// when they are not. See gather.go.
 	gather gatherState
 
+	// craft is the recipe this player is making, and the zero value when they
+	// are not. See craft.go. A character can be gathering or crafting but not
+	// both: startAction is what makes starting one end the other.
+	craft craftState
+
 	// layer is the visibility layer this player's mobs and drops live in.
 	// From M5 it is the party ID; until then, one per player.
 	layer LayerID
@@ -225,6 +230,18 @@ type SessionEvents interface {
 	// DiscoverWaypoint reports that a player touched a waypoint, so the
 	// session can record the unlock.
 	DiscoverWaypoint(player EntityID, characterID, waypointID string)
+
+	// OpenStation reports that a player asked what a station can make. The
+	// answer depends on what is in their bag, which only the session can see.
+	OpenStation(req StationRequest)
+
+	// RunCraft asks the session to spend a recipe's inputs and produce its
+	// output, atomically, and to report back through ResolveCraft.
+	//
+	// A request rather than a report, unlike GrantGather: the materials may not
+	// be there, and the room cannot find out. Nothing is granted until the
+	// answer arrives.
+	RunCraft(req CraftRequest)
 
 	// GrantGather reports a successful gather, so the session can store the
 	// item and the experience.
@@ -399,6 +416,7 @@ func New(cfg Config) *Room {
 		}
 		r.startEvents()
 		r.startResources()
+		r.startStations()
 	}
 	return r
 }

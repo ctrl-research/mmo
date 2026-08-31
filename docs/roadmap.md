@@ -487,17 +487,22 @@ in a dungeon if nothing in the game can die.
 - [x] Resource nodes on maps with independent respawn timers
 - [x] The 600 ms action tick, layered on the 20 Hz sim tick
 - [x] Gathering: woodcutting, mining, fishing, herbalism
-- [ ] Processing: smithing, cooking, alchemy
+- [x] Processing: smithing, cooking, alchemy
 - [x] OSRS exp curve, 1–99 per skill, levelling from use
 - [x] Tool tiers and level gating
 - [x] Skills panel
 
 **Exit:** chop trees for twenty minutes, gain levels, smith what you gathered into something you can equip.
 
-The gathering half is done and processing is not. The order is the same one M7
-used: there is no point in a forge before there is anything to put in it, and
-every question about what smithing should cost is a question about how fast
-gathering produces.
+**Met, and played rather than inferred.** Mined twenty copper ore on the forest
+outcrop, smithed ten bars, forged three Copper Swords, and equipped one —
+attack 125 → 131 from the rolled implicit, with Smithing going 5 → 9 on the way
+and the chat line to prove it. The panel's ingredient counts followed the
+materials down as they were spent.
+
+Gathering came before processing, the same order M7 used: there is no point in
+a forge before there is anything to put in it, and every question about what
+smithing should cost is a question about how fast gathering produces.
 
 The **action tick** is derived rather than a second loop — "every twelfth
 simulation tick" is 600 ms, and it means the room has one clock that nothing can
@@ -553,6 +558,61 @@ Resource nodes have no art. They are shaped silhouettes keyed on the skill —
 a trunk and a crown, an outcrop with an ore seam, ripples, a low cluster —
 because one silhouette for all of them meant a copper rock drawn as a tree, and
 the name on the label is not what anyone reads while scanning a map.
+
+### Processing
+
+Gathering and crafting share the action tick and the "what is this character
+doing" slot — starting either ends the other, because two runs against one bag
+means the bag loses. What they do *not* share is who decides.
+
+Gathering **produces from nothing**: the roll lands or it does not, the
+experience is earned the moment it does, and the item is a consequence the
+session stores afterwards. Nothing can fail once the roll has landed.
+
+Crafting **spends**. The materials are in the inventory, which the room cannot
+see and must not guess at, and consuming them is a database write that can
+legitimately come back "you do not have those any more". So a run is two steps:
+the room asks, the session consumes and produces in one transaction, and the
+room grants the experience only when it hears back. A room that paid on asking
+would pay a smith for bars they never made.
+
+That transaction is the load-bearing part. Consuming three bars and then failing
+to insert the sword destroys items; retrying the insert alone duplicates one.
+Both are the failures `MoveItem` exists to avoid, in a shape where there are
+several inputs and the arithmetic is destructive.
+
+**Being hit does not interrupt a craft**, deliberately, where it does interrupt
+a gather. A station is somewhere a player has chosen to stand still, and a mob
+wandering past should not cost them the bar. It has a consequence the loader
+cannot check: a camp inside a mob spawn is a place to stand and die, which is
+exactly what happened the first time the camp was placed in the forest. The
+camp now lives in the tutorial map's one genuinely safe strip — the forest has
+none, because the slime tide sweeps most of its floor.
+
+| Claim | How it was checked |
+| --- | --- |
+| The room asks and grants nothing yet | `TestARunAsksTheSessionAndGrantsNothingYet`, `TestAnAnsweredRunGrantsExperience` |
+| One run in flight at a time | `TestOnlyOneRunIsInFlightAtATime` — two would ask for the same materials and both be told yes |
+| Running out is an ending, not an error | `TestRunningOutOfMaterialsEndsTheRun` — and grants nothing |
+| A run repeats without another key press | `TestACompletedRunStartsTheNext`, `TestTheSecondRunTakesAsLongAsTheFirst` — the second test needs a three-beat recipe; a one-beat one cannot see a clock that never restarts |
+| A longer recipe is longer | `TestALongerRecipeTakesLonger`, `TestCraftingRunsOnTheActionTick` |
+| Walking away ends it, being hit does not | `TestWalkingAwayStopsCrafting`, `TestTakingDamageDoesNotStopCrafting` |
+| A corpse does not smith | `TestADownedCharacterDoesNotCraft`, `…CannotStartCrafting`, `TestAFrozenPlayerStopsCrafting` |
+| One action at a time | `TestStartingACraftStopsGathering`, `TestStartingAGatherStopsCrafting` — the fixture puts the forge *beside* a tree on purpose, or the gather would be interrupted for range and the test would pass without the rule |
+| Every refusal says why | `TestARecipeAboveYourLevelIsRefused`, `TestARecipeAtTheWrongStationIsRefused`, `TestCraftingOutOfRangeIsRefused` |
+| A station is shared and asked, not pushed | `TestAStationIsASharedEntityEveryoneCanSee`, `TestAskingAStationWhatItMakesReachesTheSession` |
+| Reconnecting does not resume a run | `TestReconnectingDoesNotResumeCrafting` — it would keep spending materials invisibly |
+| **One run is one transaction** | `TestCraftWithMissingInputsChangesNothing`, `TestCraftIntoAFullBagChangesNothing`, `TestConcurrentCraftsDoNotSpendTheSameMaterials` |
+| An input spread over stacks is still an input | `TestCraftConsumesAcrossSeveralStacks` — otherwise availability depends on how the bag happened to fill |
+| Both halves are journalled, distinguishably | `TestCraftIsJournalledOnBothSides`, `TestSpendingAWholeStackIsStillJournalled` — a bar consumed into a sword and a bar thrown away are not the same event |
+| Bad content does not load | `TestBrokenRecipeContentIsRejected` (15 cases) |
+
+**Three station labels in one camp were an unreadable bar of text** — the third
+time this exact failure has appeared, after champion names in M7 and the first
+attempt at this camp. Shortening the names was not enough, and spacing them out
+only moved the collision onto the shrine's label. Stations now name themselves
+only when the character is close enough to use one, which is the same rule mob
+names already follow and the only one that does not need re-tuning per map.
 
 ---
 

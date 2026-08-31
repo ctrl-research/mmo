@@ -456,6 +456,52 @@
 
       /* Passive tree: a canvas, because several hundred nodes that pan and
          zoom in DOM is hundreds of layout boxes recalculated on every drag. */
+      /* Crafting panel. Opened by standing at a station, so it names the
+         station rather than a skill: what you can make depends on where you
+         are standing, which is the whole point of a station. */
+      #crafting {
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        z-index: 15; width: min(520px, 94vw); max-height: 88vh; overflow-y: auto;
+        background: #12151c; border: 1px solid #2f3543; border-radius: 8px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      }
+      #crafting[hidden] { display: none; }
+
+      .craft-header {
+        display: flex; justify-content: space-between; align-items: baseline;
+        padding: 12px 16px; border-bottom: 1px solid #262b36; font-weight: 600;
+      }
+      .craft-hint { color: #6b7280; font-size: 11px; font-weight: 400; }
+      .craft-body { padding: 8px 10px; }
+      .craft-empty { color: #4a5262; font-size: 11px; padding: 8px; }
+
+      .craft-row {
+        display: flex; justify-content: space-between; align-items: flex-start;
+        gap: 12px; width: 100%; text-align: left;
+        padding: 8px; margin-bottom: 4px;
+        font: inherit; color: #e6e8ee;
+        background: #0f1218; border: 1px solid #2f3543; border-radius: 4px;
+        cursor: pointer;
+      }
+      .craft-row:hover:not(:disabled) { border-color: #4a83ff; }
+      .craft-row:disabled { cursor: default; opacity: 0.5; }
+      .craft-row.running { border-color: #b08968; background: #191510; }
+
+      .craft-name { font-size: 12px; font-weight: 600; margin-bottom: 3px; }
+      .craft-inputs { font-size: 10px; color: #9aa3b2; }
+      .craft-blocked { font-size: 10px; color: #d8a24a; margin-top: 3px; }
+
+      .craft-meta { text-align: right; white-space: nowrap; }
+      .craft-level { font-size: 10px; color: #6b7280; }
+      .craft-exp { font-size: 10px; color: #7fb069; }
+
+      .craft-status {
+        padding: 8px 16px; border-top: 1px solid #262b36;
+        font-size: 11px; color: #6b7280; min-height: 17px;
+      }
+      .craft-status.making { color: #ffb35c; }
+      .craft-status.stopped { color: #d8a24a; }
+
       /* Skills panel. Secondary skills are the one part of progression with no
          presence in the world -- a main level is on the character frame and
          gear is on the body -- so this is where "my woodcutting is 34" lives. */
@@ -658,9 +704,10 @@
     <div id="passives" hidden></div>
     <div id="skills" hidden></div>
     <div id="gathering" hidden></div>
+    <div id="crafting" hidden></div>
     <div id="tooltip" hidden></div>
     <div id="keys">
-      arrows or WASD to move &middot; space to jump &middot; hold 1-8 or X for skills &middot; hold Z to loot &middot; hold E to gather &middot; J skills &middot; K settings &middot; P passives &middot; I inventory &middot; M world map &middot; O social &middot; enter to chat
+      arrows or WASD to move &middot; space to jump &middot; hold 1-8 or X for skills &middot; hold Z to loot &middot; hold E to gather &middot; R at a station &middot; J skills &middot; K settings &middot; P passives &middot; I inventory &middot; M world map &middot; O social &middot; enter to chat
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

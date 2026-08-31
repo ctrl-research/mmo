@@ -19,6 +19,18 @@ import (
 // duplication is the bug that costs an economy. This file's job is to keep
 // every mutation inside a transaction that also writes the journal.
 
+// querier is whatever can run a statement: the pool, or a transaction.
+//
+// It exists so a helper is written once and used both standalone and inside a
+// larger transaction. Crafting needs the second -- resolving inputs and
+// inserting the output have to be one transaction or a failure destroys items
+// -- and a second copy of the SQL is a second copy to keep in step.
+type querier interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
 // Item errors.
 var (
 	// ErrSlotOccupied means another item already holds the target slot.
@@ -26,6 +38,13 @@ var (
 
 	// ErrContainerFull means there is no free slot.
 	ErrContainerFull = errors.New("store: container is full")
+
+	// ErrMissingInputs means a craft's inputs were not all there.
+	//
+	// Not a failure in the sense of something going wrong: running out is the
+	// ordinary end of a crafting run, and this is how the caller learns to
+	// stop rather than to retry.
+	ErrMissingInputs = errors.New("store: not enough of an input")
 )
 
 // Container kinds.
@@ -50,6 +69,14 @@ const (
 	EventDrop    = "drop"
 	EventVendor  = "vendor"
 	EventDestroy = "destroy"
+
+	// EventConsume is an item spent as a crafting input, and EventCraft is one
+	// produced as the output. Two kinds rather than reusing destroy and
+	// create, so a journal can answer "where did my bars go" -- a bar consumed
+	// into a sword and a bar a player threw away are not the same event, and
+	// telling them apart after the fact is the whole reason the journal exists.
+	EventConsume = "consume"
+	EventCraft   = "craft"
 )
 
 // Container is a place items live.
@@ -194,26 +221,9 @@ func (s *Store) StackInto(
 	)
 
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
-		// Lowest slot first, so a bag fills predictably rather than in whatever
-		// order the rows happen to come back in.
-		err := tx.QueryRow(ctx, `
-			UPDATE item_instances
-			   SET stack_size = stack_size + $3, updated_at = now()
-			 WHERE id = (
-			       SELECT id FROM item_instances
-			        WHERE container_id = $1
-			          AND base_id = $2
-			          AND stack_size + $3 <= $4
-			        ORDER BY slot
-			        LIMIT 1)
-			RETURNING id, stack_size, slot`,
-			containerID, baseID, qty, maxStack,
-		).Scan(&id, &stack, &slot)
-		if errors.Is(err, pgx.ErrNoRows) {
-			// No stack with room. Not an error, and not something to record.
-			return nil
-		}
-		if err != nil {
+		var err error
+		id, stack, slot, err = stackWithin(ctx, tx, containerID, baseID, qty, maxStack)
+		if err != nil || id == uuid.Nil {
 			return err
 		}
 		// Journalled like any other movement of quantity: a stack growing is a
@@ -427,29 +437,11 @@ func (s *Store) LoadItem(ctx context.Context, itemID uuid.UUID) (ItemRow, error)
 
 // FreeSlot returns the lowest unoccupied slot in a container.
 func (s *Store) FreeSlot(ctx context.Context, containerID uuid.UUID) (int, error) {
-	var capacity int
-	if err := s.pool.QueryRow(ctx,
-		`SELECT capacity FROM containers WHERE id = $1`, containerID).Scan(&capacity); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, ErrNotFound
-		}
-		return 0, fmt.Errorf("store: reading container: %w", err)
-	}
-
-	// generate_series minus the occupied slots: the database finds the gap in
-	// one round trip rather than the caller fetching every slot to scan it.
-	var slot int
-	err := s.pool.QueryRow(ctx, `
-		SELECT s FROM generate_series(0, $2 - 1) AS s
-		 WHERE NOT EXISTS (
-		       SELECT 1 FROM item_instances
-		        WHERE container_id = $1 AND slot = s)
-		 ORDER BY s LIMIT 1`, containerID, capacity).Scan(&slot)
-
-	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, ErrContainerFull
-	}
-	if err != nil {
+	slot, err := freeSlotWithin(ctx, s.pool, containerID)
+	switch {
+	case errors.Is(err, ErrNotFound), errors.Is(err, ErrContainerFull):
+		return 0, err
+	case err != nil:
 		return 0, fmt.Errorf("store: finding a free slot: %w", err)
 	}
 	return slot, nil
@@ -504,4 +496,259 @@ func recordEvent(ctx context.Context, tx pgx.Tx, itemID uuid.UUID, kind string,
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 		itemID, kind, fromContainer, fromSlot, toContainer, toSlot, actorPtr, int64(tick))
 	return err
+}
+
+// Crafting: spending items to make another one.
+//
+// The whole point of this being one function is that it is one transaction. A
+// craft that consumed its inputs and then failed to insert its output would
+// destroy items, and a retry of the insert alone would duplicate one -- the
+// same pair of failures MoveItem exists to avoid, in a shape where there are
+// several inputs and the arithmetic is destructive.
+
+// CraftInput is one requirement of a recipe, resolved against the inventory.
+type CraftInput struct {
+	BaseID string
+	Qty    int
+}
+
+// Craft consumes the inputs and inserts the output, atomically.
+//
+// The inputs are resolved inside the transaction rather than passed as item
+// ids, because a caller that read the inventory, decided, and then acted has a
+// window in which the items moved. Resolving here means the check and the
+// spend are the same statement sequence under the same locks.
+//
+// Returns ErrMissingInputs when the container does not hold enough of
+// something, having changed nothing. That is not an error in the sense of
+// something going wrong: it is the ordinary end of a crafting run, and it is
+// how the caller learns to stop.
+func (s *Store) Craft(
+	ctx context.Context,
+	containerID uuid.UUID,
+	inputs []CraftInput,
+	output ItemRow,
+	outputMaxStack int,
+	actor uuid.UUID,
+	tick uint64,
+) (uuid.UUID, error) {
+	if len(inputs) == 0 {
+		return uuid.Nil, fmt.Errorf("store: craft with no inputs")
+	}
+
+	var produced uuid.UUID
+
+	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		for _, in := range inputs {
+			if err := consume(ctx, tx, containerID, in, actor, tick); err != nil {
+				return err
+			}
+		}
+
+		// Into an existing stack when the output is one that stacks, for the
+		// same reason a gathered log is: a smith who made forty bars should
+		// have forty bars, not a full bag.
+		if outputMaxStack > 1 {
+			id, _, slot, err := stackWithin(
+				ctx, tx, containerID, output.BaseID, output.StackSize, outputMaxStack)
+			if err != nil {
+				return err
+			}
+			if id != uuid.Nil {
+				produced = id
+				return recordEvent(ctx, tx, id, EventCraft,
+					nil, nil, &containerID, &slot, actor, tick)
+			}
+		}
+
+		slot, err := freeSlotWithin(ctx, tx, containerID)
+		if err != nil {
+			return err
+		}
+
+		mods := output.Mods
+		if len(mods) == 0 {
+			mods = json.RawMessage("{}")
+		}
+		stack := output.StackSize
+		if stack < 1 {
+			stack = 1
+		}
+
+		err = tx.QueryRow(ctx, `
+			INSERT INTO item_instances
+			    (base_id, rarity, item_level, mods, stack_size, container_id, slot)
+			VALUES ($1, $2::item_rarity, $3, $4, $5, $6, $7)
+			RETURNING id`,
+			output.BaseID, output.Rarity, output.ItemLevel, mods, stack, containerID, slot,
+		).Scan(&produced)
+		if err != nil {
+			return err
+		}
+		return recordEvent(ctx, tx, produced, EventCraft, nil, nil, &containerID, &slot, actor, tick)
+	})
+
+	switch {
+	case errors.Is(err, ErrMissingInputs):
+		return uuid.Nil, ErrMissingInputs
+	case errors.Is(err, ErrContainerFull):
+		return uuid.Nil, ErrContainerFull
+	case err != nil:
+		return uuid.Nil, fmt.Errorf("store: crafting: %w", err)
+	}
+	return produced, nil
+}
+
+// consume spends one requirement, across as many stacks as it takes.
+//
+// Across stacks deliberately: a bag holding three bars in one slot and two in
+// another holds five bars, and a recipe needing five that refused would be a
+// recipe whose availability depended on how the bag happened to fill.
+func consume(ctx context.Context, tx pgx.Tx, containerID uuid.UUID, in CraftInput,
+	actor uuid.UUID, tick uint64) error {
+
+	if in.Qty < 1 {
+		return nil
+	}
+
+	// Locked in slot order, so two crafts running at once take the same locks
+	// in the same order and cannot deadlock against each other.
+	rows, err := tx.Query(ctx, `
+		SELECT id, slot, stack_size FROM item_instances
+		 WHERE container_id = $1 AND base_id = $2
+		 ORDER BY slot
+		 FOR UPDATE`, containerID, in.BaseID)
+	if err != nil {
+		return err
+	}
+
+	type held struct {
+		id    uuid.UUID
+		slot  int
+		stack int
+	}
+	var (
+		stacks []held
+		total  int
+	)
+	for rows.Next() {
+		var h held
+		if err := rows.Scan(&h.id, &h.slot, &h.stack); err != nil {
+			rows.Close()
+			return err
+		}
+		stacks = append(stacks, h)
+		total += h.stack
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	if total < in.Qty {
+		return ErrMissingInputs
+	}
+
+	left := in.Qty
+	for _, h := range stacks {
+		if left == 0 {
+			break
+		}
+
+		take := h.stack
+		if take > left {
+			take = left
+		}
+		left -= take
+
+		if take < h.stack {
+			if _, err := tx.Exec(ctx,
+				`UPDATE item_instances SET stack_size = stack_size - $2, updated_at = now()
+				  WHERE id = $1`, h.id, take); err != nil {
+				return err
+			}
+			// Journalled as a consume with a from-location and no to: the
+			// quantity left the world.
+			if err := recordEvent(ctx, tx, h.id, EventConsume,
+				&containerID, &h.slot, nil, nil, actor, tick); err != nil {
+				return err
+			}
+			continue
+		}
+
+		// The whole stack goes. Journalled before the row, so the record
+		// survives the thing it describes.
+		if err := recordEvent(ctx, tx, h.id, EventConsume,
+			&containerID, &h.slot, nil, nil, actor, tick); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM item_instances WHERE id = $1`, h.id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// stackWithin adds a quantity to an existing stack, and reports which and how
+// big it now is. The zero UUID means there was no stack with room.
+//
+// Lowest slot first, so a bag fills predictably rather than in whatever order
+// the rows happen to come back in. See StackInto for why one statement is what
+// makes concurrent grants safe.
+func stackWithin(ctx context.Context, q querier, containerID uuid.UUID,
+	baseID string, qty, maxStack int) (id uuid.UUID, stack, slot int, err error) {
+
+	if qty < 1 {
+		qty = 1
+	}
+
+	err = q.QueryRow(ctx, `
+		UPDATE item_instances
+		   SET stack_size = stack_size + $3, updated_at = now()
+		 WHERE id = (
+		       SELECT id FROM item_instances
+		        WHERE container_id = $1
+		          AND base_id = $2
+		          AND stack_size + $3 <= $4
+		        ORDER BY slot
+		        LIMIT 1)
+		RETURNING id, stack_size, slot`,
+		containerID, baseID, qty, maxStack).Scan(&id, &stack, &slot)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, 0, 0, nil
+	}
+	if err != nil {
+		return uuid.Nil, 0, 0, err
+	}
+	return id, stack, slot, nil
+}
+
+// freeSlotWithin finds the lowest unoccupied slot in a container.
+//
+// generate_series minus the occupied slots: the database finds the gap in one
+// round trip rather than the caller fetching every slot to scan it.
+func freeSlotWithin(ctx context.Context, q querier, containerID uuid.UUID) (int, error) {
+	var capacity int
+	if err := q.QueryRow(ctx,
+		`SELECT capacity FROM containers WHERE id = $1`, containerID).Scan(&capacity); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, ErrNotFound
+		}
+		return 0, err
+	}
+
+	var slot int
+	err := q.QueryRow(ctx, `
+		SELECT s FROM generate_series(0, $2 - 1) AS s
+		 WHERE NOT EXISTS (
+		       SELECT 1 FROM item_instances
+		        WHERE container_id = $1 AND slot = s)
+		 ORDER BY s LIMIT 1`, containerID, capacity).Scan(&slot)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, ErrContainerFull
+	}
+	if err != nil {
+		return 0, err
+	}
+	return slot, nil
 }

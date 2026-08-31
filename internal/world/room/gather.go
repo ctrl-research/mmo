@@ -234,6 +234,11 @@ func (r *Room) beginGather(p *player, nodeID EntityID) {
 		return
 	}
 
+	// One action at a time. A character mining and smithing at once would be
+	// two runs against one bag, and the bag would lose -- so starting either
+	// ends the other, silently, because the player just said which they meant.
+	r.stopCraft(p, "")
+
 	p.gather = gatherState{node: nodeID, skill: def.Skill, def: def}
 	r.emitTo(e.ID, &mmov1.Event{Body: &mmov1.Event_Gathering{Gathering: &mmov1.Gathering{
 		EntityId: uint32(nodeID),
@@ -272,6 +277,8 @@ func (r *Room) refuseGather(id EntityID, reason string) {
 // stop immediately rather than up to 600 ms later, and a player who stands
 // still should be rolled for on a beat they can feel.
 func (r *Room) phaseActions() {
+	r.phaseCrafting()
+
 	for _, id := range r.playerOrder {
 		p := r.players[id]
 		if p == nil || p.gather.node == 0 {

@@ -17,6 +17,7 @@ import {
   KIND_PROJECTILE,
   KIND_RESOURCE,
   KIND_SHRINE,
+  KIND_STATION,
   KIND_TELEGRAPH,
   type RenderedEntity,
 } from "@/game/interpolator";
@@ -33,6 +34,17 @@ import { Animator } from "./animator";
  * answer, in the simulation. It is also the only place fixed-point becomes
  * pixels.
  */
+
+/**
+ * How close the local character must be for a station to name itself, in
+ * pixels.
+ *
+ * A little wider than the server's own interaction range, so the label appears
+ * a step before the key starts working rather than a step after -- a station
+ * that is silent until you are exactly on it reads as a station that does not
+ * work.
+ */
+const NAME_RANGE = 96;
 
 export interface MapGeometry {
   width: number;
@@ -75,6 +87,12 @@ export class Scene {
   // everything at full brightness -- the right default, since an unknown level
   // should not make the world look greyed out.
   #skillLevels = new Map<string, number>();
+
+  // Where the local character is, in pixels, from the most recent drawSelf.
+  // Used only to decide whether a station is close enough to name -- see
+  // labelFor. drawSelf runs before drawEntities every frame, so this is never
+  // a frame stale.
+  #selfAt = { x: 0, y: 0 };
   #effects = new Effects();
 
   #sprites: Sprites;
@@ -251,6 +269,10 @@ export class Scene {
 
   /** Draws the local player and points the camera at them. */
   drawSelf(body: Body, name: string, hp: number, hpMax: number, authoritative?: Body): void {
+    this.#selfAt = {
+      x: toPixels(body.x) + toPixels(body.w) / 2,
+      y: toPixels(body.y) + toPixels(body.h),
+    };
     placeCharacter(this.#selfSprite, this.#selfAnim, this.#sprites, body, performance.now());
     this.#selfSprite.label = name;
 
@@ -305,7 +327,7 @@ export class Scene {
         this.#others.set(e.id, sprite);
         this.#entityLayer.addChild(sprite.container);
       }
-      sprite.update(e, this.#sprites, now, this.#skillLevelFor(e));
+      sprite.update(e, this.#sprites, now, this.#skillLevelFor(e), this.#nearSelf(e));
     }
   }
 
@@ -319,6 +341,21 @@ export class Scene {
    */
   setSkillLevels(levels: Map<string, number>): void {
     this.#skillLevels = levels;
+  }
+
+  /**
+   * Whether an entity is close enough to the local character to interact with.
+   *
+   * Generous rather than exact: the server owns the real range, and this only
+   * decides whether to draw a label. Being a little wrong means a name appearing
+   * a step early, which is the harmless direction.
+   */
+  #nearSelf(e: RenderedEntity): boolean {
+    const cx = toPixels(e.x) + toPixels(e.w) / 2;
+    const cy = toPixels(e.y) + toPixels(e.h);
+    const dx = cx - this.#selfAt.x;
+    const dy = cy - this.#selfAt.y;
+    return dx * dx + dy * dy <= NAME_RANGE * NAME_RANGE;
   }
 
   #skillLevelFor(e: RenderedEntity): number {
@@ -462,9 +499,11 @@ class EntitySprite {
                 ? theme.shrine
                 : e.kind === KIND_RESOURCE
                   ? theme.resource
-                  : e.kind === KIND_MOB
-                    ? tierTint(e.tier) || theme.mobEdge
-                    : theme.nameText,
+                  : e.kind === KIND_STATION
+                    ? theme.stationCore
+                    : e.kind === KIND_MOB
+                      ? tierTint(e.tier) || theme.mobEdge
+                      : theme.nameText,
           // The one label that has to be readable over whatever it is drawn
           // on top of, because it is drawn on top of the floor of a fight.
           stroke: { color: 0x0b0d12, width: e.kind === KIND_TELEGRAPH ? 3 : 0 },
@@ -558,6 +597,73 @@ class EntitySprite {
     }
   }
 
+  /**
+   * A crafting station, shaped by which one it is.
+   *
+   * Same reasoning as resource nodes: no art, an obviously abstract silhouette,
+   * and a different one per kind because an anvil that looked like a cauldron
+   * would be an anvil a player walks past. Keyed on the station's content id,
+   * which the server sends -- the client should not be reading a display name
+   * to decide what to draw.
+   */
+  #drawStation(e: RenderedEntity, px: number, py: number, pw: number, ph: number, now: number): void {
+    const g = this.#gfx;
+    const cx = px + pw / 2;
+    const bottom = py + ph;
+    const body = { color: theme.station, alpha: 0.95 };
+
+    switch (e.stationId) {
+      case "fire": {
+        // Logs and a flame that flickers, so a cooking fire reads as lit rather
+        // than as a pile of wood.
+        g.rect(px + pw * 0.1, bottom - ph * 0.2, pw * 0.8, ph * 0.2).fill(body);
+        const lick = 0.55 + 0.2 * Math.sin(now / 140 + e.id);
+        g.poly([
+          cx - pw * 0.2, bottom - ph * 0.2,
+          cx, bottom - ph * (0.2 + 0.55 * lick),
+          cx + pw * 0.2, bottom - ph * 0.2,
+        ]).fill({ color: theme.stationCore, alpha: lick });
+        break;
+      }
+
+      case "cauldron": {
+        // A pot on legs, with a surface that stirs.
+        g.rect(cx - pw * 0.06, bottom - ph * 0.25, pw * 0.12, ph * 0.25).fill(body);
+        g.circle(cx, bottom - ph * 0.45, pw * 0.34).fill(body);
+        const stir = 0.5 + 0.2 * Math.sin(now / 400 + e.id);
+        g.circle(cx, bottom - ph * 0.52, pw * 0.2).fill({
+          color: theme.stationCore,
+          alpha: stir,
+        });
+        break;
+      }
+
+      default: {
+        // An anvil: the classic silhouette, narrow-waisted with a horn. Also
+        // the fallback, so a station added in content and not here draws
+        // something rather than nothing.
+        const top = bottom - ph * 0.62;
+        g.poly([
+          px + pw * 0.06, top,
+          px + pw * 0.94, top,
+          px + pw * 0.78, top + ph * 0.16,
+          px + pw * 0.6, top + ph * 0.16,
+          px + pw * 0.66, bottom,
+          px + pw * 0.34, bottom,
+          px + pw * 0.4, top + ph * 0.16,
+          px + pw * 0.22, top + ph * 0.16,
+        ]).fill(body);
+        // A struck-metal glint on the face, slow enough to read as heat rather
+        // than as something flashing for attention.
+        const glow = 0.25 + 0.2 * Math.sin(now / 700 + e.id);
+        g.rect(px + pw * 0.2, top, pw * 0.6, 2).fill({
+          color: theme.stationCore,
+          alpha: glow,
+        });
+      }
+    }
+  }
+
   /** Plays a swing, held for as long as the animator says. */
   attack(now: number): void {
     this.#anim.attack(now);
@@ -568,7 +674,13 @@ class EntitySprite {
    * everything else. Passed in rather than looked up here, because the renderer
    * owns no game state -- it draws what it is handed.
    */
-  update(e: RenderedEntity, sprites: Sprites, now: number, skillLevel = 0): void {
+  update(
+    e: RenderedEntity,
+    sprites: Sprites,
+    now: number,
+    skillLevel = 0,
+    nearSelf = true,
+  ): void {
     if (this.#bornAt === 0) this.#bornAt = now;
 
     const px = toPixels(e.x);
@@ -656,6 +768,11 @@ class EntitySprite {
         break;
       }
 
+      case KIND_STATION: {
+        this.#drawStation(e, px, py, pw, ph, now);
+        break;
+      }
+
       case KIND_MOB: {
         const dead = e.hp === 0;
         const texture = sprites.mob(pw, ph, Math.floor(now / 320));
@@ -723,7 +840,22 @@ class EntitySprite {
       // the warning at a distance -- it reads across a room where a name does
       // not -- and the modifiers are the detail, wanted at the point of
       // actually fighting the thing.
-      this.#label.visible = e.kind !== KIND_MOB || (e.hp > 0 && e.hp < e.hpMax);
+      //
+      // Stations get the same treatment for the same reason, found the same
+      // way: three of them in one camp plus a shrine nearby is four labels in
+      // one place, and the result was "Cauldron" written through "Call of the
+      // Warden". A station names itself when you are close enough to use it,
+      // which is also when knowing which one it is starts to matter.
+      switch (e.kind) {
+        case KIND_MOB:
+          this.#label.visible = e.hp > 0 && e.hp < e.hpMax;
+          break;
+        case KIND_STATION:
+          this.#label.visible = nearSelf;
+          break;
+        default:
+          this.#label.visible = true;
+      }
     }
   }
 

@@ -70,6 +70,12 @@ export const theme = {
   resource: 0x7fb069,
   resourceCore: 0xcfe8b4,
 
+  // Crafting stations. Warm and metallic against the green of the things you
+  // gather, because they are the other half of the loop and should not read as
+  // more scenery.
+  station: 0xb08968,
+  stationCore: 0xffb35c,
+
   nameText: 0xd7dce6,
   ghost: 0x2ecc71,
 } as const;

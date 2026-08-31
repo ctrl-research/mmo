@@ -50,6 +50,11 @@ type Content struct {
 	Secondary map[string]*SecondarySkill
 	Nodes     map[string]*ResourceNode
 
+	// Stations are the crafting fixtures, and Recipes what they make. See
+	// recipes.go.
+	Stations map[string]*Station
+	Recipes  map[string]*Recipe
+
 	// Waypoints indexes every fast-travel destination by its global ID.
 	//
 	// Fast travel names a waypoint without naming its map -- that is the point
@@ -86,6 +91,8 @@ func Load(fsys fs.FS) (*Content, error) {
 
 		Secondary: make(map[string]*SecondarySkill),
 		Nodes:     make(map[string]*ResourceNode),
+		Stations:  make(map[string]*Station),
+		Recipes:   make(map[string]*Recipe),
 	}
 
 	hasher := sha256.New()
@@ -123,6 +130,11 @@ func Load(fsys fs.FS) (*Content, error) {
 		// and the map that places it.
 		{"secondary skills", c.loadSecondary},
 		{"resources", c.loadResources},
+		// Stations before the recipes made at them, and both after items and
+		// maps: a recipe is checked against what it consumes, what it produces,
+		// and the station it needs.
+		{"stations", c.loadStations},
+		{"recipes", c.loadRecipes},
 	}
 
 	rec := &hashRecorder{h: hasher, fsys: fsys}
@@ -311,7 +323,10 @@ func (c *Content) verify() error {
 	if err := c.validateEvents(); err != nil {
 		return err
 	}
-	return c.validateSecondary()
+	if err := c.validateSecondary(); err != nil {
+		return err
+	}
+	return c.validateRecipes()
 }
 
 // hashRecorder accumulates a stable hash over every file that is read.

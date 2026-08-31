@@ -344,6 +344,14 @@ func (s *session) handleClientMessage(ctx context.Context, cm *mmov1.ClientMessa
 			handle.Interact(ctx, entityID, room.EntityID(in.GetEntityId()), kind)
 		}
 
+	case cm.GetCraft() != nil:
+		if !limiter.allow() {
+			s.gw.metrics.InputsDropped.Inc()
+			return
+		}
+		c := cm.GetCraft()
+		handle.Craft(ctx, entityID, room.EntityID(c.GetEntityId()), c.GetRecipeId())
+
 	case cm.GetItemAction() != nil:
 		if !limiter.allow() {
 			s.gw.metrics.InputsDropped.Inc()
@@ -810,7 +818,8 @@ func (s *session) handleItemAction(ctx context.Context, action *mmov1.ItemAction
 // is dropped at the boundary, rather than arriving in the room as whatever
 // number happened to line up.
 var interactKinds = map[mmov1.InteractKind]room.InteractKind{
-	mmov1.InteractKind_INTERACT_KIND_LOOT:   room.InteractLoot,
-	mmov1.InteractKind_INTERACT_KIND_GATHER: room.InteractGather,
-	mmov1.InteractKind_INTERACT_KIND_STOP:   room.InteractStop,
+	mmov1.InteractKind_INTERACT_KIND_LOOT:    room.InteractLoot,
+	mmov1.InteractKind_INTERACT_KIND_GATHER:  room.InteractGather,
+	mmov1.InteractKind_INTERACT_KIND_STOP:    room.InteractStop,
+	mmov1.InteractKind_INTERACT_KIND_STATION: room.InteractStation,
 }

@@ -27,7 +27,9 @@ import "embed"
 //go:embed all:maps
 //go:embed all:mobs
 //go:embed all:passives
+//go:embed all:recipes
 //go:embed all:resources
+//go:embed all:stations
 //go:embed all:secondary
 //go:embed all:skills
 //go:embed all:supports

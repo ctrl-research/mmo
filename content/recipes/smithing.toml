@@ -1,0 +1,79 @@
+# Smithing.
+#
+# The chain the milestone's exit is about: ore becomes a bar, bars become
+# something you can equip. Two steps rather than one deliberately -- a single
+# ore-to-sword recipe would make mining the only decision, and the bar is what
+# gives smithing a level curve of its own.
+#
+# `action_ticks` is in action ticks rather than milliseconds because that is the
+# unit it is measured in: a run authored at 800 ms would be rounded to two beats
+# anyway, and authoring the rounded number is authoring what happens.
+
+[recipe.copper_bar]
+name = "Copper Bar"
+skill = "smithing"
+station = "anvil"
+level = 1
+exp = 30
+output = "material.copper_bar"
+qty = 1
+action_ticks = 3
+
+[[recipe.copper_bar.input]]
+item = "material.copper_ore"
+qty = 2
+
+[recipe.iron_bar]
+name = "Iron Bar"
+skill = "smithing"
+station = "anvil"
+level = 15
+exp = 90
+output = "material.iron_bar"
+qty = 1
+action_ticks = 4
+
+[[recipe.iron_bar.input]]
+item = "material.iron_ore"
+qty = 2
+
+# The payoff. A weapon a level-1 character can actually equip, made from what
+# they mined, which is the whole of "smith what you gathered into something you
+# can equip".
+[recipe.copper_sword]
+name = "Copper Sword"
+skill = "smithing"
+station = "anvil"
+level = 5
+exp = 140
+output = "weapon.copper_sword"
+qty = 1
+action_ticks = 6
+
+[[recipe.copper_sword.input]]
+item = "material.copper_bar"
+qty = 3
+
+[[recipe.copper_sword.input]]
+item = "material.oak_log"
+qty = 1
+
+# A better axe, so gathering feeds gathering: the tool tier that unlocks willow
+# is something a woodcutter can make rather than something they wait for.
+[recipe.steel_axe]
+name = "Steel Axe"
+skill = "smithing"
+station = "anvil"
+level = 20
+exp = 220
+output = "tool.steel_axe"
+qty = 1
+action_ticks = 6
+
+[[recipe.steel_axe.input]]
+item = "material.iron_bar"
+qty = 2
+
+[[recipe.steel_axe.input]]
+item = "material.oak_log"
+qty = 1

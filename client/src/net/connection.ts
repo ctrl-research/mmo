@@ -49,6 +49,11 @@ import {
   type SecondaryExp,
   type SecondarySkills,
   type SecondarySkill,
+  type StationMenu,
+  type RecipeOption,
+  type RecipeIngredient,
+  type Crafting,
+  CraftSchema,
 } from "@/gen/mmo/v1/game_pb";
 
 /** Bumped on any incompatible wire change; must match gateway.ProtocolVersion. */
@@ -187,6 +192,31 @@ export class Connection {
         entityId,
         kind: InteractKind.GATHER,
       }),
+    });
+  }
+
+  /**
+   * Asks a station what it can make.
+   *
+   * A question rather than something the client works out: the answer depends
+   * on the character's level and on what is in their bag, and the client has
+   * neither the curve nor an authoritative view of the bag.
+   */
+  sendStationMenu(entityId: number): void {
+    this.send({
+      case: "interact",
+      value: create(InteractSchema, {
+        entityId,
+        kind: InteractKind.STATION,
+      }),
+    });
+  }
+
+  /** Asks to start making something. An empty recipe stops the current run. */
+  sendCraft(entityId: number, recipeId: string): void {
+    this.send({
+      case: "craft",
+      value: create(CraftSchema, { entityId, recipeId }),
     });
   }
 
@@ -419,5 +449,9 @@ export type {
   SecondaryExp,
   SecondarySkills,
   SecondarySkill,
+  StationMenu,
+  RecipeOption,
+  RecipeIngredient,
+  Crafting,
 };
 export { ChatChannel, PartyAction_Kind, GuildAction_Kind, SocialAction_Kind };

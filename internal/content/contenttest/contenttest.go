@@ -40,6 +40,8 @@ func FS() fstest.MapFS {
 		"maps/copse.tmj":       file(CopseTMJ),
 		"secondary/test.toml":  file(Secondary),
 		"resources/test.toml":  file(Resources),
+		"stations/test.toml":   file(Stations),
+		"recipes/test.toml":    file(Recipes),
 	}
 }
 
@@ -249,6 +251,29 @@ level = 1
 [item."test.good_axe".tool]
 skill = "chopping"
 power = 5
+
+[item."test.plank"]
+name = "Test Plank"
+kind = "material"
+stackable = true
+max_stack = 100
+level = 1
+
+[item."test.pin"]
+name = "Test Pin"
+kind = "material"
+stackable = true
+max_stack = 100
+level = 1
+
+# Unstackable, so a test can prove a craft that produces equipment needs a slot
+# of its own.
+[item."test.chair"]
+name = "Test Chair"
+kind = "equipment"
+slot = "weapon"
+class = "sword"
+level = 1
 `
 
 // Affixes are deliberately few and with fixed ranges, so a test can assert an
@@ -739,6 +764,10 @@ tool_name = "hatchet"
 
 [skill.picking]
 name = "Picking"
+
+# A processing skill. No tool class: what it needs is a station.
+[skill.forging]
+name = "Forging"
 `
 
 const Resources = `
@@ -804,6 +833,12 @@ respawn_ms = 5000
 // Four nodes, spaced far enough apart that a player standing at one is out of
 // range of the others -- so "walked away" is expressible by walking to the next
 // tree rather than by teleporting into empty space.
+//
+// The forge is deliberately *beside* near-tree, within the pickup range of it.
+// That is what makes "starting a craft stops a gather" testable: with the forge
+// any further off, the gather would be interrupted for range and the test would
+// pass whether the rule existed or not. The bench is far from everything, for
+// the tests that need somewhere out of reach.
 const CopseTMJ = `{
   "type": "map", "width": 40, "height": 10, "tilewidth": 32, "tileheight": 32,
   "properties": [
@@ -829,7 +864,108 @@ const CopseTMJ = `{
        "properties": [
          {"name": "node_id", "type": "string", "value": "test_tree"},
          {"name": "layer", "type": "string", "value": "shared"}
-       ]}
+       ]},
+      {"id": 8, "class": "station", "name": "forge", "x": 100, "y": 240,
+       "width": 56, "height": 48,
+       "properties": [{"name": "station_id", "type": "string", "value": "forge"}]},
+      {"id": 9, "class": "station", "name": "bench", "x": 900, "y": 240,
+       "width": 56, "height": 48,
+       "properties": [{"name": "station_id", "type": "string", "value": "bench"}]}
     ]
   }]
 }`
+
+// Stations and Recipes cover the shapes crafting has: one input and several,
+// a stackable output and an unstackable one, and a recipe gated on level.
+//
+// Every recipe takes exactly one action tick except test_slow, so a test can
+// assert a produced item on the next beat and reason about the exception
+// separately.
+const Stations = `
+[station.forge]
+name = "Test Forge"
+
+[station.bench]
+name = "Test Bench"
+`
+
+const Recipes = `
+[recipe.test_plank]
+name = "Test Plank"
+skill = "forging"
+station = "forge"
+level = 1
+exp = 100
+output = "test.plank"
+qty = 1
+action_ticks = 1
+
+[[recipe.test_plank.input]]
+item = "test.log"
+qty = 2
+
+# Several inputs, so a test can prove the one that is short is the one named.
+[recipe.test_chair]
+name = "Test Chair"
+skill = "forging"
+station = "forge"
+level = 1
+exp = 100
+output = "test.chair"
+qty = 1
+action_ticks = 1
+
+[[recipe.test_chair.input]]
+item = "test.plank"
+qty = 2
+
+[[recipe.test_chair.input]]
+item = "test.pin"
+qty = 1
+
+# Gated on level rather than on materials.
+[recipe.test_masterwork]
+name = "Test Masterwork"
+skill = "forging"
+station = "forge"
+level = 30
+exp = 100
+output = "test.plank"
+qty = 1
+action_ticks = 1
+
+[[recipe.test_masterwork.input]]
+item = "test.log"
+qty = 1
+
+# Takes three beats, so a test can prove a longer recipe is actually longer.
+[recipe.test_slow]
+name = "Test Slow Thing"
+skill = "forging"
+station = "forge"
+level = 1
+exp = 100
+output = "test.pin"
+qty = 1
+action_ticks = 3
+
+[[recipe.test_slow.input]]
+item = "test.log"
+qty = 1
+
+# At the other station, so a test can prove a recipe asked for at the wrong one
+# is refused by name.
+[recipe.test_stool]
+name = "Test Stool"
+skill = "forging"
+station = "bench"
+level = 1
+exp = 100
+output = "test.plank"
+qty = 1
+action_ticks = 1
+
+[[recipe.test_stool.input]]
+item = "test.log"
+qty = 1
+`

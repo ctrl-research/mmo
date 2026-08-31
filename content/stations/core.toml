@@ -1,0 +1,18 @@
+# Crafting stations.
+#
+# A station is scenery that does something: no timers, no population, nothing
+# to run out of. That is what makes it cheaper than a resource node rather than
+# a special case of one, and it is why two players at one anvil have nothing to
+# contend over.
+#
+# Defined here rather than named as a bare string on each recipe, so a typo in
+# a map is a load error rather than an anvil nobody can use.
+
+[station.anvil]
+name = "Anvil"
+
+[station.fire]
+name = "Campfire"
+
+[station.cauldron]
+name = "Cauldron"
