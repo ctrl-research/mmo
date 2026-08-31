@@ -45,6 +45,10 @@ import {
   type Downed,
   type DungeonState,
   type ZoneEvent,
+  type Gathering,
+  type SecondaryExp,
+  type SecondarySkills,
+  type SecondarySkill,
 } from "@/gen/mmo/v1/game_pb";
 
 /** Bumped on any incompatible wire change; must match gateway.ProtocolVersion. */
@@ -165,6 +169,32 @@ export class Connection {
     this.send({
       case: "cast",
       value: create(CastSchema, { seq, skillId, facingLeft }),
+    });
+  }
+
+  /**
+   * Asks to work a resource node.
+   *
+   * Sent repeatedly while the key is held, exactly like looting. The server
+   * treats a repeat on the node already being worked as nothing at all, so
+   * holding is free and the action is paced by the 600 ms action tick rather
+   * than by how fast anyone can press a key.
+   */
+  sendGather(entityId: number): void {
+    this.send({
+      case: "interact",
+      value: create(InteractSchema, {
+        entityId,
+        kind: InteractKind.GATHER,
+      }),
+    });
+  }
+
+  /** Asks to stop whatever action is in progress. */
+  sendStopAction(): void {
+    this.send({
+      case: "interact",
+      value: create(InteractSchema, { kind: InteractKind.STOP }),
     });
   }
 
@@ -385,5 +415,9 @@ export type {
   Downed,
   DungeonState,
   ZoneEvent,
+  Gathering,
+  SecondaryExp,
+  SecondarySkills,
+  SecondarySkill,
 };
 export { ChatChannel, PartyAction_Kind, GuildAction_Kind, SocialAction_Kind };

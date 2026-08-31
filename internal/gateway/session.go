@@ -337,8 +337,11 @@ func (s *session) handleClientMessage(ctx context.Context, cm *mmov1.ClientMessa
 			return
 		}
 		in := cm.GetInteract()
-		if in.GetKind() == mmov1.InteractKind_INTERACT_KIND_LOOT {
-			handle.Interact(ctx, entityID, room.EntityID(in.GetEntityId()), room.InteractLoot)
+		// Mapped rather than cast, so an unknown kind from a client that is
+		// ahead of this server is dropped here instead of arriving in the room
+		// as some other kind entirely.
+		if kind, ok := interactKinds[in.GetKind()]; ok {
+			handle.Interact(ctx, entityID, room.EntityID(in.GetEntityId()), kind)
 		}
 
 	case cm.GetItemAction() != nil:
@@ -798,4 +801,16 @@ func (s *session) handleItemAction(ctx context.Context, action *mmov1.ItemAction
 		// the inventory message it is about to receive anyway.
 		s.log.Debug("item action refused", "err", err)
 	}
+}
+
+// interactKinds maps the wire enum onto the room's own.
+//
+// A table rather than a cast: the two are separate types precisely so that a
+// client from a later build asking for a kind this server has never heard of
+// is dropped at the boundary, rather than arriving in the room as whatever
+// number happened to line up.
+var interactKinds = map[mmov1.InteractKind]room.InteractKind{
+	mmov1.InteractKind_INTERACT_KIND_LOOT:   room.InteractLoot,
+	mmov1.InteractKind_INTERACT_KIND_GATHER: room.InteractGather,
+	mmov1.InteractKind_INTERACT_KIND_STOP:   room.InteractStop,
 }

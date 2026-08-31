@@ -484,15 +484,75 @@ in a dungeon if nothing in the game can die.
 
 ## M8 — Secondary skills
 
-- Resource nodes on maps with independent respawn timers
-- The 600 ms action tick, layered on the 20 Hz sim tick
-- Gathering: woodcutting, mining, fishing, herbalism
-- Processing: smithing, cooking, alchemy
-- OSRS exp curve, 1–99 per skill, levelling from use
-- Tool tiers and level gating
-- Skills panel
+- [x] Resource nodes on maps with independent respawn timers
+- [x] The 600 ms action tick, layered on the 20 Hz sim tick
+- [x] Gathering: woodcutting, mining, fishing, herbalism
+- [ ] Processing: smithing, cooking, alchemy
+- [x] OSRS exp curve, 1–99 per skill, levelling from use
+- [x] Tool tiers and level gating
+- [x] Skills panel
 
 **Exit:** chop trees for twenty minutes, gain levels, smith what you gathered into something you can equip.
+
+The gathering half is done and processing is not. The order is the same one M7
+used: there is no point in a forge before there is anything to put in it, and
+every question about what smithing should cost is a question about how fast
+gathering produces.
+
+The **action tick** is derived rather than a second loop — "every twelfth
+simulation tick" is 600 ms, and it means the room has one clock that nothing can
+drift from. It belongs to the *room* rather than to the player who started an
+action, which is OSRS's behaviour and worth stating because it is observable:
+two players who begin half a beat apart still resolve together.
+
+Gathering **reuses the layering model** rather than adding contention rules. A
+resource node is an entity in a layer like a mob, so a per-player tree is free
+and a shared one is a deliberate choice per placement. That is the same
+mechanism that removed spawn camping in M4, applied to the thing OSRS is famous
+for players queueing at.
+
+Two clocks and two durabilities, on purpose. The **item** is written the moment
+it is gathered, because an item has to exist somewhere and "in a tick loop's
+memory" is not somewhere. The **experience** rides the ordinary checkpoint,
+because a yield lands every few seconds for as long as somebody keeps at it and
+one write per log would make woodcutting the busiest table in the database. The
+room is authoritative for the session either way.
+
+| Claim | How it was checked |
+| --- | --- |
+| Gathering runs on the 600 ms beat, not the 50 ms one | `TestGatheringResolvesOnTheActionTickAndNotTheSimulationTick` — on the wrong clock it would produce twelve times as much and every number would be tuned against something nobody meant |
+| The beat belongs to the room | `TestEveryoneGathersOnTheSameBeat` — per-player timers would drift a party apart for no visible reason |
+| Holding the key does not gather faster | `TestHoldingTheKeyDoesNotGatherFaster` — and announces itself once, not once per tick |
+| A yield is an item *and* experience | `TestAYieldGrantsAnItemAndExperience`, `TestSecondaryExperienceAccumulatesAndLevels` |
+| A node runs out and comes back, whole | `TestANodeRunsOutAfterItsYields`, `TestASpentNodeComesBack` — a node that returned part-used would be worth less every respawn |
+| Finishing a tree is not an error | `TestUsingUpANodeIsNotReportedAsAFailure` — the player succeeded |
+| Everything interrupts it, at once | `TestWalkingAwayStopsGathering`, `TestTakingDamageStopsGathering`, `TestAFrozenPlayerStopsGathering`, `TestUnequippingTheToolStopsGathering` |
+| A corpse does not chop | `TestADownedCharacterDoesNotGather`, `…CannotStartGathering`, `TestBeingKilledStopsGathering` — the first two set the downed state directly, because a real death also sets the in-combat flag and the combat check would otherwise be doing the work |
+| Every refusal says why | `TestGatheringNeedsTheRightToolAndSaysSo`, `TestAToolTooWeakForANodeIsRefused`, `TestANodeAboveYourLevelIsRefusedByName`, `TestGatheringOutOfRangeIsRefused` — "nothing happened" is the one failure a player cannot debug |
+| A tool is a key *and* a speed-up | `TestGatherChanceRisesWithLevelAndTool` — tested as arithmetic, because a test that samples an RNG fails in CI eventually |
+| A node is per player unless it says otherwise | `TestAnOwnerLayerNodeIsOnePerPlayer`, `TestAPlayerCannotGatherSomebodyElsesNode`, `TestASharedNodeExistsOnceForTheRoom` |
+| Reconnecting neither resumes nor rolls back | `TestReconnectingDoesNotResumeGathering`, `TestAttachingDoesNotRollBackExperience` — the room's copy is the newer one between checkpoints |
+| Bad content does not load | `TestBrokenSecondaryContentIsRejected` (18 cases) |
+| **A stackable material takes one slot** | `TestGrantingAStackableMaterialFillsOneSlot` and five more — found in play, not by a test |
+
+**Stacking was missing, and gathering is what made it matter.** `Grant` took a
+slot per unit. Nobody noticed while loot was the only source of materials — a
+boar drops one hide — and six copper ore in six slots was the first thing
+visible in the browser. A 24-slot bag fills in about two minutes once a player
+can chop for twenty, so the exit criterion was unreachable. Merging on grant
+fixes gathering and loot together.
+
+Two smaller things the browser found and no test would have: the gathering line
+was drawn straight through the health bar, and the skills panel told a player
+they needed a `fishing_rod`. A tool's class is an identifier and what a player
+is told is prose; they are now separate fields, and the fixture deliberately
+gives one skill a tool name that differs from its class so a refusal printing
+the wrong one fails.
+
+Resource nodes have no art. They are shaped silhouettes keyed on the skill —
+a trunk and a crown, an outcrop with an ore seam, ripples, a low cluster —
+because one silhouette for all of them meant a copper rock drawn as a tree, and
+the name on the label is not what anyone reads while scanning a map.
 
 ---
 

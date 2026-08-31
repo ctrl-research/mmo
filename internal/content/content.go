@@ -45,6 +45,11 @@ type Content struct {
 	// Events are the zone events, keyed by event id.
 	Events map[string]*Event
 
+	// Secondary are the non-combat skills, keyed by skill id, and Nodes are
+	// the resource nodes that raise them. See secondary.go.
+	Secondary map[string]*SecondarySkill
+	Nodes     map[string]*ResourceNode
+
 	// Waypoints indexes every fast-travel destination by its global ID.
 	//
 	// Fast travel names a waypoint without naming its map -- that is the point
@@ -78,6 +83,9 @@ func Load(fsys fs.FS) (*Content, error) {
 		Dungeons: make(map[string]*Dungeon),
 		Elites:   make(map[string]*Elite),
 		Events:   make(map[string]*Event),
+
+		Secondary: make(map[string]*SecondarySkill),
+		Nodes:     make(map[string]*ResourceNode),
 	}
 
 	hasher := sha256.New()
@@ -110,6 +118,11 @@ func Load(fsys fs.FS) (*Content, error) {
 		// vocabulary and is validated against the same buffs and skills.
 		{"elites", c.loadElites},
 		{"events", c.loadEvents},
+		// Secondary skills before the nodes that name them, and both after
+		// items and maps, because a node is checked against the item it yields
+		// and the map that places it.
+		{"secondary skills", c.loadSecondary},
+		{"resources", c.loadResources},
 	}
 
 	rec := &hashRecorder{h: hasher, fsys: fsys}
@@ -295,7 +308,10 @@ func (c *Content) verify() error {
 	if err := c.validateDungeons(); err != nil {
 		return err
 	}
-	return c.validateEvents()
+	if err := c.validateEvents(); err != nil {
+		return err
+	}
+	return c.validateSecondary()
 }
 
 // hashRecorder accumulates a stable hash over every file that is read.

@@ -271,16 +271,37 @@ OSRS-style secondary skills (woodcutting, fishing, mining) run on a derived **ac
 
 ```
 tick(n):
-  1. ingest    drain per-player input queues; validate sequence numbers
-  2. movement  apply intents; platformer physics (gravity, AABB, ropes, ladders)
-  3. abilities validate casts (cooldown, cost, range, LoS); schedule effects
-  4. ai        mob behaviour state machines, aggro, pathing
-  5. effects   resolve damage/heal/buff; ALL RNG rolled here, server-side
-  6. rewards   deaths, drop rolls, exp award, drop/corpse lifetimes
-  7. spawns    per-spawn-point respawn timers, zone event triggers
-  8. snapshot  build AOI-filtered delta per player; enqueue to gateway
-  9. persist   mark dirty; flush on the checkpoint interval
+   1. ingest+move   drain input queues, validate sequence numbers, run
+                    platformer physics (gravity, AABB, ropes, ladders)
+   2. portals       against final positions, before anything can hit: a player
+                    standing in a portal is leaving
+   3. buffs         damage-over-time and expiry
+   4. spawned       projectiles and ground effects, before anything acts -- a
+                    bolt that kills something this tick stops it acting
+   5. casts         validate (cooldown, cost, range); resolve effects. ALL RNG
+                    is rolled server-side, here and in the phases below
+   6. ai            mob state machines, aggro, pathing
+   7. telegraphs    after AI, so a marker put down this tick is in this tick's
+                    snapshot
+   8. revive        after everything that could kill, so somebody who came back
+                    cannot be downed by a hit that landed before they were up
+   9. regen         after revive, so they recover from the bar they came back
+                    with
+  10. dungeon       stage progression, clear, wipe
+  11. events        zone events start and end
+  12. actions       gathering, on the derived 600 ms action tick. After
+                    everything that could interrupt it; the interruption checks
+                    run every tick and the roll only on the beat
+  13. drops         corpse and drop lifetimes
+  14. spawns        per-spawn-point respawn timers
+  15. resources     resource node respawn timers
+  16. snapshot      build AOI-filtered delta per player; enqueue to gateway
 ```
+
+Persistence is not a phase. A checkpoint reads a player's state *on* the room
+goroutine through `Capture` and writes it from the session's, on its own
+interval — a database write inside a tick is the one thing the budget below
+cannot absorb.
 
 Phase ordering is part of the game's observable behaviour (it decides whether a mob that dies on tick *n* can still land the hit it queued on tick *n*). Changing the order changes the game. Treat it as a spec, not an implementation detail.
 

@@ -52,6 +52,12 @@ const (
 	// entity rather than only a rectangle, because a trigger nobody can see is
 	// a trigger they step into by accident.
 	KindShrine
+
+	// KindResource is a gatherable node: a tree, a rock, a fishing spot. An
+	// entity so it layers per player exactly as a mob does -- a shared tree is
+	// a tree one player stands on all evening, which is the contention the
+	// layering model exists to remove.
+	KindResource
 )
 
 func (k Kind) wire() mmov1.EntityKind {
@@ -72,6 +78,8 @@ func (k Kind) wire() mmov1.EntityKind {
 		return mmov1.EntityKind_ENTITY_KIND_TELEGRAPH
 	case KindShrine:
 		return mmov1.EntityKind_ENTITY_KIND_SHRINE
+	case KindResource:
+		return mmov1.EntityKind_ENTITY_KIND_RESOURCE
 	default:
 		return mmov1.EntityKind_ENTITY_KIND_UNSPECIFIED
 	}
@@ -131,6 +139,9 @@ type Entity struct {
 	Mob    *MobState
 	Drop   *DropState
 	Player *PlayerState
+
+	// Resource is set on a gatherable node. See gather.go.
+	Resource *ResourceEntity
 }
 
 // Entity flag bits, mirroring mmov1.EntityFlag. They are packed into a single
@@ -192,6 +203,10 @@ func (e *Entity) state(includeSelf bool) *mmov1.EntityState {
 		s.DropItem = e.Drop.ItemID
 		s.DropQty = e.Drop.Qty
 		s.DropGold = e.Drop.Gold
+	}
+	if e.Resource != nil {
+		s.NodeSkill = e.Resource.Skill
+		s.NodeLevel = uint32(e.Resource.Level)
 	}
 
 	if includeSelf {

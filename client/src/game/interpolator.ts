@@ -61,6 +61,16 @@ export interface RenderedEntity {
   dropItem: string;
   dropQty: number;
   dropGold: number;
+
+  /**
+   * A resource node: which secondary skill it raises and what level it needs.
+   *
+   * Sent by the server rather than looked up here, because the mapping from a
+   * tree to a level lives in the content files and a client holding a copy is a
+   * client that disagrees with the server after one rebalance.
+   */
+  nodeSkill: string;
+  nodeLevel: number;
 }
 
 /** Entity kinds, mirroring mmov1.EntityKind. */
@@ -71,6 +81,7 @@ export const KIND_PROJECTILE = 5;
 export const KIND_AREA = 6;
 export const KIND_TELEGRAPH = 7;
 export const KIND_SHRINE = 8;
+export const KIND_RESOURCE = 9;
 
 // Field-mask bits, mirroring mmov1.EntityField.
 const FIELD_POS = 1 << 0;
@@ -92,6 +103,8 @@ interface Tracked {
   dropItem: string;
   dropQty: number;
   dropGold: number;
+  nodeSkill: string;
+  nodeLevel: number;
   latest: Sample;
   history: Sample[];
 }
@@ -144,6 +157,8 @@ export class Interpolator {
       dropItem: state.dropItem,
       dropQty: state.dropQty,
       dropGold: state.dropGold,
+      nodeSkill: state.nodeSkill,
+      nodeLevel: state.nodeLevel,
       latest: sample,
       history: [sample],
     });
@@ -201,6 +216,8 @@ export class Interpolator {
         dropItem: e.dropItem,
         dropQty: e.dropQty,
         dropGold: e.dropGold,
+        nodeSkill: e.nodeSkill,
+        nodeLevel: e.nodeLevel,
         x,
         y,
         flags,
@@ -242,11 +259,27 @@ export class Interpolator {
    * badly -- or lies -- simply gets nothing.
    */
   nearestDrop(x: number, y: number, radius: number): number {
+    return this.#nearest(KIND_DROP, x, y, radius);
+  }
+
+  /**
+   * The nearest resource node, for the gather key.
+   *
+   * Same arrangement as looting: the client picks the obvious target so one key
+   * does the obvious thing, and the server still checks range, level, tool and
+   * layer -- so a client that picks badly, or lies, simply gets a refusal with a
+   * reason in it.
+   */
+  nearestNode(x: number, y: number, radius: number): number {
+    return this.#nearest(KIND_RESOURCE, x, y, radius);
+  }
+
+  #nearest(kind: number, x: number, y: number, radius: number): number {
     let best = 0;
     let bestDistSq = radius * radius;
 
     for (const e of this.#entities.values()) {
-      if (e.kind !== KIND_DROP) continue;
+      if (e.kind !== kind) continue;
       const dx = e.latest.x - x;
       const dy = e.latest.y - y;
       const d = dx * dx + dy * dy;

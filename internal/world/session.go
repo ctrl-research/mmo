@@ -10,6 +10,7 @@ import (
 
 	"github.com/ctrl-research/mmo/internal/content"
 	"github.com/ctrl-research/mmo/internal/directory"
+	"github.com/ctrl-research/mmo/internal/rng"
 	"github.com/ctrl-research/mmo/internal/store"
 	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
 	"github.com/ctrl-research/mmo/internal/world/room"
@@ -134,6 +135,7 @@ type Session struct {
 	// claims, portals, and waypoints carry work from the tick loop to this
 	// session's goroutine, where the database and the bus can be reached.
 	claims     chan room.LootClaim
+	gathers    chan room.GatherYield
 	portals    chan room.PortalRequest
 	runEnds    chan room.RunResult
 	waypoints  chan string
@@ -195,6 +197,19 @@ type Session struct {
 	// every unlock the character already has.
 	knownWaypoints []string
 
+	// secondary is cumulative experience per secondary skill, as last read or
+	// written. Held here as well as in the room for the same reason
+	// knownWaypoints is: a transfer hands the character to a room that has
+	// never heard of them, and without it an arrival would start every skill
+	// back at nothing.
+	secondary map[string]int64
+
+	// rolls is this session's item stream, used for the base items gathering
+	// produces. Its own stream so it never interleaves with a room's rolls,
+	// which would make a room's history depend on how many people happened to
+	// be chopping in it.
+	rolls *rng.Source
+
 	// sink delivers inventory updates to the connected client.
 	sink room.Sink
 
@@ -233,12 +248,14 @@ func (s *Session) EntityID() room.EntityID {
 func (s *Session) attachTo(ctx context.Context, sink room.Sink) bool {
 	s.mu.Lock()
 	handle, entityID, known := s.handle, s.entityID, s.knownWaypoints
+	secondary := s.secondary
 	s.mu.Unlock()
 
 	return handle.Attach(ctx, entityID, room.Attachment{
 		Sink:           sink,
 		Events:         s,
 		KnownWaypoints: known,
+		Secondary:      secondary,
 	})
 }
 
@@ -337,6 +354,12 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 		return nil, fmt.Errorf("world: loading waypoints: %w", err)
 	}
 
+	secondaryExp, err := n.store.SecondaryExp(ctx, characterID)
+	if err != nil {
+		release()
+		return nil, fmt.Errorf("world: loading secondary skills: %w", err)
+	}
+
 	inventory, err := LoadInventory(ctx, n.store, n.content, characterID)
 	if err != nil {
 		release()
@@ -353,9 +376,16 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 		sink:        sink,
 		mapID:       mapID,
 		classID:     character.ClassID,
+		secondary:   secondaryExp,
+		// Seeded from the character rather than from the clock, so a gathered
+		// item is reproducible from the logs like every other roll in the game.
+		rolls: rng.New(characterSeed(characterID)),
 		// Buffered so the tick loop never blocks handing work over; a player
 		// cannot legitimately produce these faster than this.
-		claims:    make(chan room.LootClaim, 16),
+		claims: make(chan room.LootClaim, 16),
+		// Deeper than claims: a party of gatherers on the action tick produces
+		// these steadily rather than in the bursts looting comes in.
+		gathers:   make(chan room.GatherYield, 32),
 		portals:   make(chan room.PortalRequest, 4),
 		runEnds:   make(chan room.RunResult, 4),
 		waypoints: make(chan string, 8),
@@ -377,6 +407,7 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 	}
 	spec.Events = s
 	spec.KnownWaypoints = knownWaypoints
+	spec.Secondary = secondaryExp
 
 	// The bar, seeded from the class on a first login. Loaded before the join
 	// rather than pushed afterwards, so a character can act from their very
@@ -416,6 +447,9 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 	s.refreshStats(ctx, character.Level)
 	s.sendLoadout(ctx, loadout)
 	s.sendPassives(ctx)
+	// After refreshStats, so the tool power it reports is the one the block was
+	// just built from rather than the one before this login's equipment.
+	s.pushSecondary(secondaryExp)
 
 	n.hold(characterID, s)
 	s.announcePresence(ctx, false)
@@ -462,6 +496,9 @@ func (s *Session) maintain() {
 
 		case claim := <-s.claims:
 			s.handleClaim(claim)
+
+		case yield := <-s.gathers:
+			s.handleGather(yield)
 
 		case req := <-s.portals:
 			s.handlePortal(req)
@@ -547,14 +584,33 @@ func (s *Session) checkpoint(ctx context.Context) error {
 		return fmt.Errorf("world: encoding character state: %w", err)
 	}
 
-	return s.node.store.Checkpoint(ctx, store.Character{
+	if err := s.node.store.Checkpoint(ctx, store.Character{
 		ID:    s.characterID,
 		Level: snap.Progress.Level,
 		Exp:   snap.Progress.Exp,
 		Gold:  snap.Progress.Gold,
 		MapID: snap.Progress.MapID,
 		State: stateJSON,
-	}, s.lease.Token)
+	}, s.lease.Token); err != nil {
+		return err
+	}
+
+	// After the character row, and not fenced by the lease: the write only ever
+	// raises a total (see SaveSecondaryExp), so the worst a stale one can do is
+	// nothing. Failing here must not fail the checkpoint that already landed --
+	// losing a few seconds of woodcutting is a smaller loss than a position and
+	// a level, and reporting the whole checkpoint as failed would hide that the
+	// bigger write succeeded.
+	if len(snap.Secondary) > 0 {
+		s.mu.Lock()
+		s.secondary = snap.Secondary
+		s.mu.Unlock()
+
+		if err := s.node.store.SaveSecondaryExp(ctx, s.characterID, snap.Secondary); err != nil {
+			s.log.Error("saving secondary skills", "err", err)
+		}
+	}
+	return nil
 }
 
 // loseOwnership ends the session because the lease moved.
@@ -808,8 +864,23 @@ func (s *Session) refreshStats(ctx context.Context, level int) {
 	}
 
 	handle, entityID := s.Where()
-	handle.SetStats(ctx, entityID, block, uint32(maxLife))
+	handle.SetStats(ctx, entityID, room.Derived{
+		Block: block,
+		MaxHP: uint32(maxLife),
+		// Along with the block, because a tool changing hands is the same event
+		// as a stat changing: somebody equipped something.
+		ToolPower: s.toolPower(),
+	})
 	s.pushInventoryWithStats(ctx, block)
+
+	// The skills panel shows what is in hand, so equipping an axe changes it.
+	// Re-sent from the session's copy rather than the room's: the totals have
+	// not moved, only the tool has, and asking the room would be a round trip
+	// for something already known here.
+	s.mu.Lock()
+	exp := s.secondary
+	s.mu.Unlock()
+	s.pushSecondary(exp)
 }
 
 // ApplyItemAction performs a player's inventory request.

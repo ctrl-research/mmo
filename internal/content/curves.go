@@ -20,8 +20,13 @@ type Curves struct {
 	MaxLevel int
 
 	// SecondaryExp[L] is the cumulative experience for level L in a secondary
-	// skill, using Old School RuneScape's curve. It is unused until M8, but
-	// generating it here keeps every progression number in one place.
+	// skill, using Old School RuneScape's curve.
+	//
+	// Cumulative, unlike MainExp above, which is per level. Secondary
+	// experience is never spent: the level is derived from the total rather
+	// than the total being decremented as levels are taken, which is OSRS's
+	// arrangement and the reason a secondary skill can never lose a level to a
+	// rounding change in the curve.
 	SecondaryExp  []int64
 	MaxSkillLevel int
 }

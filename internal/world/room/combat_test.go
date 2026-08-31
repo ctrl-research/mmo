@@ -123,7 +123,7 @@ func (h *harness) giveStats(id EntityID, mods ...stats.Modifier) {
 
 	block := stats.NewBlock()
 	block.AddAll(mods)
-	h.room.handle(setStatsCmd{id: id, stats: block})
+	h.room.handle(setStatsCmd{id: id, derived: Derived{Block: block}})
 }
 
 // projectiles returns every bolt in flight.

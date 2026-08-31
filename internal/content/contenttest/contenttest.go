@@ -37,6 +37,9 @@ func FS() fstest.MapFS {
 		"dungeons/test.toml":   file(Dungeons),
 		"elites/test.toml":     file(Elites),
 		"events/test.toml":     file(Events),
+		"maps/copse.tmj":       file(CopseTMJ),
+		"secondary/test.toml":  file(Secondary),
+		"resources/test.toml":  file(Resources),
 	}
 }
 
@@ -217,6 +220,35 @@ stat = "attack"
 kind = "flat"
 min = 5
 max = 5
+
+[item."test.log"]
+name = "Test Log"
+kind = "material"
+stackable = true
+max_stack = 100
+level = 1
+
+[item."test.axe"]
+name = "Test Axe"
+kind = "equipment"
+slot = "weapon"
+class = "axe"
+level = 1
+
+[item."test.axe".tool]
+skill = "chopping"
+power = 1
+
+[item."test.good_axe"]
+name = "Better Test Axe"
+kind = "equipment"
+slot = "weapon"
+class = "axe"
+level = 1
+
+[item."test.good_axe".tool]
+skill = "chopping"
+power = 5
 `
 
 // Affixes are deliberately few and with fixed ranges, so a test can assert an
@@ -686,6 +718,118 @@ const AnnexTMJ = `{
       {"id": 5, "class": "waypoint", "name": "The Annex", "x": 544, "y": 256,
        "width": 48, "height": 64,
        "properties": [{"name": "waypoint_id", "type": "string", "value": "wp_annex"}]}
+    ]
+  }]
+}`
+
+// Secondary and Resources cover the two shapes gathering has: a skill that
+// needs a tool and one that does not, and nodes that are gated on level, on
+// tool power, and on neither.
+//
+// The chances are 100% so a test asserts a yield rather than a probability. A
+// probability test belongs on GatherChancePPM, where it can be arithmetic
+// instead of a loop that occasionally fails in CI.
+const Secondary = `
+[skill.chopping]
+name = "Chopping"
+tool_class = "axe"
+# Deliberately different from the class, so a refusal that printed the class id
+# would say "axe" and fail. The class is an identifier; this is prose.
+tool_name = "hatchet"
+
+[skill.picking]
+name = "Picking"
+`
+
+const Resources = `
+[node.test_tree]
+name = "Test Tree"
+skill = "chopping"
+level = 1
+exp = 100
+item = "test.log"
+qty = 1
+chance_at_level = 100
+chance_at_max = 100
+min_tool_power = 1
+yields = 2
+respawn_ms = 5000
+
+# Needs a better axe than the starting one, and nothing else about it differs.
+[node.test_hardwood]
+name = "Test Hardwood"
+skill = "chopping"
+level = 1
+exp = 100
+item = "test.log"
+qty = 1
+chance_at_level = 100
+chance_at_max = 100
+min_tool_power = 5
+yields = 1
+respawn_ms = 5000
+
+# Gated on level rather than on equipment.
+[node.test_ancient]
+name = "Test Ancient Tree"
+skill = "chopping"
+level = 30
+exp = 100
+item = "test.log"
+qty = 1
+chance_at_level = 100
+chance_at_max = 100
+min_tool_power = 1
+yields = 1
+respawn_ms = 5000
+
+# No tool at all: the bare-hands shape.
+[node.test_bush]
+name = "Test Bush"
+skill = "picking"
+level = 1
+exp = 100
+item = "test.log"
+qty = 1
+chance_at_level = 100
+chance_at_max = 100
+yields = 3
+respawn_ms = 5000
+`
+
+// CopseTMJ is a map for gathering, and exists for the same reason GladeTMJ
+// does: the zone-events work proved that borrowing corners of the main test map
+// breaks a neighbouring suite every time. A map is cheap.
+//
+// Four nodes, spaced far enough apart that a player standing at one is out of
+// range of the others -- so "walked away" is expressible by walking to the next
+// tree rather than by teleporting into empty space.
+const CopseTMJ = `{
+  "type": "map", "width": 40, "height": 10, "tilewidth": 32, "tileheight": 32,
+  "properties": [
+    {"name": "mapId", "type": "string", "value": "copse"},
+    {"name": "placement", "type": "string", "value": "shared"},
+    {"name": "capacity", "type": "int", "value": 8}
+  ],
+  "layers": [{
+    "name": "collision", "type": "objectgroup",
+    "objects": [
+      {"id": 1, "class": "solid", "x": 0, "y": 288, "width": 1280, "height": 32},
+      {"id": 2, "class": "spawn_point", "name": "start", "x": 100, "y": 288,
+       "properties": [{"name": "isDefault", "type": "bool", "value": true}]},
+      {"id": 3, "class": "resource_node", "name": "near-tree", "x": 120, "y": 288,
+       "properties": [{"name": "node_id", "type": "string", "value": "test_tree"}]},
+      {"id": 4, "class": "resource_node", "name": "hardwood", "x": 400, "y": 288,
+       "properties": [{"name": "node_id", "type": "string", "value": "test_hardwood"}]},
+      {"id": 5, "class": "resource_node", "name": "ancient", "x": 700, "y": 288,
+       "properties": [{"name": "node_id", "type": "string", "value": "test_ancient"}]},
+      {"id": 6, "class": "resource_node", "name": "bush", "x": 1000, "y": 288,
+       "properties": [{"name": "node_id", "type": "string", "value": "test_bush"}]},
+      {"id": 7, "class": "resource_node", "name": "commons", "x": 160, "y": 288,
+       "properties": [
+         {"name": "node_id", "type": "string", "value": "test_tree"},
+         {"name": "layer", "type": "string", "value": "shared"}
+       ]}
     ]
   }]
 }`

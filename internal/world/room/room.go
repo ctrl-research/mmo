@@ -137,6 +137,10 @@ type player struct {
 	// casts queued since the last tick, drained in the cast phase.
 	casts []castRequest
 
+	// gather is the resource node this player is working, and the zero value
+	// when they are not. See gather.go.
+	gather gatherState
+
 	// layer is the visibility layer this player's mobs and drops live in.
 	// From M5 it is the party ID; until then, one per player.
 	layer LayerID
@@ -222,6 +226,14 @@ type SessionEvents interface {
 	// session can record the unlock.
 	DiscoverWaypoint(player EntityID, characterID, waypointID string)
 
+	// GrantGather reports a successful gather, so the session can store the
+	// item and the experience.
+	//
+	// Unlike ClaimLoot there is no matching Resolve: the experience is already
+	// granted and the item did not exist until now, so there is nothing being
+	// held in the world that a failure would have to return.
+	GrantGather(yield GatherYield)
+
 	// EndRun reports that a dungeon run has finished and this player should be
 	// sent home. The session writes the lockout and runs the transfer, neither
 	// of which a tick can wait for.
@@ -305,6 +317,10 @@ type Room struct {
 	// sharedSpawns are the spawn points every player in the room shares.
 	sharedSpawns []*spawnState
 
+	// sharedResources are the resource nodes every player in the room shares.
+	// Per-player ones live on the layer, exactly as mob spawns do.
+	sharedResources []*resourceState
+
 	// layerKeys maps a layer key -- a party ID, or a character ID when
 	// unpartied -- to this room's internal numbering, and nextLayer allocates
 	// the numbers.
@@ -382,6 +398,7 @@ func New(cfg Config) *Room {
 			r.startDungeon(d)
 		}
 		r.startEvents()
+		r.startResources()
 	}
 	return r
 }
@@ -499,8 +516,15 @@ func (r *Room) doTick() {
 	// up would be the fight taken away from them.
 	r.phaseDungeon()
 	r.phaseEvents()
+	// After everything that could interrupt an action -- moving away, being
+	// hit, dying -- and before the snapshot, so a yield is visible on the tick
+	// it happened rather than the tick after. The interruption checks run
+	// every tick and the roll only on the action tick: a player who walks away
+	// should stop at once, not up to 600 ms later.
+	r.phaseActions()
 	r.phaseDrops()
 	r.phaseSpawns()
+	r.phaseResources()
 	r.phaseSnapshot()
 	r.pending = r.pending[:0]
 

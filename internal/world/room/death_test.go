@@ -367,9 +367,11 @@ func TestDowningACharacterTwiceIsOneDeath(t *testing.T) {
 type recordEvents struct {
 	portals []PortalRequest
 	runEnds []RunResult
+	yields  []GatherYield
 }
 
 func (e *recordEvents) ClaimLoot(LootClaim)                       {}
+func (e *recordEvents) GrantGather(y GatherYield)                 { e.yields = append(e.yields, y) }
 func (e *recordEvents) EnterPortal(req PortalRequest)             { e.portals = append(e.portals, req) }
 func (e *recordEvents) DiscoverWaypoint(EntityID, string, string) {}
 func (e *recordEvents) EndRun(res RunResult)                      { e.runEnds = append(e.runEnds, res) }

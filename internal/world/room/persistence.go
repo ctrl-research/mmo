@@ -72,6 +72,11 @@ type Attachment struct {
 	// not generate a database write every tick. Nil leaves the room's existing
 	// set alone.
 	KnownWaypoints []string
+
+	// Secondary is cumulative experience per secondary skill. Nil leaves what
+	// the room already has, which is what a reconnect to a character still
+	// standing in the room wants: the room's copy is the newer one.
+	Secondary SecondaryProgress
 }
 
 // JoinSpec describes the character entering a room.
@@ -115,6 +120,11 @@ type JoinSpec struct {
 	// not generate a write every tick.
 	KnownWaypoints []string
 
+	// Secondary is cumulative experience per secondary skill, read from the
+	// database by the session. The room is authoritative for the session's
+	// lifetime and reports every gain, but it has to start from somewhere.
+	Secondary SecondaryProgress
+
 	// Spawn overrides where a fresh character is placed, so a portal can land
 	// them at a named entrance rather than the map's default.
 	Spawn sim.Vec
@@ -131,6 +141,16 @@ type JoinSpec struct {
 type Snapshot struct {
 	Progress Progress
 	State    CharacterState
+
+	// Secondary is cumulative experience per secondary skill.
+	//
+	// In the checkpoint rather than written on every gain: a gather yields
+	// every few seconds for as long as a player keeps at it, and one write per
+	// log would make woodcutting the busiest table in the database. The gain
+	// that carries the *item* has to go out immediately because an item must
+	// exist somewhere, but experience can wait for the same interval
+	// everything else waits for.
+	Secondary SecondaryProgress
 }
 
 // captureCharacter reads a player entity's persistable state.
@@ -153,6 +173,15 @@ func captureCharacter(e *Entity, mapID string) Snapshot {
 		snap.Progress.Gold = e.Player.Gold
 		snap.State.MP = e.Player.MP
 		snap.State.MaxMP = e.Player.MaxMP
+
+		// Copied rather than shared: the caller is on another goroutine by the
+		// time it reads this, and the room keeps gathering into its own map.
+		if len(e.Player.Secondary) > 0 {
+			snap.Secondary = make(SecondaryProgress, len(e.Player.Secondary))
+			for skill, exp := range e.Player.Secondary {
+				snap.Secondary[skill] = exp
+			}
+		}
 	}
 	return snap
 }
@@ -166,6 +195,13 @@ func (r *Room) applyCharacter(e *Entity, spec JoinSpec) {
 	}
 	p.Exp = spec.Progress.Exp
 	p.Gold = spec.Progress.Gold
+
+	if p.Secondary == nil {
+		p.Secondary = make(map[string]int64, len(spec.Secondary))
+	}
+	for skill, exp := range spec.Secondary {
+		p.Secondary[skill] = exp
+	}
 
 	e.MaxHP = MaxHPFor(p.Level)
 	p.MaxMP = uint32(50 + (p.Level-1)*10)

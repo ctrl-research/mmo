@@ -409,3 +409,227 @@ func TestConcurrentMovesOfOneItemSerialise(t *testing.T) {
 		t.Errorf("the item exists %d times after concurrent moves", count)
 	}
 }
+
+// Stacking.
+//
+// Without it a stackable material takes one slot per unit, which nobody
+// notices while loot is the only source -- a boar drops one hide -- and which
+// fills a 24-slot bag in about two minutes once gathering exists.
+
+func stackable(base string, qty int) ItemRow {
+	return ItemRow{
+		BaseID:    base,
+		Rarity:    "normal",
+		ItemLevel: 1,
+		Mods:      json.RawMessage(`{}`),
+		StackSize: qty,
+	}
+}
+
+func TestStackIntoAddsToAnExistingStack(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	char, inv, _ := testContainers(t, s)
+
+	first, err := s.InsertItem(ctx, inv.ID, 0, stackable("material.oak_log", 3), char, EventPickup, 1)
+	if err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	id, total, err := s.StackInto(ctx, inv.ID, "material.oak_log", 2, 500, char, 2)
+	if err != nil {
+		t.Fatalf("stack: %v", err)
+	}
+	if id != first {
+		t.Errorf("stacked into %v, want the existing stack %v", id, first)
+	}
+	if total != 5 {
+		t.Errorf("stack is now %d, want 5", total)
+	}
+
+	// And it is one row, not two.
+	rows, err := s.LoadContainer(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("the container holds %d rows, want 1", len(rows))
+	}
+	if rows[0].StackSize != 5 {
+		t.Errorf("row stack is %d, want 5", rows[0].StackSize)
+	}
+}
+
+// Nothing to merge into is the ordinary case for the first of anything, and
+// must not be an error -- the caller inserts a new stack instead.
+func TestStackIntoReportsNoStackToMergeWith(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	char, inv, _ := testContainers(t, s)
+
+	id, _, err := s.StackInto(ctx, inv.ID, "material.oak_log", 1, 500, char, 1)
+	if err != nil {
+		t.Fatalf("stack into an empty container: %v", err)
+	}
+	if id != uuid.Nil {
+		t.Errorf("stacked into %v, want the zero UUID", id)
+	}
+
+	// A different base is not a stack to merge with either. Two materials that
+	// merged because they were both stackable would be an item transmuting.
+	if _, err := s.InsertItem(ctx, inv.ID, 0, stackable("material.copper_ore", 4), char, EventPickup, 1); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+	id, _, err = s.StackInto(ctx, inv.ID, "material.oak_log", 1, 500, char, 2)
+	if err != nil {
+		t.Fatalf("stack: %v", err)
+	}
+	if id != uuid.Nil {
+		t.Errorf("oak logs merged into copper ore (%v)", id)
+	}
+}
+
+// A stack does not exceed its maximum, so the caller starts a new one.
+func TestStackIntoRespectsTheMaximum(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	char, inv, _ := testContainers(t, s)
+
+	if _, err := s.InsertItem(ctx, inv.ID, 0, stackable("material.oak_log", 99), char, EventPickup, 1); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	// One more fits.
+	if id, total, err := s.StackInto(ctx, inv.ID, "material.oak_log", 1, 100, char, 2); err != nil {
+		t.Fatalf("stack: %v", err)
+	} else if id == uuid.Nil || total != 100 {
+		t.Fatalf("stacked to %d (id %v), want 100", total, id)
+	}
+
+	// The next does not.
+	if id, _, err := s.StackInto(ctx, inv.ID, "material.oak_log", 1, 100, char, 3); err != nil {
+		t.Fatalf("stack: %v", err)
+	} else if id != uuid.Nil {
+		t.Errorf("a full stack accepted another unit (%v)", id)
+	}
+}
+
+// Concurrent grants of the same material must not lose any: two that both read
+// the same stack size and write the same total is the arithmetic version of
+// destroying an item.
+func TestConcurrentStacksDoNotLoseAnything(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	char, inv, _ := testContainers(t, s)
+
+	if _, err := s.InsertItem(ctx, inv.ID, 0, stackable("material.oak_log", 1), char, EventPickup, 1); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	const grants = 16
+	var wg sync.WaitGroup
+	for i := 0; i < grants; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, _, err := s.StackInto(ctx, inv.ID, "material.oak_log", 1, 500, char, 2); err != nil {
+				t.Errorf("stack: %v", err)
+			}
+		}()
+	}
+	wg.Wait()
+
+	rows, err := s.LoadContainer(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	var total int
+	for _, r := range rows {
+		total += r.StackSize
+	}
+	if total != 1+grants {
+		t.Errorf("%d units survived %d concurrent grants onto a stack of 1, want %d",
+			total, grants, 1+grants)
+	}
+}
+
+// A stack growing is journalled, because an investigation that could not see
+// quantity change would be an investigation with a gap in it.
+func TestStackingIsJournalled(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	char, inv, _ := testContainers(t, s)
+
+	id, err := s.InsertItem(ctx, inv.ID, 0, stackable("material.oak_log", 1), char, EventPickup, 1)
+	if err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+	if _, _, err := s.StackInto(ctx, inv.ID, "material.oak_log", 1, 500, char, 2); err != nil {
+		t.Fatalf("stack: %v", err)
+	}
+
+	history, err := s.ItemHistory(ctx, id)
+	if err != nil {
+		t.Fatalf("history: %v", err)
+	}
+	if len(history) != 2 {
+		t.Errorf("the journal holds %d entries after an insert and a stack, want 2", len(history))
+	}
+}
+
+// Concurrent grants onto a nearly-full stack must not push it over its maximum.
+//
+// This is the interesting half of stacking. The sequential test above says
+// nothing about it: the cap holds under contention because READ COMMITTED
+// re-runs the statement's sub-select when the target row has been modified
+// underneath it, so the losers find no stack with room rather than adding to a
+// full one. Sixty-four contenders for one unit of room, and exactly one may
+// win.
+func TestConcurrentStacksDoNotExceedTheMaximum(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	char, inv, _ := testContainers(t, s)
+
+	const max = 100
+	if _, err := s.InsertItem(ctx, inv.ID, 0, stackable("material.oak_log", max-1), char, EventPickup, 1); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	const grants = 64
+	var (
+		wg     sync.WaitGroup
+		mu     sync.Mutex
+		merged int
+	)
+	for i := 0; i < grants; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			id, _, err := s.StackInto(ctx, inv.ID, "material.oak_log", 1, max, char, 2)
+			if err != nil {
+				t.Errorf("stack: %v", err)
+				return
+			}
+			if id != uuid.Nil {
+				mu.Lock()
+				merged++
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+
+	if merged != 1 {
+		t.Errorf("%d of %d concurrent grants merged into a stack with room for one, want 1", merged, grants)
+	}
+
+	rows, err := s.LoadContainer(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	for _, r := range rows {
+		if r.StackSize > max {
+			t.Errorf("a stack holds %d, over its maximum of %d", r.StackSize, max)
+		}
+	}
+}

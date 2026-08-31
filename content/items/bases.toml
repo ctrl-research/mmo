@@ -39,6 +39,54 @@ stackable = true
 max_stack = 500
 level = 5
 
+# --- gathered materials -----------------------------------------------------
+#
+# What the secondary skills produce. All stackable and all level 1: a material
+# gates nothing, and what a player may gather is decided by the node's skill
+# requirement rather than by the log it drops.
+
+[item."material.oak_log"]
+name = "Oak Log"
+kind = "material"
+stackable = true
+max_stack = 500
+level = 1
+
+[item."material.willow_log"]
+name = "Willow Log"
+kind = "material"
+stackable = true
+max_stack = 500
+level = 1
+
+[item."material.copper_ore"]
+name = "Copper Ore"
+kind = "material"
+stackable = true
+max_stack = 500
+level = 1
+
+[item."material.iron_ore"]
+name = "Iron Ore"
+kind = "material"
+stackable = true
+max_stack = 500
+level = 1
+
+[item."material.raw_trout"]
+name = "Raw Trout"
+kind = "material"
+stackable = true
+max_stack = 500
+level = 1
+
+[item."material.marsh_root"]
+name = "Marsh Root"
+kind = "material"
+stackable = true
+max_stack = 500
+level = 1
+
 # --- weapons ----------------------------------------------------------------
 
 [item."weapon.rusty_sword"]
@@ -185,3 +233,101 @@ stat = "max_life"
 kind = "flat"
 min = 15
 max = 30
+
+# --- tools ------------------------------------------------------------------
+#
+# A tool's `power` both gates and speeds: a node may demand a minimum, and
+# whatever is above that adds a percentage point to the per-action-tick chance.
+# One number doing both jobs deliberately -- separate "tier" and "speed"
+# numbers would let content define a tool that unlocks a node it is then too
+# slow to work, which is a tool nobody would ever equip.
+#
+# They go in the weapon slot, so gathering with an axe out means not having a
+# sword out. That is a real trade rather than a free extra slot, and it is the
+# reason a tool has an attack implicit at all: a woodcutter who wanders into a
+# boar should not be completely defenceless.
+
+[item."tool.bronze_axe"]
+name = "Bronze Axe"
+kind = "equipment"
+slot = "weapon"
+class = "axe"
+level = 1
+
+[item."tool.bronze_axe".tool]
+skill = "woodcutting"
+power = 1
+
+[[item."tool.bronze_axe".implicit]]
+stat = "attack"
+kind = "flat"
+min = 2
+max = 4
+
+[item."tool.steel_axe"]
+name = "Steel Axe"
+kind = "equipment"
+slot = "weapon"
+class = "axe"
+level = 10
+
+[item."tool.steel_axe".tool]
+skill = "woodcutting"
+power = 4
+
+[[item."tool.steel_axe".implicit]]
+stat = "attack"
+kind = "flat"
+min = 6
+max = 10
+
+[item."tool.bronze_pickaxe"]
+name = "Bronze Pickaxe"
+kind = "equipment"
+slot = "weapon"
+class = "pickaxe"
+level = 1
+
+[item."tool.bronze_pickaxe".tool]
+skill = "mining"
+power = 1
+
+[[item."tool.bronze_pickaxe".implicit]]
+stat = "attack"
+kind = "flat"
+min = 2
+max = 4
+
+[item."tool.steel_pickaxe"]
+name = "Steel Pickaxe"
+kind = "equipment"
+slot = "weapon"
+class = "pickaxe"
+level = 10
+
+[item."tool.steel_pickaxe".tool]
+skill = "mining"
+power = 4
+
+[[item."tool.steel_pickaxe".implicit]]
+stat = "attack"
+kind = "flat"
+min = 6
+max = 10
+
+[item."tool.fishing_rod"]
+name = "Fishing Rod"
+kind = "equipment"
+slot = "weapon"
+class = "fishing_rod"
+level = 1
+
+[item."tool.fishing_rod".tool]
+skill = "fishing"
+power = 1
+
+[[item."tool.fishing_rod".implicit]]
+stat = "attack"
+kind = "flat"
+min = 1
+max = 2

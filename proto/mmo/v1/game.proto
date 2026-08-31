@@ -72,6 +72,16 @@ message Interact {
 enum InteractKind {
   INTERACT_KIND_UNSPECIFIED = 0;
   INTERACT_KIND_LOOT = 1;
+
+  // Gather a resource node: chop, mine, fish, pick. Held rather than tapped,
+  // so this arrives repeatedly while the key is down and the server treats a
+  // repeat on the node already being worked as nothing at all.
+  INTERACT_KIND_GATHER = 2;
+
+  // Stop whatever action is in progress. Its own kind rather than a gather
+  // with no target, because "I am done" and "I mis-clicked" should not be the
+  // same message.
+  INTERACT_KIND_STOP = 3;
 }
 
 // ItemAction asks the server to move, equip, or destroy an item.
@@ -206,6 +216,12 @@ enum EntityKind {
   // so the client can draw it -- a trigger nobody can see is a trigger they
   // step into by accident.
   ENTITY_KIND_SHRINE = 8;
+
+  // A resource node: a tree, a rock, a fishing spot, a herb patch. An entity
+  // so it layers per player like a mob does -- a shared tree is a tree one
+  // player stands on all evening, which is the contention layering exists to
+  // remove.
+  ENTITY_KIND_RESOURCE = 9;
 }
 
 // Bit positions in EntityDelta.field_mask.
@@ -290,6 +306,12 @@ message EntityState {
   // deciding what to draw by looking for the word "Brutal" would be one
   // renamed modifier away from wrong.
   string tier = 28;
+
+  // A resource node: which secondary skill it raises and what level it needs.
+  // Sent on the entity so the client can label a tree and grey out one it is
+  // not yet good enough for, without holding a copy of the content files.
+  string node_skill = 29;
+  uint32 node_level = 30;
 }
 
 // EntityDelta carries only what changed since the baseline tick.
@@ -370,6 +392,9 @@ message Event {
     Downed downed = 27;
     DungeonState dungeon = 28;
     ZoneEvent zone = 29;
+    Gathering gathering = 30;
+    SecondaryExp secondary_exp = 31;
+    SecondarySkills secondary = 32;
   }
   // 11 was MapChanged, replaced by a second Welcome: it carried strictly less
   // than the Welcome the destination room already sends, and two messages
@@ -435,6 +460,82 @@ message ZoneEvent {
 
   // How long it runs, on starting. Zero when ending.
   uint32 ends_in_ms = 5;
+}
+
+// Gathering reports that a character has started or stopped working a node.
+//
+// Both directions in one message, because the client's job is the same either
+// way: show or hide the "you are chopping" state. `reason` carries why it
+// stopped or why it never started -- "nothing happened" is the single most
+// confusing thing a gathering skill can do, so every refusal says something.
+message Gathering {
+  // The node being worked. Zero when stopping.
+  uint32 entity_id = 1;
+
+  // Which secondary skill it raises.
+  string skill = 2;
+
+  bool active = 3;
+
+  // Why it stopped, or why it could not start. Empty for the endings a player
+  // does not need explained -- they walked away, or they asked to stop.
+  string reason = 4;
+}
+
+// SecondaryExp is one gain in one secondary skill.
+//
+// Sent per yield rather than per action tick, because a tick that produced
+// nothing is not news. Carries the derived level as well as the total so the
+// client never has to hold the OSRS curve: it is a 99-entry table that would
+// then exist in two places and disagree after one rebalance.
+message SecondaryExp {
+  string skill = 1;
+  uint64 gained = 2;
+
+  // Cumulative, never spent -- unlike the main level, where experience is
+  // consumed as levels are taken.
+  uint64 total = 3;
+
+  uint32 level = 4;
+
+  // The cumulative totals the current level began at and the next one begins
+  // at, so the client can draw progress *through* a level without holding the
+  // curve. Both are needed: measured from zero the bar would sit at 99% for the
+  // whole late game, which is true of the total and useless as a bar. next_at
+  // is zero at the maximum level.
+  uint64 level_at = 7;
+  uint64 next_at = 5;
+
+  bool level_up = 6;
+}
+
+// SecondarySkills is the whole set, sent once on entering the world.
+//
+// A full state rather than a stream of gains, because a client that joined
+// mid-session has no way to reconstruct totals from deltas it never saw. Every
+// skill in content appears, including ones at level 1: a skills panel with
+// holes in it looks broken.
+message SecondarySkills {
+  repeated SecondarySkill skills = 1;
+}
+
+message SecondarySkill {
+  string skill = 1;
+  string name = 2;
+  uint64 total = 3;
+  uint32 level = 4;
+  uint64 level_at = 8;
+  uint64 next_at = 5;
+
+  // What must be in hand to use this skill's nodes, as prose rather than as
+  // the content class id -- "fishing rod", not "fishing_rod". Empty for the
+  // skills where bare hands are the whole idea.
+  string tool_name = 6;
+
+  // The power of the tool the character currently has in hand for this skill,
+  // and zero for none. On the skill rather than inferred by the client from
+  // equipment, because the mapping from an item to a tool lives in content.
+  uint32 tool_power = 7;
 }
 
 // Downed is sent to a character who has just died, carrying the two things

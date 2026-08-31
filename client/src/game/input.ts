@@ -115,6 +115,16 @@ export class InputSource {
     return this.#has(...LOOT_KEYS);
   }
 
+  /**
+   * Gathering is held for the same reason attacking is: an evening of
+   * woodcutting is hundreds of swings, and requiring a press for each one is not
+   * a decision, it is typing. Releasing the key is what stops the action, which
+   * is what makes it read as a commitment rather than a toggle.
+   */
+  gatherHeld(): boolean {
+    return this.#has(...GATHER_KEYS);
+  }
+
   #has(...codes: string[]): boolean {
     return codes.some((c) => this.#held.has(c));
   }
@@ -130,6 +140,10 @@ const SKILL_KEYS = [
 ];
 const LOOT_KEYS = ["KeyZ", "KeyC"];
 
+// Gathering. E for "interact", which is where a hand already goes, and F for
+// anyone whose left hand is on WASD with a thumb to spare.
+const GATHER_KEYS = ["KeyE", "KeyF"];
+
 const GAME_KEYS = new Set([
   "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
   "KeyA", "KeyD", "KeyW", "KeyS",
@@ -137,6 +151,7 @@ const GAME_KEYS = new Set([
   ...ATTACK_KEYS,
   ...SKILL_KEYS,
   ...LOOT_KEYS,
+  ...GATHER_KEYS,
 ]);
 
 function isGameKey(code: string): boolean {

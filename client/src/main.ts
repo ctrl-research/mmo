@@ -14,6 +14,8 @@ import { DeathScreen } from "@/ui/death";
 import { DungeonFrame } from "@/ui/dungeon";
 import { VitalsBar } from "@/ui/vitals";
 import { SettingsPanel } from "@/ui/settings";
+import { SkillsPanel } from "@/ui/skills";
+import { GatheringLine } from "@/ui/gathering";
 import { PartyAction_Kind, GuildAction_Kind } from "@/net/connection";
 import type { Character } from "@/ui/api";
 import { toPixels } from "@/sim/fixed";
@@ -49,6 +51,8 @@ const deathEl = document.getElementById("death") as HTMLDivElement;
 const dungeonEl = document.getElementById("dungeon") as HTMLDivElement;
 const vitalsEl = document.getElementById("vitals") as HTMLDivElement;
 const settingsEl = document.getElementById("settings") as HTMLDivElement;
+const skillsEl = document.getElementById("skills") as HTMLDivElement;
+const gatheringEl = document.getElementById("gathering") as HTMLDivElement;
 
 let loop: GameLoop | null = null;
 let scene: Scene | null = null;
@@ -67,6 +71,13 @@ let death: DeathScreen | null = null;
 let dungeon: DungeonFrame | null = null;
 let vitals: VitalsBar | null = null;
 let settings: SettingsPanel | null = null;
+let skills: SkillsPanel | null = null;
+let gathering: GatheringLine | null = null;
+
+// Secondary skill names, so the gathering line can say "Woodcutting" rather
+// than "woodcutting". The server sends the display name once, with the full
+// skills state, and the per-yield events carry only the id.
+const skillNames = new Map<string, string>();
 let status = "";
 
 const shell = new Shell(overlay, {
@@ -123,7 +134,16 @@ async function main(): Promise<void> {
       panel?.close();
       worldMap?.close();
       social?.close();
+      skills?.close();
       void passives?.toggle();
+    }
+    if (e.code === "KeyJ") {
+      e.preventDefault();
+      panel?.close();
+      worldMap?.close();
+      social?.close();
+      passives?.close();
+      skills?.toggle();
     }
     if (e.code === "Escape") {
       panel?.close();
@@ -131,6 +151,7 @@ async function main(): Promise<void> {
       social?.close();
       passives?.close();
       settings?.close();
+      skills?.close();
     }
   });
 
@@ -187,6 +208,36 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
             : `${zone.name} is over`,
         );
       },
+      // Gathering. The refusal text is the server's, because every reason it
+      // can refuse is a rule only the server knows.
+      onGathering: (state) =>
+        gathering?.update(
+          state,
+          skillNames.get(state.skill) ?? state.skill,
+          performance.now(),
+        ),
+
+      onSecondaryExp: (exp) => {
+        skills?.gained(exp, performance.now());
+        if (exp.levelUp) {
+          const name = skillNames.get(exp.skill) ?? exp.skill;
+          chat?.note(`Your ${name} level is now ${exp.level}.`);
+        }
+      },
+
+      // The whole set: on entering the world, and again whenever equipment
+      // changes, because what is in hand is part of what the panel shows.
+      onSecondarySkills: (state) => {
+        const levels = new Map<string, number>();
+        for (const s of state.skills) {
+          skillNames.set(s.skill, s.name);
+          levels.set(s.skill, s.level);
+        }
+        skills?.setAll(state.skills);
+        // So the renderer can dim a node the character is not good enough for.
+        scene?.setSkillLevels(levels);
+      },
+
       onBossPhase: (phase) => boss?.announce(phase, performance.now()),
       onBossHealth: (hp, hpMax) => boss?.track(hp, hpMax, performance.now()),
       bossEntityId: () => boss?.entityId ?? 0,
@@ -262,6 +313,8 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
     death = new DeathScreen(deathEl);
     dungeon = new DungeonFrame(dungeonEl);
     vitals = new VitalsBar(vitalsEl);
+    skills = new SkillsPanel(skillsEl);
+    gathering = new GatheringLine(gatheringEl);
 
     // Built here rather than at startup because it needs the scene, and the
     // scene does not exist until a character is in the world.
@@ -318,6 +371,8 @@ function startHud(): void {
       boss?.render(now);
       death?.render(now, loop.stats.hp);
       dungeon?.render(now);
+      skills?.render(now);
+      gathering?.render(now);
       vitals?.update(loop.stats);
 
       const s = loop.stats;

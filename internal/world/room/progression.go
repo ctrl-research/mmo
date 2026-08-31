@@ -19,6 +19,28 @@ type PlayerState struct {
 	MaxMP uint32
 	Gold  int64
 
+	// Secondary is cumulative experience per secondary skill: woodcutting,
+	// mining, and the rest. Cumulative and never spent, unlike Exp above --
+	// the level is derived from the total rather than the total being
+	// decremented as levels are taken, which is OSRS's arrangement and the
+	// reason a secondary skill can never lose a level to a rounding change in
+	// the curve.
+	//
+	// Held here rather than in the session for the same reason as everything
+	// else on this struct: a gather resolves inside the tick, and the tick
+	// cannot read a database. The session loads it on join and persists what
+	// the room reports.
+	Secondary map[string]int64
+
+	// ToolPower is the power of the tool in hand per secondary skill, pushed
+	// in by the session alongside the stat block.
+	//
+	// The room never derives it: that would mean knowing which item is in
+	// which slot, and item state belongs where it can be written durably. It
+	// arrives with the stat block because it changes on exactly the same event
+	// -- somebody equipped something.
+	ToolPower map[string]int
+
 	// Cooldowns maps a skill to the tick from which it may be cast again.
 	Cooldowns map[string]uint64
 
@@ -72,6 +94,8 @@ func newPlayerState() *PlayerState {
 		Level:     1,
 		MP:        50,
 		MaxMP:     50,
+		Secondary: make(map[string]int64),
+		ToolPower: make(map[string]int),
 		Cooldowns: make(map[string]uint64),
 		Loadout:   make(map[string]*Linked),
 		BaseStats: stats.NewBlock(),
