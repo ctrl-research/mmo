@@ -41,7 +41,7 @@ type cluster struct {
 	t *testing.T
 
 	a, b     *Node
-	presence *directory.MemoryPresence
+	presence directory.Presence
 	parties  *directory.MemoryParties
 	dir      directory.Directory
 	bus      bus.Bus
@@ -86,7 +86,7 @@ func newCluster(t *testing.T) *cluster {
 	// which is correct for a single process and is what CI runs when no server
 	// is available.
 	busA, busB := testBuses(t)
-	presence := directory.NewMemoryPresence()
+	presence := testPresence(t)
 	parties := directory.NewMemoryParties(game.Balance.Party.MaxSize)
 
 	node := func(id string, nodeBus bus.Bus, nodeDir directory.Directory) *Node {
@@ -178,6 +178,35 @@ func testDirectories(t *testing.T) (directory.Directory, directory.Directory) {
 		client.Close()
 	})
 	return a, b
+}
+
+// testPresence returns the presence table both nodes share.
+//
+// One table rather than one per node, because that is what presence *is*: a
+// single answer to "which node holds this character", which both nodes read and
+// write. Over Redis when MMO_TEST_REDIS_ADDR is set, so a whisper crosses a
+// network to find its recipient.
+func testPresence(t *testing.T) directory.Presence {
+	t.Helper()
+
+	addr := os.Getenv("MMO_TEST_REDIS_ADDR")
+	if addr == "" {
+		p := directory.NewMemoryPresence()
+		t.Cleanup(func() { p.Close() })
+		return p
+	}
+
+	client := redis.NewClient(&redis.Options{Addr: addr})
+	prefix := "mmoworldpres:" + strconv.FormatInt(time.Now().UnixNano(), 36)
+	ctx := context.Background()
+
+	t.Cleanup(func() {
+		if keys, err := client.Keys(ctx, prefix+"*").Result(); err == nil && len(keys) > 0 {
+			client.Del(ctx, keys...)
+		}
+		client.Close()
+	})
+	return directory.NewRedisPresence(client, prefix)
 }
 
 // testBuses returns one bus per node.

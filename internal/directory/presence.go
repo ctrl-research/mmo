@@ -44,6 +44,11 @@ type Online struct {
 // Implementations must be safe for concurrent use, and must treat names
 // case-insensitively for lookup while preserving the case for display: a
 // player who types "alice" means the character called "Alice".
+//
+// The read methods return errors for the same reason the Directory's do: an
+// in-memory table cannot fail one, a network-backed table can, and "nobody by
+// that name is online" is a wrong answer rather than a degraded one -- a whisper
+// refused because Redis was briefly unreachable should say so.
 type Presence interface {
 	// Announce records a character as online, replacing any earlier entry.
 	// Called again on a room transfer, since the node may have changed.
@@ -52,24 +57,30 @@ type Presence interface {
 	// Forget removes a character, on logout or when a reconnect window ends.
 	Forget(ctx context.Context, characterID string) error
 
+	// ForgetNode removes every character attributed to a node.
+	//
+	// Called by a node as it starts, because a node that has just started is
+	// holding nobody: any presence still claiming otherwise is left over from
+	// the process that died, and would route whispers at a socket that is gone.
+	ForgetNode(ctx context.Context, node NodeID) error
+
 	// ByName finds an online character by display name, case-insensitively.
-	ByName(ctx context.Context, name string) (Online, bool)
+	ByName(ctx context.Context, name string) (Online, bool, error)
 
 	// ByID finds an online character by ID.
-	ByID(ctx context.Context, characterID string) (Online, bool)
+	ByID(ctx context.Context, characterID string) (Online, bool, error)
 
 	// List returns everyone online, ordered by name so a roster is stable.
-	List(ctx context.Context) []Online
+	List(ctx context.Context) ([]Online, error)
 
 	Close() error
 }
 
 // MemoryPresence is a Presence held in one process.
 type MemoryPresence struct {
-	mu      sync.RWMutex
-	byID    map[string]Online
-	byName  map[string]string // normalised name -> character ID
-	watcher func(Online, bool)
+	mu     sync.RWMutex
+	byID   map[string]Online
+	byName map[string]string // normalised name -> character ID
 }
 
 // NewMemoryPresence returns an empty presence table.
@@ -95,62 +106,67 @@ func (m *MemoryPresence) Announce(_ context.Context, who Online) error {
 
 	// A rename or a re-announce under a different name would otherwise leave
 	// the old name pointing at this character forever.
-	if old, ok := m.byID[who.CharacterID]; ok && old.Name != who.Name {
-		delete(m.byName, NormaliseName(old.Name))
+	if old, ok := m.byID[who.CharacterID]; ok && NormaliseName(old.Name) != NormaliseName(who.Name) {
+		m.releaseNameLocked(who.CharacterID, old.Name)
 	}
 
 	m.byID[who.CharacterID] = who
 	m.byName[NormaliseName(who.Name)] = who.CharacterID
-	watcher := m.watcher
 	m.mu.Unlock()
-
-	if watcher != nil {
-		watcher(who, true)
-	}
 	return nil
 }
 
 // Forget removes a character.
 func (m *MemoryPresence) Forget(_ context.Context, characterID string) error {
 	m.mu.Lock()
-	who, ok := m.byID[characterID]
-	if ok {
-		delete(m.byID, characterID)
-		delete(m.byName, NormaliseName(who.Name))
-	}
-	watcher := m.watcher
-	m.mu.Unlock()
+	defer m.mu.Unlock()
 
-	if ok && watcher != nil {
-		watcher(who, false)
+	if who, ok := m.byID[characterID]; ok {
+		delete(m.byID, characterID)
+		m.releaseNameLocked(characterID, who.Name)
 	}
 	return nil
 }
 
+// releaseNameLocked drops a name index only if it still points at this
+// character.
+//
+// Unconditionally deleting it revokes a name another character has taken over,
+// which happens whenever two announcements and a rename interleave across nodes.
+// Character names are unique, so the window is narrow -- but "narrow" is not
+// "impossible", and the symptom is a player unreachable by name until they
+// re-announce.
+func (m *MemoryPresence) releaseNameLocked(characterID, name string) {
+	normalised := NormaliseName(name)
+	if m.byName[normalised] == characterID {
+		delete(m.byName, normalised)
+	}
+}
+
 // ByName finds an online character by display name.
-func (m *MemoryPresence) ByName(_ context.Context, name string) (Online, bool) {
+func (m *MemoryPresence) ByName(_ context.Context, name string) (Online, bool, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	id, ok := m.byName[NormaliseName(name)]
 	if !ok {
-		return Online{}, false
+		return Online{}, false, nil
 	}
 	who, ok := m.byID[id]
-	return who, ok
+	return who, ok, nil
 }
 
 // ByID finds an online character by ID.
-func (m *MemoryPresence) ByID(_ context.Context, characterID string) (Online, bool) {
+func (m *MemoryPresence) ByID(_ context.Context, characterID string) (Online, bool, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	who, ok := m.byID[characterID]
-	return who, ok
+	return who, ok, nil
 }
 
 // List returns everyone online, ordered by name.
-func (m *MemoryPresence) List(_ context.Context) []Online {
+func (m *MemoryPresence) List(_ context.Context) ([]Online, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -161,18 +177,22 @@ func (m *MemoryPresence) List(_ context.Context) []Online {
 	// Map iteration order is random; a roster that reshuffles every refresh
 	// is unusable.
 	sortOnline(out)
-	return out
+	return out, nil
 }
 
-// Watch registers a callback for someone coming online or going offline.
-//
-// One watcher, not a list: the only subscriber is the node that owns this
-// presence table, and it fans out from there over the bus. A second in-process
-// watcher would be a component reaching around the bus to reach another.
-func (m *MemoryPresence) Watch(fn func(who Online, online bool)) {
+// ForgetNode removes every character attributed to a node.
+func (m *MemoryPresence) ForgetNode(_ context.Context, node NodeID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.watcher = fn
+
+	for id, who := range m.byID {
+		if who.Node != node {
+			continue
+		}
+		delete(m.byID, id)
+		m.releaseNameLocked(id, who.Name)
+	}
+	return nil
 }
 
 // Close releases nothing; the method exists to satisfy Presence.

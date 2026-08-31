@@ -111,7 +111,13 @@ Nothing a *live session* holds can travel at all — the socket, and the channel
 
 ### Presence is the third seam
 
-`Presence` answers "who is online, and which node holds them". It is deliberately ephemeral: losing it costs everyone their friends list for a moment and nothing else, because the characters are still in their rooms, still leased, still checkpointing. That is what makes Redis its right home later and Postgres its wrong one — the same argument that puts parties in one place and guilds in the other.
+`Presence` answers "who is online, and which node holds them". It is deliberately ephemeral: losing it costs everyone their friends list for a moment and nothing else, because the characters are still in their rooms, still leased, still checkpointing. That is what makes Redis its right home and Postgres its wrong one — the same argument that puts parties in one place and guilds in the other.
+
+It now has that home: `RedisPresence` keeps two indexes — characters by ID, IDs by normalised name — updated together by Lua, because two writes from the client leave a window in which a renamed character is reachable under both names or neither. Records carry the node holding the session, and a node clears its own on startup rather than every character heartbeating a TTL; a node that dies and never returns leaves its characters listed until something sweeps them, which is a chaos-testing concern rather than a presence one.
+
+The normalised name is *stored in the record*, not derived in Lua. `string.lower` is ASCII-only and does not trim, so a script computing the lookup key would disagree with `NormaliseName` for any name with an accent — and a disagreement leaves a name pointing at a character forever. One definition of the key, in Go.
+
+Presence reads report errors, for the reason the directory's do: an unreachable Redis answering "nobody is online by that name" is not a degraded answer but a wrong one, and a caller acts on it by refusing a whisper to somebody who is standing right there.
 
 ## The two swappable seams
 

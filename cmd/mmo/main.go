@@ -146,11 +146,21 @@ func run() error {
 			"Add someone with 'mmo allow USERNAME', or start with --dev-auth for local play")
 	}
 
+	// One Redis client for everything that needs one -- the directory, presence,
+	// leases and token storage. Four pools to one server would be four times the
+	// connections for no benefit, and it is the kind of thing that only becomes
+	// visible as a connection limit under load.
+	redisClient, closeRedis, err := openRedis(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	defer closeRedis()
+
 	// Shared through Redis when there is a Redis, in-memory otherwise. The
 	// in-memory one is correct for a single process rather than a stand-in: with
 	// one node, the node deciding where a room goes is the node that will host
 	// it.
-	dir, err := openDirectory(ctx, cfg, log)
+	dir, err := openDirectory(ctx, cfg, redisClient, log)
 	if err != nil {
 		return err
 	}
@@ -169,7 +179,7 @@ func run() error {
 	// needs; parties own membership, which spans rooms and nodes. Both are
 	// ephemeral: losing them costs a regroup, never data, which is what makes
 	// them Redis's problem at scale rather than Postgres's.
-	presence := directory.NewMemoryPresence()
+	presence := openPresence(cfg, redisClient, log)
 	defer presence.Close()
 
 	parties := directory.NewMemoryParties(game.Balance.Party.MaxSize)
@@ -180,11 +190,10 @@ func run() error {
 	// what actually enforces single-writer -- is identical either way. With
 	// several gateways it becomes required, because a login can start on one
 	// and its callback land on another.
-	leases, ephemeral, closeRedis, err := openCoordination(ctx, cfg, db, log)
+	leases, ephemeral, err := openCoordination(ctx, cfg, redisClient, db, log)
 	if err != nil {
 		return err
 	}
-	defer closeRedis()
 
 	var node *world.Node
 	if roles[RoleWorld] {
