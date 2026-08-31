@@ -620,16 +620,55 @@ names already follow and the only one that does not need re-tuning per map.
 
 *Only now, and only because the seams were built in M0.*
 
-- `nats` bus implementation
-- `redis` directory implementation
-- Split roles into separate deployments; k8s manifests
-- Headless bot client for load generation
-- Grafana dashboards checked in
-- Load test: 1000 bots across 3 world nodes
-- Chaos testing: kill a world node, verify leases expire and characters recover
-- Graceful drain on shutdown: hand off rooms, checkpoint, disconnect cleanly
+- [x] `nats` bus implementation
+- [ ] `redis` directory implementation
+- [ ] Split roles into separate deployments; k8s manifests
+- [ ] Headless bot client for load generation
+- [ ] Grafana dashboards checked in
+- [ ] Load test: 1000 bots across 3 world nodes
+- [ ] Chaos testing: kill a world node, verify leases expire and characters recover
+- [ ] Graceful drain on shutdown: hand off rooms, checkpoint, disconnect cleanly
 
 **Exit:** 1000 concurrent bots across three world nodes, tick p99 within budget, and killing a node loses at most one checkpoint interval for its players.
+
+### The bus
+
+The claim in the sequencing notes below is that M9 is configuration if M4 was
+honest. For the bus, it was: `internal/bus/nats.go` is one new file behind the
+interface M0 defined, and **every existing cross-node test now runs over a real
+NATS server unchanged** — portal transfer between nodes, global chat, whispers,
+party invites. Nothing above `internal/bus` was touched.
+
+The two implementations are held to one contract by a conformance suite rather
+than a suite each. Two suites drift, and the drift stays invisible until roles
+are actually split and a subject that worked in one process stops working. What
+stayed implementation-specific is what genuinely belongs to a transport:
+`inproc` dropping rather than blocking, and its own subscription-map locking.
+
+| Claim | How it was checked |
+| --- | --- |
+| Both buses route identically | `TestBusWildcardsRouteIdentically` and sixteen more — seventeen shared tests, each run against both |
+| A refusal is not a timeout | `TestBusResponderErrorReachesTheRequester`, `TestBusRequestWithNoResponder` — "the destination refused" and "the cluster is broken" need different responses |
+| A late reply is not the next answer | `TestBusLateReplyIsNotMistakenForTheNextOne` — `inproc` needs a correlation id for this; NATS gets it from a fresh inbox. The contract is the same, so it is asserted against both |
+| A bad subject is a bad subject on both | `TestBusSubscribeToAnEmptyPatternIsASubjectError` — the error *type*, because a caller distinguishes "wrong subject" from "unreachable cluster" by type |
+| Two connections are two nodes | `TestNATSCarriesMessagesBetweenConnections`, and the whole cluster suite with `MMO_TEST_NATS_URL` set |
+| A borrowed connection is the caller's | `TestNATSDoesNotCloseABorrowedConnection` — closing one this package did not open takes every other user of it offline |
+
+**A NATS subscription is not live until it is flushed.** This was the one real
+bug, and only a real server could have found it: a subscribe is a protocol
+message like any other, so until it reaches the server the subscription does not
+exist. The first version flushed on every *publish*, which established
+subscriptions by accident while costing a network round trip per message —
+exactly the wrong trade for a bus carrying per-tick traffic. Removing that flush
+made a cross-connection test stop receiving, which is how the real problem
+surfaced. `Subscribe` flushes now; `Publish` does not.
+
+**Close waits for the drain.** `Drain` returns immediately and finishes
+asynchronously, so the first version's `Close` returned while its subscriptions
+were still being delivered to. That showed up as a flaky test and would have
+shown up in production as a node that kept answering after it was drained —
+which is precisely what the graceful-drain item further down this list is
+supposed to prevent.
 
 ---
 

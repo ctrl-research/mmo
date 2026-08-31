@@ -10,6 +10,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/ctrl-research/mmo/internal/auth"
+	"github.com/ctrl-research/mmo/internal/bus"
 	"github.com/ctrl-research/mmo/internal/directory"
 	"github.com/ctrl-research/mmo/internal/store"
 	"github.com/redis/go-redis/v9"
@@ -176,4 +177,27 @@ func envOr(name, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// openBus chooses the message bus.
+//
+// The in-process one is not a stand-in: with every role in one process it is
+// the correct implementation, and it is the one the tests use. NATS becomes
+// required the moment two processes have to see each other's rooms, and nothing
+// above internal/bus changes when it does -- which is the claim M0 made by
+// putting the interface there in the first place, and this is where it gets
+// tested.
+func openBus(cfg config, log *slog.Logger) (bus.Bus, error) {
+	if cfg.natsURL == "" {
+		log.Info("using the in-process message bus; " +
+			"set --nats-url before running more than one process")
+		return bus.NewInProc(), nil
+	}
+
+	b, err := bus.Connect(cfg.natsURL)
+	if err != nil {
+		return nil, err
+	}
+	log.Info("using NATS for the message bus", "url", cfg.natsURL)
+	return b, nil
 }
