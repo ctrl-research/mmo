@@ -434,7 +434,7 @@ class EntitySprite {
             e.kind === KIND_TELEGRAPH
               ? theme.telegraph
               : e.kind === KIND_MOB
-                ? theme.mobEdge
+                ? tierTint(e.tier) || theme.mobEdge
                 : theme.nameText,
           // The one label that has to be readable over whatever it is drawn
           // on top of, because it is drawn on top of the floor of a fight.
@@ -524,6 +524,18 @@ class EntitySprite {
           this.#sprite.position.set(Math.round(px + pw / 2), Math.round(py + ph));
           this.#sprite.visible = true;
 
+          // A champion or rare is the same creature wearing a different
+          // colour. The modifiers are combinatorial -- there is no sprite to
+          // draw for "Brutal Swift" -- and a tint reads across a room where a
+          // name does not.
+          const tint = tierTint(e.tier);
+          if (tint !== 0 && !dead) {
+            this.#sprite.tint = tint;
+            this.#gfx
+              .rect(px - 2, py - 2, pw + 4, ph + 4)
+              .stroke({ width: 2, color: tint, alpha: 0.55 });
+          }
+
           // Dead mobs fade rather than vanishing, so a kill has a beat. A
           // hit flash would go here too, but the snapshot carries no such
           // flag -- damage numbers already say a hit landed.
@@ -561,6 +573,13 @@ class EntitySprite {
       // two slimes standing together render as "Green SlimGreen Slime" -- and
       // the name matters when you are fighting something, not when you are
       // walking past it.
+      //
+      // Champions are no exception, and that was tried: their names are long
+      // enough that two adjacent ones ("Brutal Hulking Armoured Swift Green
+      // Slime" twice over) are a solid bar of unreadable text. The colour is
+      // the warning at a distance -- it reads across a room where a name does
+      // not -- and the modifiers are the detail, wanted at the point of
+      // actually fighting the thing.
       this.#label.visible = e.kind !== KIND_MOB || (e.hp > 0 && e.hp < e.hpMax);
     }
   }
@@ -600,6 +619,18 @@ class EntitySprite {
       .fill({ color: theme.telegraphFill, alpha: 0.34 })
       .rect(px, py, pw, ph)
       .stroke({ width: 2, color: theme.telegraph, alpha: 0.85 });
+  }
+}
+
+/** The colour a tier is drawn in, or 0 for an ordinary mob. */
+function tierTint(tier: string): number {
+  switch (tier) {
+    case "champion":
+      return theme.champion;
+    case "rare":
+      return theme.rare;
+    default:
+      return 0;
   }
 }
 

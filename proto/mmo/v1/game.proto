@@ -277,6 +277,14 @@ message EntityState {
   // Content id of a mob, so the client can pick its sprite without the server
   // sending a name string every time one spawns.
   string mob_id = 26;
+
+  // "normal", "champion", or "rare".
+  //
+  // Sent rather than inferred from the name, because the name is a sentence a
+  // designer wrote and the tier is a thing the client renders. A client
+  // deciding what to draw by looking for the word "Brutal" would be one
+  // renamed modifier away from wrong.
+  string tier = 28;
 }
 
 // EntityDelta carries only what changed since the baseline tick.

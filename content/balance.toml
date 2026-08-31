@@ -72,6 +72,31 @@ combat_ms = 6000
 # would do, and is how a death penalty turns into a reason to stop playing.
 death_exp_penalty = 0.10
 
+# Enhanced mobs.
+#
+# Most of what makes a zone interesting the tenth time through is that it is
+# not the same zone. A champion or rare is an ordinary mob that rolled
+# modifiers from a shared pool, so variety costs nothing to author -- and the
+# combinations are what make it, rather than any single modifier.
+#
+# Rare is rolled first and its chance is a subset of champion's, so meeting one
+# stays an event rather than something you plan around.
+[elites]
+champion_chance = 0.07
+rare_chance = 0.012
+
+# How many modifiers each tier rolls, as [low, high].
+champion_mods = [1, 2]
+rare_mods = [3, 4]
+
+# The tier itself, before any modifier. A champion that was only a name would
+# be a lie, and one that was only a bigger health bar would be a chore -- so
+# the experience scales with the life.
+champion_life = 2.5
+champion_exp = 3.0
+rare_life = 6.0
+rare_exp = 8.0
+
 [drops]
 ground_ms = 120000
 pickup_range = 48.0

@@ -25,6 +25,12 @@ export const theme = {
   // together are obviously the same kind of thing and still tellable apart.
   otherTint: 0xb9c2d6,
 
+  // Champions and rares are tinted rather than given their own art: the
+  // modifiers are combinatorial, so there is no sprite to draw for "Brutal
+  // Swift", and a colour reads at a distance where a name does not.
+  champion: 0x7fc4ff,
+  rare: 0xffd166,
+
   mob: 0xc25b5b,
   mobEdge: 0xe08585,
   mobHit: 0xffd0d0,

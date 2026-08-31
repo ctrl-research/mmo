@@ -54,6 +54,9 @@ export interface RenderedEntity {
   /** Content id of a mob, so the renderer can choose a sprite. */
   mobId: string;
 
+  /** "normal", "champion", or "rare". Empty for anything that is not a mob. */
+  tier: string;
+
   /** Ground loot. Exactly one of item or gold is set. */
   dropItem: string;
   dropQty: number;
@@ -84,6 +87,7 @@ interface Tracked {
   hp: number;
   hpMax: number;
   mobId: string;
+  tier: string;
   dropItem: string;
   dropQty: number;
   dropGold: number;
@@ -135,6 +139,7 @@ export class Interpolator {
       hp: state.hp,
       hpMax: state.hpMax,
       mobId: state.mobId,
+      tier: state.tier,
       dropItem: state.dropItem,
       dropQty: state.dropQty,
       dropGold: state.dropGold,
@@ -191,6 +196,7 @@ export class Interpolator {
         hp: e.hp,
         hpMax: e.hpMax,
         mobId: e.mobId,
+        tier: e.tier,
         dropItem: e.dropItem,
         dropQty: e.dropQty,
         dropGold: e.dropGold,

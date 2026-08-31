@@ -137,7 +137,7 @@ func (r *Room) awardKill(killer *Entity, victim *Entity) {
 		return
 	}
 
-	amount := victim.Mob.Def.Exp
+	amount := victim.Mob.Exp
 	if amount <= 0 {
 		return
 	}
