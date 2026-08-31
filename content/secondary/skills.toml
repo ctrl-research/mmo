@@ -26,3 +26,14 @@ tool_name = "fishing rod"
 
 [skill.herbalism]
 name = "Herbalism"
+
+# The processing skills. No tool_class: what they need is a station, and a
+# station is somewhere you stand rather than something you hold.
+[skill.smithing]
+name = "Smithing"
+
+[skill.cooking]
+name = "Cooking"
+
+[skill.alchemy]
+name = "Alchemy"

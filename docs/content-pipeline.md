@@ -20,6 +20,8 @@ content/
   events/       *.toml               (zone events: timed waves, shrines)
   secondary/    *.toml               (woodcutting, mining, fishing, herbalism)
   resources/    *.toml               (the nodes those skills gather)
+  stations/     *.toml               (anvils, fires, cauldrons)
+  recipes/      *.toml               (what those stations make)
   maps/         *.tmj                (Tiled) + *.meta.toml
   curves/       exp.toml, secondary_exp.toml
   world/        waypoints.toml, portals.toml
@@ -329,6 +331,7 @@ Authored in **Tiled**, exported as TMJ. Tile layers are geometry; object layers 
 | `waypoint` | `waypoint_id` |
 | `shrine` | a name and a rectangle; the event names it (§ Zone events) |
 | `resource_node` | `node_id`, `layer` (§ Secondary skills) |
+| `station` | `station_id`; a rectangle to stand at (§ Processing) |
 
 An object with an unrecognised class is a **load error**, not something
 ignored: a typo in a class name otherwise means a designer's spawn point simply
@@ -620,6 +623,101 @@ invisible while loot was the only source of materials and fills a 24-slot bag in
 about two minutes once gathering exists. `stackable` and `max_stack` on the item
 are what decide it, and equipment is refused a stack at load — two swords
 sharing one set of rolled affixes is incoherent.
+
+## Processing
+
+The other half of the secondary skills, and the half that connects the OSRS side
+of the game to the Path of Exile side: a smith who can make a sword is a smith
+whose evening of mining fed their build.
+
+`content/stations/*.toml` — the fixtures:
+
+```toml
+[station.anvil]
+name = "Anvil"
+```
+
+A station has no timers and nothing to run out of, which is what makes it
+cheaper than a resource node rather than a special case of one, and why two
+players at one anvil have nothing to contend over. It is defined here rather
+than named as a bare string on each recipe so that a typo in a map is a load
+error rather than an anvil nobody can use.
+
+`content/recipes/*.toml` — what they make:
+
+```toml
+[recipe.copper_sword]
+name = "Copper Sword"
+skill = "smithing"
+station = "anvil"
+level = 5
+exp = 140
+output = "weapon.copper_sword"
+qty = 1
+action_ticks = 6      # how many 600 ms beats one run takes
+
+[[recipe.copper_sword.input]]
+item = "material.copper_bar"
+qty = 3
+
+[[recipe.copper_sword.input]]
+item = "material.oak_log"
+qty = 1
+```
+
+**`action_ticks`, not milliseconds.** That is the unit it is measured in: a run
+authored at 800 ms would be rounded to two beats anyway, and authoring the
+rounded number is authoring what happens.
+
+**A run repeats until something stops it.** Committing to a recipe is a decision
+several seconds long, so it keeps going — the player said "make these", not
+"make one". Running out of materials is the ordinary ending and says so; so is
+walking away from the station.
+
+**Being hit does not stop a craft**, where it does stop a gather. A station is
+somewhere a player has chosen to stand still. That has a content consequence the
+loader cannot check: **do not put a station inside a mob spawn**, because a
+player will stand there and die. The camp is in the tutorial map for exactly
+this reason — the forest's slime tide sweeps most of its floor.
+
+The loader refuses a recipe that raises an unknown skill, names an unknown
+station, produces or consumes an unknown item, consumes what it produces, takes
+no time, grants no experience, needs an unreachable level, or makes several of
+something that does not stack. It also refuses a **station with no recipes** —
+an anvil a player walks up to and learns nothing from — and a map placing a
+station that does not exist.
+
+### One run is one transaction
+
+The rule worth stating on its own. Consuming three bars and then failing to
+insert the sword destroys items; retrying the insert alone duplicates one. So
+`store.Craft` resolves the inputs, spends them, and inserts the output inside
+one transaction, under locks taken in slot order so two runs cannot deadlock.
+Not enough of something changes nothing at all.
+
+Inputs are consumed **across stacks**: a bag holding three bars in one slot and
+two in another holds five bars, and a recipe needing five that refused would be
+a recipe whose availability depended on how the bag happened to fill.
+
+Both halves are journalled, and separately — `consume` for an input spent and
+`craft` for an output made, rather than reusing `destroy` and `create`. A bar
+consumed into a sword and a bar a player threw away are not the same event, and
+telling them apart afterwards is the whole reason the journal exists.
+
+### Who decides what
+
+Gathering and crafting share the action tick, but they divide differently, and
+the difference decides the shape of both:
+
+| | Gathering | Crafting |
+|---|---|---|
+| Produces from | nothing | the inventory |
+| Can a run fail? | no, once the roll lands | yes — the materials may be gone |
+| Experience granted | immediately, by the room | when the session confirms |
+| Item stored | afterwards, by the session | in the same transaction as the spend |
+
+A character can be gathering or crafting, never both: starting either ends the
+other, because two runs against one bag means the bag loses.
 
 ## Death
 

@@ -1,0 +1,33 @@
+# Cooking and alchemy.
+#
+# Both are one step from a gathered material to a consumable, because both are
+# in service of something else: cooking feeds a fight, alchemy feeds a build.
+# Neither needs a chain of its own to be worth doing.
+
+[recipe.cooked_trout]
+name = "Cooked Trout"
+skill = "cooking"
+station = "fire"
+level = 1
+exp = 25
+output = "consumable.cooked_trout"
+qty = 1
+action_ticks = 2
+
+[[recipe.cooked_trout.input]]
+item = "material.raw_trout"
+qty = 1
+
+[recipe.marsh_tonic]
+name = "Marsh Tonic"
+skill = "alchemy"
+station = "cauldron"
+level = 1
+exp = 40
+output = "potion.marsh_tonic"
+qty = 1
+action_ticks = 3
+
+[[recipe.marsh_tonic.input]]
+item = "material.marsh_root"
+qty = 2

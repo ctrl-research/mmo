@@ -41,6 +41,7 @@ const (
 	classWaypoint   = "waypoint"
 	classShrine     = "shrine"
 	classResource   = "resource_node"
+	classStation    = "station"
 )
 
 // SpawnLayer decides who fights a mob.
@@ -242,6 +243,9 @@ type Map struct {
 	// Resources are the gatherable nodes placed on this map.
 	Resources []ResourceSpot
 
+	// Stations are the crafting fixtures placed on this map.
+	Stations []StationSpot
+
 	// MinLevel and MaxLevel describe who the map is for. Advisory: shown on
 	// the world map so a player can tell where they are meant to go next,
 	// rather than enforced, since a portal's own requirement does that.
@@ -265,6 +269,20 @@ type Shrine struct {
 	At sim.Vec
 
 	// Bounds is the area that starts the event on contact.
+	Bounds sim.Rect
+}
+
+// StationSpot is one placement of a crafting station on a map.
+//
+// Always shared, and with no timers: a station has nothing to run out of, so
+// there is nothing for two players at one anvil to contend over. That is what
+// makes it cheaper than a resource node rather than a special case of one.
+type StationSpot struct {
+	Name      string
+	StationID string
+
+	// At is the feet position, and Bounds the area a player must stand in.
+	At     sim.Vec
 	Bounds sim.Rect
 }
 
@@ -515,6 +533,23 @@ func (m *Map) addObject(mapName string, obj tmjObject) error {
 			NodeID: nodeID,
 			At:     sim.Vec{X: toFixed(obj.X), Y: toFixed(obj.Y)},
 			Layer:  layer,
+		})
+
+	case classStation:
+		props := props(obj.Properties)
+
+		stationID, _ := props["station_id"].(string)
+		if stationID == "" {
+			return fmt.Errorf("content: %s: station %d (%q) has no station_id",
+				mapName, obj.ID, obj.Name)
+		}
+
+		bounds := rect(obj)
+		m.Stations = append(m.Stations, StationSpot{
+			Name:      obj.Name,
+			StationID: stationID,
+			At:        sim.Vec{X: bounds.CenterX(), Y: bounds.Bottom()},
+			Bounds:    bounds,
 		})
 
 	case classWaypoint:

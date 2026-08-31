@@ -331,3 +331,48 @@ stat = "attack"
 kind = "flat"
 min = 1
 max = 2
+
+# --- crafted materials and consumables -------------------------------------
+
+[item."material.copper_bar"]
+name = "Copper Bar"
+kind = "material"
+stackable = true
+max_stack = 500
+level = 1
+
+[item."material.iron_bar"]
+name = "Iron Bar"
+kind = "material"
+stackable = true
+max_stack = 500
+level = 1
+
+[item."consumable.cooked_trout"]
+name = "Cooked Trout"
+kind = "consumable"
+stackable = true
+max_stack = 100
+level = 1
+
+[item."potion.marsh_tonic"]
+name = "Marsh Tonic"
+kind = "consumable"
+stackable = true
+max_stack = 100
+level = 1
+
+# The exit criterion's payoff: made from mined ore and a chopped log, and
+# equippable by the character who made it.
+[item."weapon.copper_sword"]
+name = "Copper Sword"
+kind = "equipment"
+slot = "weapon"
+class = "sword"
+level = 1
+
+[[item."weapon.copper_sword".implicit]]
+stat = "attack"
+kind = "flat"
+min = 4
+max = 7

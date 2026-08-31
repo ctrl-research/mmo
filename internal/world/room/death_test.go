@@ -365,13 +365,17 @@ func TestDowningACharacterTwiceIsOneDeath(t *testing.T) {
 // session, so a test about portals with no session behind it would pass
 // whatever the room did.
 type recordEvents struct {
-	portals []PortalRequest
-	runEnds []RunResult
-	yields  []GatherYield
+	portals  []PortalRequest
+	runEnds  []RunResult
+	yields   []GatherYield
+	stations []StationRequest
+	crafts   []CraftRequest
 }
 
 func (e *recordEvents) ClaimLoot(LootClaim)                       {}
 func (e *recordEvents) GrantGather(y GatherYield)                 { e.yields = append(e.yields, y) }
+func (e *recordEvents) OpenStation(r StationRequest)              { e.stations = append(e.stations, r) }
+func (e *recordEvents) RunCraft(r CraftRequest)                   { e.crafts = append(e.crafts, r) }
 func (e *recordEvents) EnterPortal(req PortalRequest)             { e.portals = append(e.portals, req) }
 func (e *recordEvents) DiscoverWaypoint(EntityID, string, string) {}
 func (e *recordEvents) EndRun(res RunResult)                      { e.runEnds = append(e.runEnds, res) }

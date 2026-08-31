@@ -71,6 +71,9 @@ export interface RenderedEntity {
    */
   nodeSkill: string;
   nodeLevel: number;
+
+  /** A crafting station's content id, so the renderer can pick a shape. */
+  stationId: string;
 }
 
 /** Entity kinds, mirroring mmov1.EntityKind. */
@@ -82,6 +85,7 @@ export const KIND_AREA = 6;
 export const KIND_TELEGRAPH = 7;
 export const KIND_SHRINE = 8;
 export const KIND_RESOURCE = 9;
+export const KIND_STATION = 10;
 
 // Field-mask bits, mirroring mmov1.EntityField.
 const FIELD_POS = 1 << 0;
@@ -105,6 +109,7 @@ interface Tracked {
   dropGold: number;
   nodeSkill: string;
   nodeLevel: number;
+  stationId: string;
   latest: Sample;
   history: Sample[];
 }
@@ -159,6 +164,7 @@ export class Interpolator {
       dropGold: state.dropGold,
       nodeSkill: state.nodeSkill,
       nodeLevel: state.nodeLevel,
+      stationId: state.stationId,
       latest: sample,
       history: [sample],
     });
@@ -218,6 +224,7 @@ export class Interpolator {
         dropGold: e.dropGold,
         nodeSkill: e.nodeSkill,
         nodeLevel: e.nodeLevel,
+        stationId: e.stationId,
         x,
         y,
         flags,
@@ -272,6 +279,11 @@ export class Interpolator {
    */
   nearestNode(x: number, y: number, radius: number): number {
     return this.#nearest(KIND_RESOURCE, x, y, radius);
+  }
+
+  /** The nearest crafting station, for the key that opens its menu. */
+  nearestStation(x: number, y: number, radius: number): number {
+    return this.#nearest(KIND_STATION, x, y, radius);
   }
 
   #nearest(kind: number, x: number, y: number, radius: number): number {

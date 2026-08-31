@@ -45,6 +45,7 @@ message ClientMessage {
     SocialAction social = 12;
     SetSkillSlot skill_slot = 13;
     PassiveAction passive = 14;
+    Craft craft = 15;
   }
 }
 
@@ -64,6 +65,20 @@ message Cast {
 
 // Interact is a request to act on a nearby entity: loot a drop, use a portal,
 // talk to an NPC.
+// Craft asks to start making something at a station.
+//
+// Its own message rather than an Interact kind, because it carries a recipe id
+// and Interact carries an entity id -- and a message whose meaning depends on
+// which of two fields is set is a message that eventually gets read wrong.
+message Craft {
+  // The station being used. Checked against where the character is standing,
+  // because a client can send any id.
+  uint32 entity_id = 1;
+
+  // Empty stops whatever is running, which is what closing the menu sends.
+  string recipe_id = 2;
+}
+
 message Interact {
   uint32 entity_id = 1;
   InteractKind kind = 2;
@@ -82,6 +97,11 @@ enum InteractKind {
   // with no target, because "I am done" and "I mis-clicked" should not be the
   // same message.
   INTERACT_KIND_STOP = 3;
+
+  // Ask what a station can make. The answer depends on the character's level
+  // and on what is in their bag, so it is a question for the server rather
+  // than something the client works out from content it does not have.
+  INTERACT_KIND_STATION = 4;
 }
 
 // ItemAction asks the server to move, equip, or destroy an item.
@@ -222,6 +242,11 @@ enum EntityKind {
   // player stands on all evening, which is the contention layering exists to
   // remove.
   ENTITY_KIND_RESOURCE = 9;
+
+  // A crafting station: an anvil, a fire, a cauldron. An entity so it can be
+  // seen and walked up to, and shared-layer always -- a station has nothing to
+  // run out of, so two players at one anvil have nothing to contend over.
+  ENTITY_KIND_STATION = 10;
 }
 
 // Bit positions in EntityDelta.field_mask.
@@ -312,6 +337,10 @@ message EntityState {
   // not yet good enough for, without holding a copy of the content files.
   string node_skill = 29;
   uint32 node_level = 30;
+
+  // A crafting station's content id, so the client knows which one it walked
+  // up to without matching on the display name.
+  string station_id = 31;
 }
 
 // EntityDelta carries only what changed since the baseline tick.
@@ -395,6 +424,8 @@ message Event {
     Gathering gathering = 30;
     SecondaryExp secondary_exp = 31;
     SecondarySkills secondary = 32;
+    StationMenu station = 33;
+    Crafting crafting = 34;
   }
   // 11 was MapChanged, replaced by a second Welcome: it carried strictly less
   // than the Welcome the destination room already sends, and two messages
@@ -536,6 +567,68 @@ message SecondarySkill {
   // and zero for none. On the skill rather than inferred by the client from
   // equipment, because the mapping from an item to a tool lives in content.
   uint32 tool_power = 7;
+}
+
+// StationMenu is what a station can make, answered when a player asks.
+//
+// Sent on request rather than pushed, because the answer depends on the
+// character's level and on what is in their bag -- neither of which the client
+// can work out from content it does not have, and both of which change.
+message StationMenu {
+  uint32 entity_id = 1;
+  string station_id = 2;
+  string name = 3;
+
+  repeated RecipeOption recipes = 4;
+}
+
+message RecipeOption {
+  string recipe_id = 1;
+  string name = 2;
+  string skill = 3;
+  uint32 level = 4;
+  uint64 exp = 5;
+
+  // What one run takes and makes, as text the client shows verbatim: the
+  // server has the item names and the client would otherwise need them.
+  repeated RecipeIngredient inputs = 6;
+  string output_name = 7;
+  uint32 output_qty = 8;
+
+  // Why it cannot be made right now, and empty when it can. The two reasons
+  // are different and a player needs to tell them apart: a level is something
+  // to work towards, and a missing material is something to go and get.
+  string blocked = 9;
+}
+
+message RecipeIngredient {
+  string item_id = 1;
+  string name = 2;
+  uint32 qty = 3;
+
+  // How many the character is carrying, so the menu can show 2/3 rather than
+  // only whether the recipe is possible.
+  uint32 held = 4;
+}
+
+// Crafting reports that a run has started, produced something, or stopped.
+//
+// One message for all three because the client's job is the same: show or hide
+// the "you are smithing" state, and say why it ended. `reason` carries the
+// endings a player would otherwise have to guess at -- running out of
+// materials is the ordinary one, and it is not an error.
+message Crafting {
+  string recipe_id = 1;
+  string name = 2;
+  string skill = 3;
+
+  bool active = 4;
+
+  // Set on the message that reports one completed run, so a client can count
+  // what it made without watching its own inventory.
+  bool produced = 5;
+
+  string reason = 6;
 }
 
 // Downed is sent to a character who has just died, carrying the two things

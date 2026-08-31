@@ -136,6 +136,8 @@ type Session struct {
 	// session's goroutine, where the database and the bus can be reached.
 	claims     chan room.LootClaim
 	gathers    chan room.GatherYield
+	stations   chan room.StationRequest
+	crafts     chan room.CraftRequest
 	portals    chan room.PortalRequest
 	runEnds    chan room.RunResult
 	waypoints  chan string
@@ -385,7 +387,14 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 		claims: make(chan room.LootClaim, 16),
 		// Deeper than claims: a party of gatherers on the action tick produces
 		// these steadily rather than in the bursts looting comes in.
-		gathers:   make(chan room.GatherYield, 32),
+		gathers: make(chan room.GatherYield, 32),
+		// Depth one for crafting: the room will not ask for a second run until
+		// the first has been answered, so anything deeper would only queue
+		// requests that cannot exist.
+		crafts: make(chan room.CraftRequest, 1),
+		// A station menu is a question a player can ask by pressing a key, so
+		// this is deep enough to absorb a double-press and no deeper.
+		stations:  make(chan room.StationRequest, 2),
 		portals:   make(chan room.PortalRequest, 4),
 		runEnds:   make(chan room.RunResult, 4),
 		waypoints: make(chan string, 8),
@@ -499,6 +508,12 @@ func (s *Session) maintain() {
 
 		case yield := <-s.gathers:
 			s.handleGather(yield)
+
+		case req := <-s.stations:
+			s.handleStation(req)
+
+		case req := <-s.crafts:
+			s.handleCraft(req)
 
 		case req := <-s.portals:
 			s.handlePortal(req)

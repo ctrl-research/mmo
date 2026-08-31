@@ -16,6 +16,7 @@ import { VitalsBar } from "@/ui/vitals";
 import { SettingsPanel } from "@/ui/settings";
 import { SkillsPanel } from "@/ui/skills";
 import { GatheringLine } from "@/ui/gathering";
+import { CraftingPanel } from "@/ui/crafting";
 import { PartyAction_Kind, GuildAction_Kind } from "@/net/connection";
 import type { Character } from "@/ui/api";
 import { toPixels } from "@/sim/fixed";
@@ -53,6 +54,7 @@ const vitalsEl = document.getElementById("vitals") as HTMLDivElement;
 const settingsEl = document.getElementById("settings") as HTMLDivElement;
 const skillsEl = document.getElementById("skills") as HTMLDivElement;
 const gatheringEl = document.getElementById("gathering") as HTMLDivElement;
+const craftingEl = document.getElementById("crafting") as HTMLDivElement;
 
 let loop: GameLoop | null = null;
 let scene: Scene | null = null;
@@ -73,6 +75,7 @@ let vitals: VitalsBar | null = null;
 let settings: SettingsPanel | null = null;
 let skills: SkillsPanel | null = null;
 let gathering: GatheringLine | null = null;
+let crafting: CraftingPanel | null = null;
 
 // Secondary skill names, so the gathering line can say "Woodcutting" rather
 // than "woodcutting". The server sends the display name once, with the full
@@ -137,6 +140,16 @@ async function main(): Promise<void> {
       skills?.close();
       void passives?.toggle();
     }
+    if (e.code === "KeyR") {
+      e.preventDefault();
+      if (crafting?.isOpen) {
+        crafting.close();
+      } else if (!loop?.openStation()) {
+        // Nothing in reach. Said rather than silent, because a key that does
+        // nothing is indistinguishable from a key that is broken.
+        setStatus("there is nothing to work at here");
+      }
+    }
     if (e.code === "KeyJ") {
       e.preventDefault();
       panel?.close();
@@ -152,6 +165,7 @@ async function main(): Promise<void> {
       passives?.close();
       settings?.close();
       skills?.close();
+      crafting?.close();
     }
   });
 
@@ -238,6 +252,19 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
         scene?.setSkillLevels(levels);
       },
 
+      // Crafting. Both halves go to the panel: it is the only place the state
+      // makes sense, because "made 4" means nothing without the recipe it is
+      // counting.
+      onStationMenu: (menu) => crafting?.open(menu),
+      onCrafting: (state) => {
+        crafting?.update(state);
+        // Re-ask after each completed run, so the ingredient counts follow the
+        // materials being spent. A panel that kept showing 6/2 while the bag
+        // emptied would be a panel that says a recipe is available right up to
+        // the run that stops for want of it.
+        if (state.active && state.produced) loop?.openStation();
+      },
+
       onBossPhase: (phase) => boss?.announce(phase, performance.now()),
       onBossHealth: (hp, hpMax) => boss?.track(hp, hpMax, performance.now()),
       bossEntityId: () => boss?.entityId ?? 0,
@@ -315,6 +342,10 @@ async function enterWorld(ticket: string, character: Character, contentHash: str
     vitals = new VitalsBar(vitalsEl);
     skills = new SkillsPanel(skillsEl);
     gathering = new GatheringLine(gatheringEl);
+    crafting = new CraftingPanel(craftingEl, {
+      onCraft: (entityId, recipeId) => game.craft(entityId, recipeId),
+      onStop: (entityId) => game.stopCraft(entityId),
+    });
 
     // Built here rather than at startup because it needs the scene, and the
     // scene does not exist until a character is in the world.

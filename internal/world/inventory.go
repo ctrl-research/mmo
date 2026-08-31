@@ -398,6 +398,22 @@ func (i *Inventory) Snapshot() ([]*Slot, map[content.EquipSlot]*Slot) {
 	return carried, worn
 }
 
+// InventoryID is the carried container, for the operations that have to run
+// inside a single store transaction and so cannot go through this type.
+//
+// Crafting is the only such operation: consuming several inputs and inserting
+// an output must be one transaction, and a method per step here would be a
+// method per step that can fail halfway.
+func (i *Inventory) InventoryID() uuid.UUID { return i.inventoryID }
+
+// Reload rebuilds the in-memory view from the database.
+//
+// Exported for the same reason as InventoryID: after a store operation this
+// type did not perform, the view is stale and only a full rebuild is honest --
+// a craft can delete several rows and add one, and patching that by hand is
+// how a view comes to disagree about where an item is.
+func (i *Inventory) Reload(ctx context.Context) error { return i.reload(ctx) }
+
 // Capacity returns the number of inventory slots.
 func (i *Inventory) Capacity() int { return i.capacity }
 

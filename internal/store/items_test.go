@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sync"
 	"testing"
 
@@ -632,4 +633,353 @@ func TestConcurrentStacksDoNotExceedTheMaximum(t *testing.T) {
 			t.Errorf("a stack holds %d, over its maximum of %d", r.StackSize, max)
 		}
 	}
+}
+
+// Crafting.
+//
+// The property worth protecting is that one run is one transaction. A craft
+// that consumed its inputs and then failed to insert its output would destroy
+// items, and a retry of the insert alone would duplicate one -- the same pair
+// of failures MoveItem exists to avoid, in a shape where the arithmetic is
+// destructive and there are several inputs.
+
+func craftOutput(base string) ItemRow {
+	return ItemRow{
+		BaseID:    base,
+		Rarity:    "normal",
+		ItemLevel: 1,
+		Mods:      json.RawMessage(`{}`),
+		StackSize: 1,
+	}
+}
+
+func TestCraftConsumesInputsAndInsertsTheOutput(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	char, inv, _ := testContainers(t, s)
+
+	if _, err := s.InsertItem(ctx, inv.ID, 0, stackable("material.copper_ore", 5), char, EventPickup, 1); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	id, err := s.Craft(ctx, inv.ID,
+		[]CraftInput{{BaseID: "material.copper_ore", Qty: 2}},
+		craftOutput("material.copper_bar"), 500, char, 2)
+	if err != nil {
+		t.Fatalf("craft: %v", err)
+	}
+	if id == uuid.Nil {
+		t.Fatal("craft produced nothing")
+	}
+
+	rows, err := s.LoadContainer(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	held := map[string]int{}
+	for _, r := range rows {
+		held[r.BaseID] += r.StackSize
+	}
+	if held["material.copper_ore"] != 3 {
+		t.Errorf("%d ore left, want 3", held["material.copper_ore"])
+	}
+	if held["material.copper_bar"] != 1 {
+		t.Errorf("%d bars made, want 1", held["material.copper_bar"])
+	}
+}
+
+// An input spread across several stacks is still an input. A bag holding three
+// bars in one slot and two in another holds five bars, and a recipe needing
+// five that refused would be a recipe whose availability depended on how the
+// bag happened to fill.
+func TestCraftConsumesAcrossSeveralStacks(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	char, inv, _ := testContainers(t, s)
+
+	for i, qty := range []int{2, 2, 2} {
+		if _, err := s.InsertItem(ctx, inv.ID, i, stackable("material.copper_ore", qty), char, EventPickup, 1); err != nil {
+			t.Fatalf("insert: %v", err)
+		}
+	}
+
+	if _, err := s.Craft(ctx, inv.ID,
+		[]CraftInput{{BaseID: "material.copper_ore", Qty: 5}},
+		craftOutput("material.copper_bar"), 500, char, 2); err != nil {
+		t.Fatalf("craft: %v", err)
+	}
+
+	rows, err := s.LoadContainer(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	var ore int
+	for _, r := range rows {
+		if r.BaseID == "material.copper_ore" {
+			ore += r.StackSize
+		}
+	}
+	if ore != 1 {
+		t.Errorf("%d ore left after spending 5 of 6, want 1", ore)
+	}
+}
+
+// Not enough of something changes nothing at all. Consuming the first input and
+// then discovering the second is short is exactly how a craft destroys items.
+func TestCraftWithMissingInputsChangesNothing(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	char, inv, _ := testContainers(t, s)
+
+	if _, err := s.InsertItem(ctx, inv.ID, 0, stackable("material.copper_ore", 5), char, EventPickup, 1); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	_, err := s.Craft(ctx, inv.ID, []CraftInput{
+		{BaseID: "material.copper_ore", Qty: 2},
+		{BaseID: "material.oak_log", Qty: 1}, // not held at all
+	}, craftOutput("weapon.copper_sword"), 1, char, 2)
+	if !errors.Is(err, ErrMissingInputs) {
+		t.Fatalf("craft = %v, want ErrMissingInputs", err)
+	}
+
+	rows, err := s.LoadContainer(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(rows) != 1 || rows[0].StackSize != 5 {
+		t.Errorf("the bag holds %d rows after a failed craft, want the untouched stack of 5", len(rows))
+	}
+}
+
+// A full bag refuses, and refuses without spending anything.
+func TestCraftIntoAFullBagChangesNothing(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	char, inv, _ := testContainers(t, s)
+
+	// Every slot taken by something that cannot stack with the output.
+	for i := 0; i < inv.Capacity; i++ {
+		if _, err := s.InsertItem(ctx, inv.ID, i, sampleItem("weapon.iron_sword"), char, EventCreate, 1); err != nil {
+			t.Fatalf("insert: %v", err)
+		}
+	}
+	// Then replace one with the input, so the inputs are there and only the
+	// output has nowhere to go.
+	rows, _ := s.LoadContainer(ctx, inv.ID)
+	if err := s.DestroyItem(ctx, rows[0].ID, char, 1); err != nil {
+		t.Fatalf("destroy: %v", err)
+	}
+	if _, err := s.InsertItem(ctx, inv.ID, rows[0].Slot,
+		stackable("material.copper_ore", 5), char, EventPickup, 1); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	_, err := s.Craft(ctx, inv.ID,
+		[]CraftInput{{BaseID: "material.copper_ore", Qty: 2}},
+		craftOutput("weapon.copper_sword"), 1, char, 2)
+	if !errors.Is(err, ErrContainerFull) {
+		t.Fatalf("craft = %v, want ErrContainerFull", err)
+	}
+
+	after, err := s.LoadContainer(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	for _, r := range after {
+		if r.BaseID == "material.copper_ore" && r.StackSize != 5 {
+			t.Errorf("the ore stack is %d after a refused craft, want an untouched 5", r.StackSize)
+		}
+	}
+}
+
+// A stackable output merges rather than taking a slot, so a smith who made
+// forty bars has forty bars and not a full bag.
+func TestCraftStacksItsOutput(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	char, inv, _ := testContainers(t, s)
+
+	if _, err := s.InsertItem(ctx, inv.ID, 0, stackable("material.copper_ore", 10), char, EventPickup, 1); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	for i := 0; i < 3; i++ {
+		if _, err := s.Craft(ctx, inv.ID,
+			[]CraftInput{{BaseID: "material.copper_ore", Qty: 2}},
+			craftOutput("material.copper_bar"), 500, char, uint64(2+i)); err != nil {
+			t.Fatalf("craft %d: %v", i, err)
+		}
+	}
+
+	rows, err := s.LoadContainer(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	var bars, slots int
+	for _, r := range rows {
+		if r.BaseID == "material.copper_bar" {
+			bars += r.StackSize
+			slots++
+		}
+	}
+	if bars != 3 || slots != 1 {
+		t.Errorf("three crafts made %d bars in %d slots, want 3 in 1", bars, slots)
+	}
+}
+
+// Both halves are journalled, and distinguishably: a bar consumed into a sword
+// and a bar a player threw away are not the same event, and telling them apart
+// after the fact is the whole reason the journal exists.
+func TestCraftIsJournalledOnBothSides(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	char, inv, _ := testContainers(t, s)
+
+	oreID, err := s.InsertItem(ctx, inv.ID, 0, stackable("material.copper_ore", 5), char, EventPickup, 1)
+	if err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	barID, err := s.Craft(ctx, inv.ID,
+		[]CraftInput{{BaseID: "material.copper_ore", Qty: 2}},
+		craftOutput("material.copper_bar"), 500, char, 2)
+	if err != nil {
+		t.Fatalf("craft: %v", err)
+	}
+
+	oreHistory, err := s.ItemHistory(ctx, oreID)
+	if err != nil {
+		t.Fatalf("history: %v", err)
+	}
+	var consumed bool
+	for _, e := range oreHistory {
+		if e.Kind == EventConsume {
+			consumed = true
+		}
+	}
+	if !consumed {
+		t.Errorf("the ore's journal is %v, want a consume entry", kinds(oreHistory))
+	}
+
+	barHistory, err := s.ItemHistory(ctx, barID)
+	if err != nil {
+		t.Fatalf("history: %v", err)
+	}
+	if len(barHistory) != 1 || barHistory[0].Kind != EventCraft {
+		t.Errorf("the bar's journal is %v, want one craft entry", kinds(barHistory))
+	}
+}
+
+// A whole stack spent leaves a journal entry that outlives the row it
+// describes, the same way destroying an item does.
+func TestSpendingAWholeStackIsStillJournalled(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	char, inv, _ := testContainers(t, s)
+
+	oreID, err := s.InsertItem(ctx, inv.ID, 0, stackable("material.copper_ore", 2), char, EventPickup, 1)
+	if err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	if _, err := s.Craft(ctx, inv.ID,
+		[]CraftInput{{BaseID: "material.copper_ore", Qty: 2}},
+		craftOutput("material.copper_bar"), 500, char, 2); err != nil {
+		t.Fatalf("craft: %v", err)
+	}
+
+	if _, err := s.LoadItem(ctx, oreID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("the spent stack still exists (%v)", err)
+	}
+	history, err := s.ItemHistory(ctx, oreID)
+	if err != nil {
+		t.Fatalf("history: %v", err)
+	}
+	if len(history) != 2 {
+		t.Errorf("the spent stack's journal is %v, want the pickup and the consume", kinds(history))
+	}
+}
+
+// Two crafts racing for the same materials: one wins, and nothing is spent
+// twice. The room serialises runs per player, so this is about two sessions --
+// which the ownership lease exists to prevent and which must still not corrupt
+// anything if it happens.
+func TestConcurrentCraftsDoNotSpendTheSameMaterials(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	char, inv, _ := testContainers(t, s)
+
+	// Enough for exactly one run.
+	if _, err := s.InsertItem(ctx, inv.ID, 0, stackable("material.copper_ore", 2), char, EventPickup, 1); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	const contenders = 8
+	var (
+		wg  sync.WaitGroup
+		mu  sync.Mutex
+		won int
+	)
+	for i := 0; i < contenders; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := s.Craft(ctx, inv.ID,
+				[]CraftInput{{BaseID: "material.copper_ore", Qty: 2}},
+				craftOutput("material.copper_bar"), 500, char, 2)
+			switch {
+			case err == nil:
+				mu.Lock()
+				won++
+				mu.Unlock()
+			case errors.Is(err, ErrMissingInputs):
+			default:
+				t.Errorf("craft: %v", err)
+			}
+		}()
+	}
+	wg.Wait()
+
+	if won != 1 {
+		t.Errorf("%d of %d concurrent crafts succeeded with materials for one, want 1", won, contenders)
+	}
+
+	rows, err := s.LoadContainer(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	var ore, bars int
+	for _, r := range rows {
+		switch r.BaseID {
+		case "material.copper_ore":
+			ore += r.StackSize
+		case "material.copper_bar":
+			bars += r.StackSize
+		}
+	}
+	if ore != 0 || bars != 1 {
+		t.Errorf("%d ore and %d bars survive, want 0 and 1", ore, bars)
+	}
+}
+
+// A craft with no inputs is a content bug the loader refuses, and an item
+// printer if it ever reached here.
+func TestCraftWithNoInputsIsRefused(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	char, inv, _ := testContainers(t, s)
+
+	if _, err := s.Craft(ctx, inv.ID, nil, craftOutput("material.copper_bar"), 500, char, 1); err == nil {
+		t.Error("a craft with no inputs succeeded")
+	}
+}
+
+// kinds renders a journal as its event kinds, for a readable failure.
+func kinds(events []ItemEvent) []string {
+	out := make([]string, 0, len(events))
+	for _, e := range events {
+		out = append(out, e.Kind)
+	}
+	return out
 }

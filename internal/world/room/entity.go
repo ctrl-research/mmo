@@ -58,6 +58,11 @@ const (
 	// a tree one player stands on all evening, which is the contention the
 	// layering model exists to remove.
 	KindResource
+
+	// KindStation is a crafting fixture: an anvil, a fire, a cauldron. Always
+	// shared-layer, because a station has nothing to run out of and therefore
+	// nothing for two players at one to contend over.
+	KindStation
 )
 
 func (k Kind) wire() mmov1.EntityKind {
@@ -80,6 +85,8 @@ func (k Kind) wire() mmov1.EntityKind {
 		return mmov1.EntityKind_ENTITY_KIND_SHRINE
 	case KindResource:
 		return mmov1.EntityKind_ENTITY_KIND_RESOURCE
+	case KindStation:
+		return mmov1.EntityKind_ENTITY_KIND_STATION
 	default:
 		return mmov1.EntityKind_ENTITY_KIND_UNSPECIFIED
 	}
@@ -142,6 +149,9 @@ type Entity struct {
 
 	// Resource is set on a gatherable node. See gather.go.
 	Resource *ResourceEntity
+
+	// Station is set on a crafting fixture. See craft.go.
+	Station *StationEntity
 }
 
 // Entity flag bits, mirroring mmov1.EntityFlag. They are packed into a single
@@ -207,6 +217,9 @@ func (e *Entity) state(includeSelf bool) *mmov1.EntityState {
 	if e.Resource != nil {
 		s.NodeSkill = e.Resource.Skill
 		s.NodeLevel = uint32(e.Resource.Level)
+	}
+	if e.Station != nil {
+		s.StationId = e.Station.ID
 	}
 
 	if includeSelf {
