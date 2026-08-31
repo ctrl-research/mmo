@@ -19,6 +19,9 @@ import type {
   Welcome,
   WorldMap,
   ZoneEvent,
+  Gathering,
+  SecondaryExp,
+  SecondarySkills,
 } from "@/net/connection";
 import {
   ChatChannel,
@@ -72,6 +75,19 @@ const ACTION_REPEAT_TICKS = 3;
 /** How often looting repeats. Slower: nothing is lost by being late to a bag. */
 const LOOT_REPEAT_TICKS = 5;
 
+/**
+ * How often the gather key repeats, in ticks.
+ *
+ * Slower again, and it can afford to be: the server resolves gathering on its
+ * own 600 ms action tick, so anything faster than that is traffic the server
+ * discards. Six ticks is 300 ms -- fast enough that starting an action never
+ * feels laggy, and half the beat it feeds.
+ */
+const GATHER_REPEAT_TICKS = 6;
+
+/** How far the gather key looks for a node. Same reasoning as looting. */
+const GATHER_SEARCH_RADIUS = 120 * 256;
+
 export interface LoopCallbacks {
   onStatus(text: string): void;
   onDisconnect(reason: string): void;
@@ -117,6 +133,15 @@ export interface LoopCallbacks {
 
   /** Called when a zone event starts or ends. */
   onZoneEvent?(zone: ZoneEvent): void;
+
+  /** Called when a gathering action starts, stops, or is refused. */
+  onGathering?(state: Gathering): void;
+
+  /** Called on every gain in a secondary skill. */
+  onSecondaryExp?(exp: SecondaryExp): void;
+
+  /** Called with the whole set of secondary skills, on entering the world. */
+  onSecondarySkills?(skills: SecondarySkills): void;
 
   /**
    * Called every frame with the current health of the entity the boss frame is
@@ -175,6 +200,12 @@ export class GameLoop {
   #lastLootTick = -999;
 
   #autoLoot = false;
+
+  // The tick the gather key last repeated on, and whether it was down last
+  // tick. The second is what turns releasing the key into a single stop
+  // message rather than silence the server has to interpret.
+  #lastGatherTick = 0;
+  #wasGathering = false;
   #mp = 0;
   #mpMax = 0;
 
@@ -467,6 +498,18 @@ export class GameLoop {
         this.#cb.onZoneEvent?.(e.body.value);
         break;
 
+      case "gathering":
+        this.#cb.onGathering?.(e.body.value);
+        break;
+
+      case "secondaryExp":
+        this.#cb.onSecondaryExp?.(e.body.value);
+        break;
+
+      case "secondary":
+        this.#cb.onSecondarySkills?.(e.body.value);
+        break;
+
       case "lootTaken": {
         const l = e.body.value;
         if (l.failed) {
@@ -605,6 +648,29 @@ export class GameLoop {
         }
       }
     }
+
+    // Gathering: held, and never automatic. Committing to a tree is a decision
+    // -- it costs the next minute and stops the moment anything happens -- and
+    // a character who started chopping by walking past something would be a
+    // character doing that instead of whatever the player meant.
+    //
+    // Releasing the key stops it, which is the reason for the edge below: a
+    // stop is one message on release rather than silence the server has to time
+    // out, so letting go feels immediate.
+    const gathering = this.#input.gatherHeld();
+    if (gathering) {
+      if (this.#ticksSimulated - this.#lastGatherTick >= GATHER_REPEAT_TICKS) {
+        const b = this.#predictor.body;
+        const target = this.#interp.nearestNode(b.x, b.y, GATHER_SEARCH_RADIUS);
+        if (target !== 0) {
+          this.#conn.sendGather(target);
+          this.#lastGatherTick = this.#ticksSimulated;
+        }
+      }
+    } else if (this.#wasGathering) {
+      this.#conn.sendStopAction();
+    }
+    this.#wasGathering = gathering;
 
     this.#ticksSimulated++;
   }

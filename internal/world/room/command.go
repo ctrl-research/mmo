@@ -44,10 +44,14 @@ type Handle interface {
 	// each skill, and the supports linked to it.
 	SetLoadout(ctx context.Context, id EntityID, slots []LoadoutSlot)
 
-	// SetStats pushes a recomputed stat block in. The room never computes one
-	// itself: that would mean knowing about items, and item state belongs
-	// where it can be written durably.
-	SetStats(ctx context.Context, id EntityID, block *stats.Block, maxHP uint32)
+	// SetStats pushes everything the session derives from equipment: the stat
+	// block, the resulting maximum life, and the power of the tool in hand per
+	// secondary skill.
+	//
+	// The room never computes any of it -- that would mean knowing about
+	// items, and item state belongs where it can be written durably. One push
+	// rather than three because it is one event: somebody equipped something.
+	SetStats(ctx context.Context, id EntityID, d Derived)
 
 	// ResolveLoot completes a claim once persistence has finished.
 	ResolveLoot(ctx context.Context, player, dropID EntityID, granted bool, reason string)
@@ -124,11 +128,29 @@ type setLoadoutCmd struct {
 	slots []LoadoutSlot
 }
 
-// setStatsCmd pushes a recomputed stat block in from the session.
+// setStatsCmd pushes everything derived from equipment in from the session.
 type setStatsCmd struct {
-	id    EntityID
-	stats *stats.Block
-	maxHP uint32
+	id      EntityID
+	derived Derived
+}
+
+// Derived is what the session computes from a character's equipment.
+//
+// Grouped rather than passed as three arguments because it is one idea and one
+// event: somebody equipped something, and everything here changed at once.
+type Derived struct {
+	// Block is level, equipment and passives, before any buff.
+	Block *stats.Block
+
+	// MaxHP is the maximum life equipment alone implies. The room deliberately
+	// ignores it -- see setStats -- and it is carried anyway because dropping
+	// it from the interface would make the session's own computation invisible
+	// to anyone reading this.
+	MaxHP uint32
+
+	// ToolPower is the power of the tool in hand, per secondary skill. Nil
+	// means no tools, which is the ordinary case.
+	ToolPower map[string]int
 }
 
 // resolveLootCmd completes a claim once persistence has finished.
@@ -194,6 +216,16 @@ type InteractKind uint8
 
 const (
 	InteractLoot InteractKind = iota + 1
+
+	// InteractGather works a resource node. Held rather than tapped, so it
+	// arrives repeatedly while the key is down; a repeat on the node already
+	// being worked is deliberately nothing at all.
+	InteractGather
+
+	// InteractStop ends whatever action is in progress. Its own kind rather
+	// than a gather with no target, because "I am done" and "I mis-clicked"
+	// should not be the same message.
+	InteractStop
 )
 
 func (joinCmd) isCommand()          {}
@@ -226,7 +258,7 @@ func (r *Room) handle(c command) {
 	case attachCmd:
 		cmd.result <- r.attach(cmd.id, cmd.attach)
 	case setStatsCmd:
-		r.setStats(cmd.id, cmd.stats, cmd.maxHP)
+		r.setStats(cmd.id, cmd.derived)
 	case setLoadoutCmd:
 		r.setLoadout(cmd.id, cmd.slots)
 	case resolveLootCmd:
@@ -511,6 +543,10 @@ func (r *Room) interact(id EntityID, target EntityID, kind InteractKind) {
 	switch kind {
 	case InteractLoot:
 		r.tryLoot(p.entity, target)
+	case InteractGather:
+		r.beginGather(p, target)
+	case InteractStop:
+		r.stopGather(p, "")
 	}
 }
 
@@ -567,6 +603,23 @@ func (r *Room) attach(id EntityID, a Attachment) bool {
 	if a.KnownWaypoints != nil {
 		p.knownWaypoints = knownSet(a.KnownWaypoints)
 	}
+	// Only when the session actually has something to say. A character still
+	// standing in the room has the *newer* copy -- it has been gathering since
+	// the last checkpoint -- so a nil here must not be read as "reset to zero".
+	if a.Secondary != nil {
+		if p.entity.Player.Secondary == nil {
+			p.entity.Player.Secondary = make(map[string]int64, len(a.Secondary))
+		}
+		for skill, exp := range a.Secondary {
+			if exp > p.entity.Player.Secondary[skill] {
+				p.entity.Player.Secondary[skill] = exp
+			}
+		}
+	}
+
+	// A reconnecting player is not mid-swing: their client has no idea it was
+	// gathering, so leaving the action running would tick away invisibly.
+	p.gather = gatherState{}
 
 	// Forget what the previous connection was told: the new client has no
 	// baseline, so every visible entity must be sent again in full rather than
@@ -631,7 +684,7 @@ func (h *localHandle) Attach(ctx context.Context, id EntityID, a Attachment) boo
 // maxHP is accepted and ignored: it is part of the Handle contract from before
 // buffs existed, and the reason it is ignored is worth reading rather than
 // removing.
-func (r *Room) setStats(id EntityID, block *stats.Block, _ uint32) {
+func (r *Room) setStats(id EntityID, d Derived) {
 	p, ok := r.players[id]
 	if !ok || p.entity.Player == nil {
 		return
@@ -646,8 +699,21 @@ func (r *Room) setStats(id EntityID, block *stats.Block, _ uint32) {
 	// alone, and the room knows about buffs that grant maximum life too --
 	// taking the session's number would drop their contribution every time
 	// somebody equipped a ring.
-	p.entity.Player.BaseStats = block
+	p.entity.Player.BaseStats = d.Block
+	p.entity.Player.ToolPower = d.ToolPower
 	r.refreshBuffStats(p.entity)
+
+	// Losing the tool ends the action. Otherwise unequipping an axe mid-chop
+	// would leave a player finishing the tree with their hands, which is
+	// exactly the sort of thing that is discovered by a player rather than by
+	// a test.
+	if p.gather.node != 0 && p.gather.def != nil {
+		if skill, ok := r.content.Secondary[p.gather.skill]; ok && skill.ToolClass != "" {
+			if d.ToolPower[p.gather.skill] < p.gather.def.MinToolPower {
+				r.stopGather(p, "you need "+aOrAn(skill.ToolName)+" in hand")
+			}
+		}
+	}
 }
 
 func (h *localHandle) SetLoadout(ctx context.Context, id EntityID, slots []LoadoutSlot) {
@@ -657,9 +723,9 @@ func (h *localHandle) SetLoadout(ctx context.Context, id EntityID, slots []Loado
 	}
 }
 
-func (h *localHandle) SetStats(ctx context.Context, id EntityID, block *stats.Block, maxHP uint32) {
+func (h *localHandle) SetStats(ctx context.Context, id EntityID, d Derived) {
 	select {
-	case h.room.cmds <- setStatsCmd{id: id, stats: block, maxHP: maxHP}:
+	case h.room.cmds <- setStatsCmd{id: id, derived: d}:
 	case <-ctx.Done():
 	}
 }

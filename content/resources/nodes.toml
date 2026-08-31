@@ -1,0 +1,107 @@
+# Resource nodes.
+#
+# A node's behaviour lives here; where one stands lives on the map. That split
+# is what makes retuning oak trees one edit rather than one per tree.
+#
+# `chance_at_level` and `chance_at_max` are the per-action-tick chance of a
+# yield at the node's own required level and at level 99, interpolated linearly
+# between. Two authored points rather than a formula because two points are
+# what a designer can reason about: "a new player gets a log every few seconds,
+# a maxed one nearly every tick" is a sentence, and a curve exponent is not.
+#
+# `yields` is how many times a node can be gathered before it is spent. A node
+# that never depleted would be one player standing still forever -- OSRS
+# handles this by making trees fall over, and so do we.
+#
+# `min_tool_power` gates on equipment rather than on level. Power above the
+# requirement is added to the chance at one percentage point per point, so a
+# better axe is both a key and a speed-up, and the next one up is always worth
+# buying.
+
+# --- woodcutting ------------------------------------------------------------
+
+[node.tree_oak]
+name = "Oak Tree"
+skill = "woodcutting"
+level = 1
+exp = 25
+item = "material.oak_log"
+qty = 1
+chance_at_level = 22
+chance_at_max = 70
+min_tool_power = 1
+yields = 4
+respawn_ms = 12000
+
+[node.tree_willow]
+name = "Willow Tree"
+skill = "woodcutting"
+level = 15
+exp = 68
+item = "material.willow_log"
+qty = 1
+chance_at_level = 16
+chance_at_max = 58
+min_tool_power = 3
+yields = 6
+respawn_ms = 16000
+
+# --- mining -----------------------------------------------------------------
+
+[node.rock_copper]
+name = "Copper Rock"
+skill = "mining"
+level = 1
+exp = 18
+item = "material.copper_ore"
+qty = 1
+chance_at_level = 25
+chance_at_max = 72
+min_tool_power = 1
+yields = 3
+respawn_ms = 10000
+
+[node.rock_iron]
+name = "Iron Rock"
+skill = "mining"
+level = 20
+exp = 74
+item = "material.iron_ore"
+qty = 1
+chance_at_level = 14
+chance_at_max = 55
+min_tool_power = 3
+yields = 4
+respawn_ms = 18000
+
+# --- fishing ----------------------------------------------------------------
+
+[node.fishing_spot]
+name = "Fishing Spot"
+skill = "fishing"
+level = 1
+exp = 20
+item = "material.raw_trout"
+qty = 1
+chance_at_level = 20
+chance_at_max = 65
+min_tool_power = 1
+yields = 8
+respawn_ms = 20000
+
+# --- herbalism --------------------------------------------------------------
+#
+# No tool, and no min_tool_power: the loader refuses a power requirement on a
+# skill that needs no tool, because it could never be met.
+
+[node.herb_patch]
+name = "Herb Patch"
+skill = "herbalism"
+level = 1
+exp = 30
+item = "material.marsh_root"
+qty = 1
+chance_at_level = 18
+chance_at_max = 60
+yields = 2
+respawn_ms = 25000

@@ -66,6 +66,10 @@ type Item struct {
 
 	// Implicits are rolled on every instance.
 	Implicits []ImplicitMod
+
+	// Tool is what this item does for a secondary skill, and nil for the
+	// overwhelming majority of items that are not tools. See secondary.go.
+	Tool *Tool
 }
 
 // IsEquipment reports whether the item can be worn.
@@ -87,6 +91,11 @@ type itemsFile struct {
 			Min  float64 `toml:"min"`
 			Max  float64 `toml:"max"`
 		} `toml:"implicit"`
+
+		Tool *struct {
+			Skill string `toml:"skill"`
+			Power int    `toml:"power"`
+		} `toml:"tool"`
 	} `toml:"item"`
 }
 
@@ -154,6 +163,23 @@ func (c *Content) loadItems(fsys fs.FS, rec *hashRecorder) error {
 			}
 			if item.Kind == "equipment" && item.Slot == "" {
 				return fmt.Errorf("%s: item %q is equipment but names no slot", name, id)
+			}
+
+			if raw.Tool != nil {
+				if raw.Tool.Skill == "" {
+					return fmt.Errorf("%s: item %q is a tool for no skill", name, id)
+				}
+				if raw.Tool.Power <= 0 {
+					return fmt.Errorf("%s: item %q is a tool with no power, which is the same as not being one",
+						name, id)
+				}
+				// A tool that cannot be held is a tool that can never be used:
+				// the check for one reads the equipment slots.
+				if !item.IsEquipment() {
+					return fmt.Errorf("%s: item %q is a tool but is not equipment, so it could never be in hand",
+						name, id)
+				}
+				item.Tool = &Tool{Skill: raw.Tool.Skill, Power: raw.Tool.Power}
 			}
 
 			for i, im := range raw.Implicit {

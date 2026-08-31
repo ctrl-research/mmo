@@ -64,6 +64,12 @@ export const theme = {
   shrine: 0x9fe3d0,
   shrineCore: 0xe8fff8,
 
+  // Resource nodes. Green for the living ones, because a tree and a herb patch
+  // are the same idea; the level gate is drawn by dimming rather than by a
+  // second colour, so "too high for me" reads without learning a legend.
+  resource: 0x7fb069,
+  resourceCore: 0xcfe8b4,
+
   nameText: 0xd7dce6,
   ghost: 0x2ecc71,
 } as const;

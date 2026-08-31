@@ -29,6 +29,11 @@ type layerState struct {
 	// concretely: your slime respawning has nothing to do with anyone else's.
 	spawns []*spawnState
 
+	// resources holds this layer's private copy of every owner-layer resource
+	// node, each with its own yield count and respawn clock. Same reason as
+	// spawns: your tree falling over has nothing to do with anyone else's.
+	resources []*resourceState
+
 	// rand is an independent stream, so one player's drop luck never depends
 	// on how many other players happen to share the room.
 	rand *rng.Source
@@ -150,6 +155,8 @@ func (r *Room) layerFor(key LayerID) *layerState {
 	// well as at startup. One left ungated produces its event's mobs
 	// continuously, with no event.
 	r.gateEventSpawns(l.spawns)
+
+	l.resources = r.layerResources(key)
 
 	r.layers[key] = l
 	r.layerOrder = append(r.layerOrder, key)

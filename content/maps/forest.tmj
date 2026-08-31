@@ -391,7 +391,7 @@
           ]
         },
         {
-          "id": 30,
+          "id": 40,
           "name": "tide",
           "class": "mob_spawn",
           "x": 760,
@@ -429,7 +429,7 @@
           ]
         },
         {
-          "id": 31,
+          "id": 41,
           "name": "warden-call",
           "class": "shrine",
           "x": 1180,
@@ -441,7 +441,7 @@
           "properties": []
         },
         {
-          "id": 32,
+          "id": 42,
           "name": "warden",
           "class": "mob_spawn",
           "x": 1100,
@@ -475,6 +475,96 @@
               "name": "radius",
               "type": "int",
               "value": 90
+            }
+          ]
+        },
+        {
+          "id": 50,
+          "name": "oak-west",
+          "class": "resource_node",
+          "x": 300,
+          "y": 608,
+          "width": 0,
+          "height": 0,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "node_id",
+              "type": "string",
+              "value": "tree_oak"
+            }
+          ]
+        },
+        {
+          "id": 51,
+          "name": "oak-east",
+          "class": "resource_node",
+          "x": 1320,
+          "y": 608,
+          "width": 0,
+          "height": 0,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "node_id",
+              "type": "string",
+              "value": "tree_oak"
+            }
+          ]
+        },
+        {
+          "id": 52,
+          "name": "willow-far",
+          "class": "resource_node",
+          "x": 1280,
+          "y": 448,
+          "width": 0,
+          "height": 0,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "node_id",
+              "type": "string",
+              "value": "tree_willow"
+            }
+          ]
+        },
+        {
+          "id": 53,
+          "name": "copper-outcrop",
+          "class": "resource_node",
+          "x": 760,
+          "y": 448,
+          "width": 0,
+          "height": 0,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "node_id",
+              "type": "string",
+              "value": "rock_copper"
+            }
+          ]
+        },
+        {
+          "id": 54,
+          "name": "herbs-canopy",
+          "class": "resource_node",
+          "x": 600,
+          "y": 400,
+          "width": 0,
+          "height": 0,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "node_id",
+              "type": "string",
+              "value": "herb_patch"
             }
           ]
         }

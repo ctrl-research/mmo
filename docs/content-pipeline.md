@@ -18,6 +18,8 @@ content/
   droptables/   *.toml
   dungeons/     *.toml               (private maps with stages)
   events/       *.toml               (zone events: timed waves, shrines)
+  secondary/    *.toml               (woodcutting, mining, fishing, herbalism)
+  resources/    *.toml               (the nodes those skills gather)
   maps/         *.tmj                (Tiled) + *.meta.toml
   curves/       exp.toml, secondary_exp.toml
   world/        waypoints.toml, portals.toml
@@ -326,6 +328,7 @@ Authored in **Tiled**, exported as TMJ. Tile layers are geometry; object layers 
 | `portal` | `target_map`, `target_spawn`, `required_level` |
 | `waypoint` | `waypoint_id` |
 | `shrine` | a name and a rectangle; the event names it (§ Zone events) |
+| `resource_node` | `node_id`, `layer` (§ Secondary skills) |
 
 An object with an unrecognised class is a **load error**, not something
 ignored: a typo in a class name otherwise means a designer's spawn point simply
@@ -492,6 +495,131 @@ because a thing a player can walk into that does nothing is worse than no
 shrine at all. Both mistakes otherwise load cleanly and fail in play: an event
 naming a renamed spawn point announces itself to the whole room and produces
 nothing.
+
+## Secondary skills
+
+The OSRS half of the game. These rise from *use* rather than from combat
+experience, on OSRS's own 1–99 curve, and they resolve on the **600 ms action
+tick** rather than the 50 ms simulation tick.
+
+`content/secondary/*.toml` defines the skills:
+
+```toml
+[skill.woodcutting]
+name = "Woodcutting"
+tool_class = "axe"       # the item class that must be in hand
+
+[skill.fishing]
+name = "Fishing"
+tool_class = "fishing_rod"
+tool_name = "fishing rod"  # what a player is *told* they need
+
+[skill.herbalism]
+name = "Herbalism"         # no tool: bare hands are the whole idea
+```
+
+`tool_class` and `tool_name` are separate because a class is an identifier and
+the other is prose. "fishing_rod" is a perfectly good class and an embarrassing
+thing to show somebody, which is exactly what the skills panel did until
+somebody looked at it. `tool_name` defaults to the class, so the skills whose
+class is already a word need nothing.
+
+`content/resources/*.toml` defines the nodes:
+
+```toml
+[node.tree_oak]
+name = "Oak Tree"
+skill = "woodcutting"
+level = 1                 # skill level required to gather it at all
+exp = 25                  # per yield, not per action tick
+item = "material.oak_log"
+qty = 1
+
+# The per-action-tick chance of a yield, at this node's own level and at 99,
+# interpolated linearly between.
+chance_at_level = 22
+chance_at_max = 70
+
+min_tool_power = 1        # gates on equipment rather than on level
+yields = 4                # before the node is spent
+respawn_ms = 12000
+```
+
+**Experience is per yield, not per action tick.** Otherwise the fastest node at
+any level is always the best one and the level requirement decides nothing.
+
+**Two authored chance points rather than a formula**, because two points are what
+a designer can reason about: "a new player gets a log every few seconds, a maxed
+one nearly every tick" is a sentence, and a curve exponent is not. The loader
+refuses a node that gets *slower* as the skill rises.
+
+**A node runs out.** `yields` is mandatory: a node that never depleted is one
+player standing still forever, which is what OSRS avoids by making trees fall
+over. It comes back whole, on `respawn_ms` — a node that returned part-used
+would be worth less every time.
+
+### Tools
+
+A tool is an item with a `[tool]` block:
+
+```toml
+[item."tool.bronze_axe"]
+kind = "equipment"
+slot = "weapon"
+class = "axe"
+level = 1
+
+[item."tool.bronze_axe".tool]
+skill = "woodcutting"
+power = 1
+```
+
+**One number does both jobs.** A node may demand a minimum `power`, and whatever
+is above that adds a percentage point to the per-action-tick chance. Separate
+"tier" and "speed" numbers would let content define a tool that unlocks a node
+it is then too slow to work — a tool nobody would ever equip.
+
+Tools go in the **weapon** slot, so gathering with an axe out means not having a
+sword out. That is a real trade rather than a free extra slot, and it is why a
+tool carries a small attack implicit: a woodcutter who wanders into a boar
+should not be completely defenceless.
+
+Only *equipped* items count. The session computes tool power where it computes
+the stat block, from the same equipment, and pushes both in together — one
+event, because a tool changing hands and a stat changing are the same event.
+Unequipping mid-swing stops the action, which is otherwise a character finishing
+the tree with their hands.
+
+### Placing nodes
+
+A `resource_node` object in Tiled, with `node_id` naming the definition and an
+optional `layer`:
+
+| `layer` | Who gathers it |
+|---|---|
+| `owner` (default) | one copy per player, or per party when partied |
+| `shared` | one copy for the whole room |
+
+`owner` is the default deliberately. A shared tree is a tree one player stands
+on all evening, which is the contention the layering model exists to remove; a
+shared node is worth having, and worth choosing per placement rather than by
+accident. The cost is the usual one — nodes multiply by active layers, like mob
+spawns — so a map's `capacity` and its node count are one tuning decision.
+
+The loader checks a node against the rest of the graph: the skill it raises, the
+item it yields, that its level is reachable at all, and that a node demanding
+tool power belongs to a skill that uses a tool. All of these load cleanly and
+then fail in play — a node yielding a renamed item is a tree a player can chop
+forever and never fill a bag from.
+
+### Materials stack
+
+A gathered material goes into an existing stack when there is one with room. It
+is worth stating because it was missing: `Grant` took a slot per unit, which was
+invisible while loot was the only source of materials and fills a 24-slot bag in
+about two minutes once gathering exists. `stackable` and `max_stack` on the item
+are what decide it, and equipment is refused a stack at load — two swords
+sharing one set of rolled affixes is incoherent.
 
 ## Death
 

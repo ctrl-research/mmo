@@ -40,6 +40,7 @@ const (
 	classPortal     = "portal"
 	classWaypoint   = "waypoint"
 	classShrine     = "shrine"
+	classResource   = "resource_node"
 )
 
 // SpawnLayer decides who fights a mob.
@@ -238,6 +239,9 @@ type Map struct {
 	// Shrines are the things a player touches to start a zone event.
 	Shrines []Shrine
 
+	// Resources are the gatherable nodes placed on this map.
+	Resources []ResourceSpot
+
 	// MinLevel and MaxLevel describe who the map is for. Advisory: shown on
 	// the world map so a player can tell where they are meant to go next,
 	// rather than enforced, since a portal's own requirement does that.
@@ -264,6 +268,29 @@ type Shrine struct {
 	Bounds sim.Rect
 }
 
+// ResourceSpot is one placement of a resource node on a map.
+//
+// The node's *behaviour* -- what it yields, how fast, what level it needs --
+// lives in content/resources, not here. A map says "an oak tree stands at this
+// spot", which is the only part of it that is about geography, so retuning oak
+// trees is one edit rather than one per tree.
+type ResourceSpot struct {
+	// Name identifies this placement, so a test or a log can name the tree
+	// rather than a coordinate. Optional.
+	Name string
+
+	// NodeID is which resource node stands here.
+	NodeID string
+
+	// At is the feet position the node is drawn at.
+	At sim.Vec
+
+	// Layer decides who gathers it, on the same axis mobs use. Per-player by
+	// default: a shared tree is a tree one player can stand on all evening,
+	// which is the contention the layering model exists to remove.
+	Layer SpawnLayer
+}
+
 // HasShrine reports whether the map declares a shrine by that name.
 func (m *Map) HasShrine(name string) bool {
 	for _, s := range m.Shrines {
@@ -278,6 +305,16 @@ func (m *Map) HasShrine(name string) bool {
 func (m *Map) HasMobSpawn(name string) bool {
 	for _, sp := range m.MobSpawns {
 		if sp.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// HasResource reports whether the map places a resource node by that name.
+func (m *Map) HasResource(name string) bool {
+	for _, r := range m.Resources {
+		if r.Name == name {
 			return true
 		}
 	}
@@ -337,11 +374,24 @@ func LoadMap(fsys fs.FS, name string) (*Map, error) {
 		m.MaxLevel = v
 	}
 
+	// Object ids are unique per map in Tiled, and hand-editing a TMJ is how
+	// they stop being: copying an object to add another spawn point copies its
+	// id too. Nothing here reads an id, so a collision is silent -- but Tiled
+	// itself repairs the file the next time a designer opens it, which turns
+	// one careless paste into a diff nobody asked for. Caught at load instead.
+	seenIDs := make(map[int]string, len(doc.Layers)*8)
+
 	for _, layer := range doc.Layers {
 		if layer.Type != "objectgroup" {
 			continue
 		}
 		for _, obj := range layer.Objects {
+			if prev, dup := seenIDs[obj.ID]; dup {
+				return nil, fmt.Errorf("content: %s: object id %d is used twice, by %q and %q",
+					name, obj.ID, prev, obj.Name)
+			}
+			seenIDs[obj.ID] = obj.Name
+
 			if err := m.addObject(name, obj); err != nil {
 				return nil, err
 			}
@@ -440,6 +490,31 @@ func (m *Map) addObject(mapName string, obj tmjObject) error {
 			Name:   obj.Name,
 			At:     sim.Vec{X: bounds.CenterX(), Y: bounds.Bottom()},
 			Bounds: bounds,
+		})
+
+	case classResource:
+		props := props(obj.Properties)
+
+		nodeID, _ := props["node_id"].(string)
+		if nodeID == "" {
+			return fmt.Errorf("content: %s: resource_node %d (%q) has no node_id",
+				mapName, obj.ID, obj.Name)
+		}
+
+		layer := LayerOwner
+		if v, ok := props["layer"].(string); ok && v != "" {
+			layer = SpawnLayer(v)
+			if !validSpawnLayers[layer] {
+				return fmt.Errorf("content: %s: resource_node %d (%q) has unknown layer %q, want owner or shared",
+					mapName, obj.ID, obj.Name, v)
+			}
+		}
+
+		m.Resources = append(m.Resources, ResourceSpot{
+			Name:   obj.Name,
+			NodeID: nodeID,
+			At:     sim.Vec{X: toFixed(obj.X), Y: toFixed(obj.Y)},
+			Layer:  layer,
 		})
 
 	case classWaypoint:

@@ -15,6 +15,7 @@ import {
   KIND_DROP,
   KIND_MOB,
   KIND_PROJECTILE,
+  KIND_RESOURCE,
   KIND_SHRINE,
   KIND_TELEGRAPH,
   type RenderedEntity,
@@ -68,6 +69,12 @@ export class Scene {
   #selfBars = new Graphics();
   #ghostGfx = new Graphics();
   #others = new Map<number, EntitySprite>();
+
+  // The character's secondary levels, for dimming a resource node they are not
+  // yet good enough for. Empty until the skills state arrives, which draws
+  // everything at full brightness -- the right default, since an unknown level
+  // should not make the world look greyed out.
+  #skillLevels = new Map<string, number>();
   #effects = new Effects();
 
   #sprites: Sprites;
@@ -298,8 +305,25 @@ export class Scene {
         this.#others.set(e.id, sprite);
         this.#entityLayer.addChild(sprite.container);
       }
-      sprite.update(e, this.#sprites, now);
+      sprite.update(e, this.#sprites, now, this.#skillLevelFor(e));
     }
+  }
+
+  /**
+   * Tells the renderer the character's secondary levels, so a node they cannot
+   * yet use is drawn dimmed.
+   *
+   * Set when the skills state changes rather than read per frame: it changes a
+   * handful of times an evening, and a lookup per node per frame for a number
+   * that stable is work for nothing.
+   */
+  setSkillLevels(levels: Map<string, number>): void {
+    this.#skillLevels = levels;
+  }
+
+  #skillLevelFor(e: RenderedEntity): number {
+    if (e.kind !== KIND_RESOURCE || !e.nodeSkill) return 0;
+    return this.#skillLevels.get(e.nodeSkill) ?? 0;
   }
 
   /**
@@ -436,9 +460,11 @@ class EntitySprite {
               ? theme.telegraph
               : e.kind === KIND_SHRINE
                 ? theme.shrine
-                : e.kind === KIND_MOB
-                  ? tierTint(e.tier) || theme.mobEdge
-                  : theme.nameText,
+                : e.kind === KIND_RESOURCE
+                  ? theme.resource
+                  : e.kind === KIND_MOB
+                    ? tierTint(e.tier) || theme.mobEdge
+                    : theme.nameText,
           // The one label that has to be readable over whatever it is drawn
           // on top of, because it is drawn on top of the floor of a fight.
           stroke: { color: 0x0b0d12, width: e.kind === KIND_TELEGRAPH ? 3 : 0 },
@@ -449,12 +475,100 @@ class EntitySprite {
     }
   }
 
+  /**
+   * A resource node, shaped by the skill it belongs to.
+   *
+   * Shaped rather than sprited: these have no art of their own, and an
+   * obviously abstract silhouette beats a wrong-looking picture. But one
+   * silhouette for all of them was worse than either -- a copper rock drawn as
+   * a tree is a copper rock a player walks past, and the name on the label is
+   * not what anyone reads when scanning a map.
+   *
+   * Keyed on the node's skill, which the server sends on the entity, because
+   * the client has no other way to know a rock from a tree and should not be
+   * guessing from the node's name.
+   */
+  #drawNode(e: RenderedEntity, px: number, py: number, pw: number, ph: number, alpha: number): void {
+    const cx = px + pw / 2;
+    const bottom = py + ph;
+    const g = this.#gfx;
+    const body = { color: theme.resource, alpha: alpha * 0.9 };
+    const core = { color: theme.resourceCore, alpha: alpha * 0.8 };
+
+    switch (e.nodeSkill) {
+      case "mining": {
+        // A low, angular outcrop: wide at the base, flat-topped, nothing that
+        // could be mistaken for foliage.
+        const w = pw * 0.9;
+        const h = ph * 0.6;
+        g.poly([
+          cx - w / 2, bottom,
+          cx - w * 0.34, bottom - h,
+          cx + w * 0.28, bottom - h * 0.92,
+          cx + w / 2, bottom,
+        ]).fill(body);
+        // A seam of ore, which is the part worth mining.
+        g.circle(cx + pw * 0.06, bottom - h * 0.55, pw * 0.12).fill(core);
+        break;
+      }
+
+      case "fishing": {
+        // Rings on the water: no solid body at all, because a fishing spot is
+        // a place rather than a thing.
+        for (let i = 0; i < 3; i++) {
+          const r = pw * (0.18 + i * 0.16);
+          g.circle(cx, bottom - ph * 0.12, r).stroke({
+            width: 2,
+            color: theme.resource,
+            alpha: alpha * (0.7 - i * 0.18),
+          });
+        }
+        g.circle(cx, bottom - ph * 0.12, pw * 0.08).fill(core);
+        break;
+      }
+
+      case "herbalism": {
+        // A low cluster, sitting on the ground rather than standing over it.
+        const r = pw * 0.2;
+        const leaves: Array<[number, number]> = [
+          [-0.24, 0.18],
+          [0.02, 0.1],
+          [0.26, 0.2],
+        ];
+        for (const [dx, dy] of leaves) {
+          g.circle(cx + pw * dx, bottom - ph * dy, r).fill(body);
+        }
+        g.circle(cx + pw * 0.02, bottom - ph * 0.1, r * 0.45).fill(core);
+        break;
+      }
+
+      default: {
+        // A trunk and a crown. The fallback as well as woodcutting's own
+        // shape: a skill added in content and not here should still draw
+        // something rather than nothing.
+        const trunkW = Math.max(3, pw * 0.22);
+        const crownR = pw * 0.48;
+        g.rect(cx - trunkW / 2, py + ph * 0.45, trunkW, ph * 0.55)
+          .fill({ color: theme.resource, alpha: alpha * 0.65 })
+          .circle(cx, py + ph * 0.34, crownR)
+          .fill(body)
+          .circle(cx, py + ph * 0.34, crownR * 0.45)
+          .fill(core);
+      }
+    }
+  }
+
   /** Plays a swing, held for as long as the animator says. */
   attack(now: number): void {
     this.#anim.attack(now);
   }
 
-  update(e: RenderedEntity, sprites: Sprites, now: number): void {
+  /**
+   * skillLevel is the viewer's level in a resource node's skill, and zero for
+   * everything else. Passed in rather than looked up here, because the renderer
+   * owns no game state -- it draws what it is handed.
+   */
+  update(e: RenderedEntity, sprites: Sprites, now: number, skillLevel = 0): void {
     if (this.#bornAt === 0) this.#bornAt = now;
 
     const px = toPixels(e.x);
@@ -531,6 +645,14 @@ class EntitySprite {
           .stroke({ width: 2, color: theme.shrine, alpha: pulse })
           .circle(cx, cy, r * 0.28)
           .fill({ color: theme.shrineCore, alpha: pulse });
+        break;
+      }
+
+      case KIND_RESOURCE: {
+        // Dimmed when the character is not yet good enough for it, so walking
+        // past a node they cannot use says so before they press a key.
+        const usable = skillLevel <= 0 || e.nodeLevel <= skillLevel;
+        this.#drawNode(e, px, py, pw, ph, usable ? 1 : 0.35);
         break;
       }
 

@@ -143,6 +143,19 @@ func (i *Inventory) reload(ctx context.Context) error {
 // drop the player just earned, and losing it to a crash thirty seconds later
 // is precisely the case the checkpoint window is not allowed to cover.
 func (i *Inventory) Grant(ctx context.Context, inst *items.Instance, tick uint64) (uuid.UUID, error) {
+	// Into an existing stack first, when the item is one that stacks.
+	//
+	// Without this a stackable material takes a slot per unit, which nobody
+	// notices while loot is the only source -- a boar drops one hide -- and
+	// which fills a bag in two minutes once gathering exists. A player is
+	// meant to be able to chop for twenty minutes, and twenty minutes is
+	// several hundred logs.
+	if id, ok, err := i.stack(ctx, inst, tick); err != nil {
+		return uuid.Nil, err
+	} else if ok {
+		return id, nil
+	}
+
 	slot, err := i.store.FreeSlot(ctx, i.inventoryID)
 	if errors.Is(err, store.ErrContainerFull) {
 		return uuid.Nil, ErrInventoryFull
@@ -172,6 +185,48 @@ func (i *Inventory) Grant(ctx context.Context, inst *items.Instance, tick uint64
 	i.mu.Unlock()
 
 	return id, nil
+}
+
+// stack tries to merge a grant into an existing stack, and reports whether it
+// did.
+//
+// Only the base type has to match. Two stacks of the same material are
+// interchangeable by definition -- a material has no rolled affixes, which is
+// also why equipment is refused a stack at load (see the loader) rather than
+// being filtered out here.
+func (i *Inventory) stack(ctx context.Context, inst *items.Instance, tick uint64) (uuid.UUID, bool, error) {
+	base, ok := i.content.Items[inst.BaseID]
+	if !ok || !base.Stackable || base.MaxStack < 2 {
+		return uuid.Nil, false, nil
+	}
+
+	qty := inst.Stack
+	if qty < 1 {
+		qty = 1
+	}
+
+	id, total, err := i.store.StackInto(
+		ctx, i.inventoryID, inst.BaseID, qty, base.MaxStack, i.characterID, tick)
+	if err != nil {
+		return uuid.Nil, false, err
+	}
+	if id == uuid.Nil {
+		return uuid.Nil, false, nil
+	}
+
+	// The in-memory view is patched rather than reloaded: a reload is two more
+	// round trips for one number, on a path that runs every few seconds per
+	// gatherer.
+	i.mu.Lock()
+	for _, slot := range i.slots {
+		if slot != nil && slot.ItemID == id && slot.Instance != nil {
+			slot.Instance.Stack = total
+			break
+		}
+	}
+	i.mu.Unlock()
+
+	return id, true, nil
 }
 
 // Equip moves an item from the inventory into its slot.

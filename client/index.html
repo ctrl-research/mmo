@@ -456,6 +456,63 @@
 
       /* Passive tree: a canvas, because several hundred nodes that pan and
          zoom in DOM is hundreds of layout boxes recalculated on every drag. */
+      /* Skills panel. Secondary skills are the one part of progression with no
+         presence in the world -- a main level is on the character frame and
+         gear is on the body -- so this is where "my woodcutting is 34" lives. */
+      #skills {
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        z-index: 15; width: min(460px, 94vw); max-height: 88vh; overflow-y: auto;
+        background: #12151c; border: 1px solid #2f3543; border-radius: 8px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      }
+      #skills[hidden] { display: none; }
+
+      .skills-header {
+        display: flex; justify-content: space-between; align-items: baseline;
+        padding: 12px 16px; border-bottom: 1px solid #262b36; font-weight: 600;
+      }
+      .skills-hint { color: #6b7280; font-size: 11px; font-weight: 400; }
+      .skills-body { padding: 8px 10px; }
+
+      .skills-row {
+        display: grid; grid-template-columns: 30px 1fr auto;
+        align-items: center; gap: 10px;
+        padding: 7px 8px; border-radius: 4px;
+      }
+      .skills-row:hover { background: #0f1218; }
+      .skills-row.levelled { background: #16211a; }
+
+      .skills-level {
+        font-size: 17px; font-weight: 700; text-align: center; color: #cfe8b4;
+      }
+      .skills-row.levelled .skills-level { color: #8fe3a8; }
+      .skills-name { font-size: 12px; font-weight: 600; margin-bottom: 3px; }
+
+      .skills-bar {
+        height: 5px; background: #0b0d12; border-radius: 3px; overflow: hidden;
+      }
+      .skills-fill { height: 100%; background: #7fb069; width: 0%; }
+      .skills-detail { font-size: 10px; color: #6b7280; margin-top: 3px; }
+
+      .skills-tool { font-size: 10px; text-align: right; white-space: nowrap; }
+      .skills-tool.held { color: #7fb069; }
+      .skills-tool.bare { color: #6b7280; }
+      .skills-tool.missing { color: #d8a24a; }
+
+      /* The gathering line. Above the vitals bar rather than beside it: it is a
+         thing the character is doing right now, and that is the corner where
+         the rest of those live. The offset clears the vitals bar's own height
+         -- 96px put it straight through the health bar, which is exactly the
+         kind of thing only looking at it finds. */
+      #gathering {
+        position: fixed; left: 50%; transform: translateX(-50%); bottom: 126px;
+        z-index: 12; padding: 4px 12px; font-size: 11px;
+        background: rgba(10, 13, 18, 0.82); border: 1px solid #2f3543;
+        border-radius: 12px; color: #cfe8b4; pointer-events: none;
+      }
+      #gathering[hidden] { display: none; }
+      #gathering.refused { color: #d8a24a; border-color: #4a3f26; }
+
       #passives {
         position: fixed; inset: 24px; z-index: 16;
         background: #0b0d12; border: 1px solid #2f3543; border-radius: 8px;
@@ -599,9 +656,11 @@
     <div id="skillbar" hidden></div>
     <div id="buffbar" hidden></div>
     <div id="passives" hidden></div>
+    <div id="skills" hidden></div>
+    <div id="gathering" hidden></div>
     <div id="tooltip" hidden></div>
     <div id="keys">
-      arrows or WASD to move &middot; space to jump &middot; hold 1-8 or X for skills &middot; hold Z to loot &middot; K settings &middot; P passives &middot; I inventory &middot; M world map &middot; O social &middot; enter to chat
+      arrows or WASD to move &middot; space to jump &middot; hold 1-8 or X for skills &middot; hold Z to loot &middot; hold E to gather &middot; J skills &middot; K settings &middot; P passives &middot; I inventory &middot; M world map &middot; O social &middot; enter to chat
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

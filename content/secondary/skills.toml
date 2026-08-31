@@ -1,0 +1,28 @@
+# Secondary skills.
+#
+# The OSRS half of the game: these rise from *use* rather than from combat
+# experience, on OSRS's own 1-99 curve, and they resolve on the 600 ms action
+# tick rather than the 50 ms simulation tick. Nothing about them is combat, and
+# that is the point -- an evening spent not fighting should still be an evening
+# spent playing.
+#
+# `tool_class` is the item class a character must have in hand. It is empty for
+# the skills where bare hands are the whole idea: you do not need a licence to
+# pick a herb.
+
+[skill.woodcutting]
+name = "Woodcutting"
+tool_class = "axe"
+
+[skill.mining]
+name = "Mining"
+tool_class = "pickaxe"
+
+[skill.fishing]
+name = "Fishing"
+tool_class = "fishing_rod"
+# The class is an identifier; this is what a player is told they need.
+tool_name = "fishing rod"
+
+[skill.herbalism]
+name = "Herbalism"

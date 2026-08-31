@@ -150,6 +150,83 @@ func (s *Store) InsertItem(ctx context.Context, containerID uuid.UUID, slot int,
 	return id, nil
 }
 
+// StackInto adds a quantity to an existing stack of the same base item, and
+// reports the item it landed in.
+//
+// The zero UUID with no error means there was no stack with room, and the
+// caller should insert a new one. Not an error: "nothing to merge into" is the
+// ordinary case for the first of anything.
+//
+// One statement, because two concurrent grants that both read a stack size and
+// both write the same total is the arithmetic version of destroying an item.
+// Two things make that unrepresentable here, and both are properties of the
+// statement rather than of anything this function does:
+//
+//   - `stack_size + $3` is evaluated by the UPDATE against the row it has
+//     locked, so increments serialise instead of racing;
+//   - when the UPDATE finds its target concurrently modified, READ COMMITTED
+//     re-runs the whole qualification from the newer snapshot -- the sub-select
+//     included. So a second grant onto a stack that has just reached its
+//     maximum re-runs the sub-select, finds nothing with room, and updates
+//     nothing, returning the zero UUID and sending the caller to a fresh stack.
+//
+// The second point is worth stating because it is not obvious and it is what
+// keeps the cap honest. Writing the cap a second time in the UPDATE's own WHERE
+// looked like the load-bearing version of the check; it was redundant, and no
+// amount of contention could make a test fail without it. The two concurrency
+// tests in items_test.go are what actually hold this line.
+func (s *Store) StackInto(
+	ctx context.Context,
+	containerID uuid.UUID,
+	baseID string,
+	qty, maxStack int,
+	actor uuid.UUID,
+	tick uint64,
+) (uuid.UUID, int, error) {
+	if qty < 1 || maxStack < 2 {
+		return uuid.Nil, 0, nil
+	}
+
+	var (
+		id    uuid.UUID
+		stack int
+		slot  int
+	)
+
+	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		// Lowest slot first, so a bag fills predictably rather than in whatever
+		// order the rows happen to come back in.
+		err := tx.QueryRow(ctx, `
+			UPDATE item_instances
+			   SET stack_size = stack_size + $3, updated_at = now()
+			 WHERE id = (
+			       SELECT id FROM item_instances
+			        WHERE container_id = $1
+			          AND base_id = $2
+			          AND stack_size + $3 <= $4
+			        ORDER BY slot
+			        LIMIT 1)
+			RETURNING id, stack_size, slot`,
+			containerID, baseID, qty, maxStack,
+		).Scan(&id, &stack, &slot)
+		if errors.Is(err, pgx.ErrNoRows) {
+			// No stack with room. Not an error, and not something to record.
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		// Journalled like any other movement of quantity: a stack growing is a
+		// thing that happened to an item, and an investigation that could not
+		// see it would be an investigation with a gap in it.
+		return recordEvent(ctx, tx, id, EventPickup, nil, nil, &containerID, &slot, actor, tick)
+	})
+	if err != nil {
+		return uuid.Nil, 0, fmt.Errorf("store: stacking item: %w", err)
+	}
+	return id, stack, nil
+}
+
 // MoveItem relocates an item, recording the move.
 //
 // An UPDATE of the location, never a delete and an insert: a delete-then-insert
