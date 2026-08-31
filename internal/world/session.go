@@ -173,6 +173,11 @@ type Session struct {
 	// travel into the room with the layer key.
 	partyLoot string
 
+	// partyRoster is the roster this session was last told about, kept so the
+	// once-a-second vitals path can render a member frame without a directory
+	// read. It is fed by every party update, which carries the whole roster.
+	partyRoster directory.Party
+
 	// partyVitals is the last health each other member published, which is
 	// what a member frame for somebody in another room is made of.
 	partyVitals map[string]*mmov1.PartyVitals
@@ -434,7 +439,14 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 	// -- would put somebody logging back in inside a dungeon into a fresh
 	// instance of their own, next to the party still running it.
 	if n.parties != nil {
-		if party, ok := n.parties.Of(ctx, characterID.String()); ok {
+		party, ok, err := n.parties.Of(ctx, characterID.String())
+		if err != nil {
+			// Placing without knowing costs this character their party's
+			// dungeon instance, so it is worth refusing the login rather than
+			// silently putting them somewhere their party is not.
+			return nil, fmt.Errorf("reading the party to place against: %w", err)
+		}
+		if ok {
 			s.partyID = party.ID
 		}
 	}
