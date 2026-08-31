@@ -155,7 +155,13 @@ func (s *Session) switchChannel(ctx context.Context, target directory.InstanceID
 		return fmt.Errorf("%w: %s", ErrUnknownMap, current)
 	}
 
-	inst, ok := s.node.dir.Lookup(ctx, target)
+	inst, ok, err := s.node.dir.Lookup(ctx, target)
+	if err != nil {
+		// An unreachable directory is not "no such channel". Refusing with the
+		// real reason beats telling a player their channel does not exist when
+		// it is running fine.
+		return fmt.Errorf("looking up channel %d: %w", target, err)
+	}
 	if !ok {
 		return fmt.Errorf("%w: %d", ErrUnknownChannel, target)
 	}
@@ -189,7 +195,11 @@ func (s *Session) switchToAnyChannel(ctx context.Context) error {
 
 	return s.transfer(ctx, m, arrival{keepPosition: true},
 		func(ctx context.Context) (directory.Instance, error) {
-			for _, inst := range s.node.dir.InstancesFor(ctx, key) {
+			existing, err := s.node.dir.InstancesFor(ctx, key)
+			if err != nil {
+				return directory.Instance{}, err
+			}
+			for _, inst := range existing {
 				if inst.ID == currentInstance || inst.Full() {
 					continue
 				}
@@ -261,7 +271,14 @@ func (s *Session) WorldMap(ctx context.Context) *mmov1.WorldMap {
 	if m := s.node.content.Maps[currentMap]; m != nil &&
 		directory.Placement(m.Placement) == directory.PlacementShared {
 
-		for i, inst := range s.node.dir.InstancesFor(ctx, roomKey(m, "")) {
+		channels, err := s.node.dir.InstancesFor(ctx, roomKey(m, ""))
+		if err != nil {
+			// The world map is worth showing without its channel list: fast
+			// travel still works, and a blank panel is worse than a partial
+			// one. Logged rather than returned for that reason.
+			s.log.Warn("listing channels for the world map", "map", currentMap, "err", err)
+		}
+		for i, inst := range channels {
 			out.Channels = append(out.Channels, &mmov1.ChannelSummary{
 				InstanceId: uint64(inst.ID),
 				// The position in the list, not the instance id: ids are

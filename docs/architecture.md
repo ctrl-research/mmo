@@ -154,6 +154,21 @@ If a message is not addressable by a subject, it is a design smell — it usuall
 
 ### 2. Directory — who owns what, and where does it live
 
+Two implementations, held to one contract by a conformance suite: `Memory`, which
+is the *correct* implementation when every role runs in one process, and `Redis`,
+selected with `--redis-addr`. Unlike the bus, this one is not optional at scale:
+two processes with in-memory directories do not disagree about placement, they
+are unaware of each other's rooms entirely.
+
+Placement and reservation are one atomic step, which in Redis means a Lua
+script. Choosing an instance and then incrementing its count separately lets two
+simultaneous joins take the same last slot, and lets a private key end up with
+two instances — two members of one party, two dungeons.
+
+Nodes register with a **TTL heartbeat**: one that stops beating stops receiving
+new rooms. The registration is kept when the liveness lapses, because its score
+is what keeps placement order stable across a restart.
+
 ```go
 type Directory interface {
     // Room placement
@@ -449,7 +464,7 @@ Recorded so they are not re-litigated, and so the cost of changing course later 
 | Decision | Deferred until | Why it is safe to defer |
 |---|---|---|
 | ~~NATS bus~~ | ~~M9~~ | **Done in M9, and it was a swap**: one new file behind the existing interface, and every cross-node test now runs over it unchanged. |
-| Redis directory | M9 | `Directory` interface makes it a swap. |
+| ~~Redis directory~~ | ~~M9~~ | **Done in M9, and almost a swap**: one new file behind the interface, but the three read methods had to start returning errors — an in-memory directory cannot fail one and a network directory can. |
 | Kubernetes | M9 | Roles already split by flag; compose works until then. |
 | Grid-based AOI | Large open maps | Snapshot builder takes an AOI filter; whole-room is the trivial filter. |
 | Sharded Postgres | >>1000 CCU | Rooms are the hot path; DB is checkpoint-rate, not tick-rate. |

@@ -229,7 +229,7 @@ func (m *Memory) releaseLocked(inst *Instance) {
 // This is the channel list: for a shared map the entries are the channels a
 // player may switch between, and their occupancy is what makes one worth
 // choosing over another.
-func (m *Memory) InstancesFor(_ context.Context, key RoomKey) []Instance {
+func (m *Memory) InstancesFor(_ context.Context, key RoomKey) ([]Instance, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -241,7 +241,7 @@ func (m *Memory) InstancesFor(_ context.Context, key RoomKey) []Instance {
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
-	return out
+	return out, nil
 }
 
 // TryRelease removes an instance only if it is unoccupied.
@@ -262,19 +262,19 @@ func (m *Memory) TryRelease(_ context.Context, id InstanceID) (bool, error) {
 }
 
 // Lookup returns one instance by ID.
-func (m *Memory) Lookup(_ context.Context, id InstanceID) (Instance, bool) {
+func (m *Memory) Lookup(_ context.Context, id InstanceID) (Instance, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	inst, ok := m.instances[id]
 	if !ok {
-		return Instance{}, false
+		return Instance{}, false, nil
 	}
-	return *inst, true
+	return *inst, true, nil
 }
 
 // List returns every live instance ordered by ID.
-func (m *Memory) List(_ context.Context) []Instance {
+func (m *Memory) List(_ context.Context) ([]Instance, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -285,7 +285,7 @@ func (m *Memory) List(_ context.Context) []Instance {
 	// Map iteration order is random; callers get a stable sequence so that
 	// metrics and tests do not depend on hash ordering.
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
-	return out
+	return out, nil
 }
 
 // Close releases nothing; the method exists to satisfy Directory.

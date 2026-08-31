@@ -621,7 +621,7 @@ names already follow and the only one that does not need re-tuning per map.
 *Only now, and only because the seams were built in M0.*
 
 - [x] `nats` bus implementation
-- [ ] `redis` directory implementation
+- [x] `redis` directory implementation
 - [ ] Split roles into separate deployments; k8s manifests
 - [ ] Headless bot client for load generation
 - [ ] Grafana dashboards checked in
@@ -669,6 +669,49 @@ were still being delivered to. That showed up as a flaky test and would have
 shown up in production as a node that kept answering after it was drained —
 which is precisely what the graceful-drain item further down this list is
 supposed to prevent.
+
+### The directory
+
+The same shape as the bus: one new file behind the existing interface, and the
+whole cross-node suite now runs with **a real Redis directory and a real NATS bus
+at once** — two nodes registering separately, agreeing about placement over the
+network. `TestPortalTransfersBetweenNodes` asserts the two rooms land on
+*different* nodes, so that is Redis placement doing the spreading rather than a
+shared pointer.
+
+Every operation that must not race is a Lua script, because that is where the
+correctness lives. "Find the least-full channel and reserve a slot in it" done as
+a read then a write lets two simultaneous joins take the same last slot — and for
+a private key it lets two members of one party each get their own dungeon, which
+is the exact bug M7 found on the other side of this interface. 200 concurrent
+joins against real Redis is part of the suite.
+
+**Node liveness is a TTL heartbeat.** A node registers on construction and
+heartbeats until it closes; when it stops, its liveness entry expires and it
+stops receiving new rooms. That is the directory's half of surviving a dead node:
+the rooms it hosted are gone either way, but continuing to *place* on it would
+mean players sent to rooms nobody is running. The registration itself is left
+behind on purpose — its score is what keeps placement order stable across a
+restart, so a rolling deploy does not reshuffle load.
+
+**The interface changed**, which is the one place M0's claim did not quite hold:
+`Lookup`, `InstancesFor` and `List` returned no error. For an in-memory
+directory that is fine; for a network one it is not, because an unreachable
+Redis answering "this map has no channels" or "that instance does not exist" is
+not a degraded answer but a wrong one, and a caller acts on it by refusing a
+channel switch to a channel that is running fine. Three call sites.
+
+| Claim | How it was checked |
+| --- | --- |
+| Both directories behave identically | 21 shared tests, each run against Memory and Redis, plus 7 Redis-only ones |
+| Placement and reservation are atomic | `TestConcurrentJoinsNeverExceedCapacity` (200 joiners), `TestConcurrentJoinAndLeave`, against real Redis |
+| A private key is one instance | `TestPrivateRoomRejectsRatherThanSplitting`, and `TestAPartySharesOneDungeonInstance` end to end over Redis |
+| Two nodes agree | `TestRedisDirectoryIsSharedBetweenNodes` — created on one, seen and joined on the other, released from either |
+| Rooms spread across live nodes | `TestRedisPlacementSpreadsAcrossLiveNodes`, and `TestPortalTransfersBetweenNodes` which requires it |
+| A dead node stops receiving rooms | `TestRedisPlacementSkipsADeadNode` |
+| No live node is its own error | `TestRedisPlacementWithNoLiveNodeIsRefused` — `ErrNoLiveNode`, not `ErrNoCapacity`: capacity means the world is full, this means there is no world |
+| A restart keeps its place in the order | `TestRedisRegistrationOrderSurvivesARestart` — re-registering the *first* node, because re-registering the last cannot change the order however the score is assigned |
+| **Releasing leaves nothing behind** | `TestRedisReleaseLeavesNoBookkeepingBehind` and the TryRelease twin — found by mutation testing, and the load counter is the one that matters: a counter that only rises makes placement permanently wrong |
 
 ---
 

@@ -146,7 +146,14 @@ func run() error {
 			"Add someone with 'mmo allow USERNAME', or start with --dev-auth for local play")
 	}
 
-	dir := directory.NewMemory(directory.NodeID(cfg.nodeID))
+	// Shared through Redis when there is a Redis, in-memory otherwise. The
+	// in-memory one is correct for a single process rather than a stand-in: with
+	// one node, the node deciding where a room goes is the node that will host
+	// it.
+	dir, err := openDirectory(ctx, cfg, log)
+	if err != nil {
+		return err
+	}
 	defer dir.Close()
 
 	// In-process channels unless a NATS URL says otherwise. Transfers run over
