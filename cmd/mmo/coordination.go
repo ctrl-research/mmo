@@ -201,3 +201,36 @@ func openBus(cfg config, log *slog.Logger) (bus.Bus, error) {
 	log.Info("using NATS for the message bus", "url", cfg.natsURL)
 	return b, nil
 }
+
+// openDirectory chooses where instance placement lives.
+//
+// Redis when --redis-addr is set, and this is not optional in the way leases
+// are: two processes with in-memory directories do not disagree about placement,
+// they are unaware of each other's rooms entirely, and a player sent to a
+// channel on the other node arrives at a room that does not exist there.
+//
+// The Redis directory registers this node and heartbeats until it is closed,
+// which is what makes a node that dies stop receiving new rooms.
+func openDirectory(ctx context.Context, cfg config, log *slog.Logger) (directory.Directory, error) {
+	node := directory.NodeID(cfg.nodeID)
+
+	if cfg.redisAddr == "" {
+		log.Info("using the in-process room directory; " +
+			"set --redis-addr before running more than one process")
+		return directory.NewMemory(node), nil
+	}
+
+	client := redis.NewClient(&redis.Options{Addr: cfg.redisAddr})
+	if err := client.Ping(ctx).Err(); err != nil {
+		client.Close()
+		return nil, fmt.Errorf("connecting to Redis at %s: %w", cfg.redisAddr, err)
+	}
+
+	dir, err := directory.NewRedis(ctx, client, "mmo", node)
+	if err != nil {
+		client.Close()
+		return nil, err
+	}
+	log.Info("using Redis for the room directory", "addr", cfg.redisAddr, "node", node)
+	return dir, nil
+}

@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/ctrl-research/mmo/internal/world/room"
 	"github.com/ctrl-research/mmo/internal/world/sim"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 // Two world nodes in one process, forced to talk over the bus.
@@ -41,7 +43,7 @@ type cluster struct {
 	a, b     *Node
 	presence *directory.MemoryPresence
 	parties  *directory.MemoryParties
-	dir      *directory.Memory
+	dir      directory.Directory
 	bus      bus.Bus
 	store    *store.Store
 	game     *content.Content
@@ -61,13 +63,20 @@ func newCluster(t *testing.T) *cluster {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// One directory, shared. Two registries would be more realistic still, but
-	// a room on another *process* needs a bus-backed handle; sharing the
-	// registry is what stands in for that, and it is the only thing these two
-	// nodes share beyond what a real cluster would.
-	dir := directory.NewMemory("node-a")
+	// Two registries would be more realistic still, but a room on another
+	// *process* needs a bus-backed handle; sharing the registry is what stands
+	// in for that, and it is the only thing these two nodes share beyond what a
+	// real cluster would.
 	leases := directory.NewMemoryLeases()
 	registry := NewRegistry()
+
+	// A directory per node, the same shape as the bus below. With
+	// MMO_TEST_REDIS_ADDR set that is two Redis directories sharing a
+	// namespace, each registering and heartbeating its own node -- so placement
+	// crosses a network rather than a pointer. Without it they share one
+	// in-memory directory, which is correct for a single process.
+	dirA, dirB := testDirectories(t)
+	dir := dirA
 
 	// A bus per node, so "two nodes" means two independent connections rather
 	// than two names for the same object. With MMO_TEST_NATS_URL set that is
@@ -80,9 +89,9 @@ func newCluster(t *testing.T) *cluster {
 	presence := directory.NewMemoryPresence()
 	parties := directory.NewMemoryParties(game.Balance.Party.MaxSize)
 
-	node := func(id string, nodeBus bus.Bus) *Node {
+	node := func(id string, nodeBus bus.Bus, nodeDir directory.Directory) *Node {
 		n, err := NewNode(Config{
-			Directory:  dir,
+			Directory:  nodeDir,
 			Leases:     leases,
 			Store:      st,
 			Bus:        nodeBus,
@@ -114,8 +123,8 @@ func newCluster(t *testing.T) *cluster {
 		t: t, dir: dir, bus: busA, store: st, game: game,
 		presence: presence, parties: parties, cancel: cancel,
 	}
-	c.a = node("node-a", busA)
-	c.b = node("node-b", busB)
+	c.a = node("node-a", busA, dirA)
+	c.b = node("node-b", busB, dirB)
 
 	t.Cleanup(func() {
 		cancel()
@@ -123,6 +132,52 @@ func newCluster(t *testing.T) *cluster {
 		c.b.Stop()
 	})
 	return c
+}
+
+// testDirectories returns one directory per node.
+//
+// Over Redis when MMO_TEST_REDIS_ADDR is set, and one shared in-memory
+// directory otherwise. Two directories rather than one is the point: two nodes
+// agreeing about where a room lives is the property this milestone is about, and
+// a shared object proves only that two names refer to the same map.
+//
+// The in-memory case returns the same directory twice, because Memory has no
+// notion of a peer -- Node.Start registers each node on it through AddNode, so
+// one object with two registered nodes is what "two nodes" means there.
+func testDirectories(t *testing.T) (directory.Directory, directory.Directory) {
+	t.Helper()
+
+	addr := os.Getenv("MMO_TEST_REDIS_ADDR")
+	if addr == "" {
+		shared := directory.NewMemory("node-a")
+		t.Cleanup(func() { shared.Close() })
+		return shared, shared
+	}
+
+	client := redis.NewClient(&redis.Options{Addr: addr})
+
+	// A namespace per test: a directory is global by design, so two tests
+	// sharing one would see each other's rooms.
+	prefix := "mmoworld:" + strconv.FormatInt(time.Now().UnixNano(), 36)
+	ctx := context.Background()
+
+	open := func(node directory.NodeID) directory.Directory {
+		d, err := directory.NewRedis(ctx, client, prefix, node)
+		if err != nil {
+			t.Fatalf("open redis directory for %s: %v", node, err)
+		}
+		t.Cleanup(func() { d.Close() })
+		return d
+	}
+
+	a, b := open("node-a"), open("node-b")
+	t.Cleanup(func() {
+		if keys, err := client.Keys(ctx, prefix+"*").Result(); err == nil && len(keys) > 0 {
+			client.Del(ctx, keys...)
+		}
+		client.Close()
+	})
+	return a, b
 }
 
 // testBuses returns one bus per node.
@@ -473,7 +528,7 @@ func TestPortalTransfersBetweenNodes(t *testing.T) {
 	})
 
 	// The source slot is released, or capacity leaks on every portal taken.
-	if inst, ok := c.dir.Lookup(context.Background(), from); ok && inst.Players != 0 {
+	if inst, ok, _ := c.dir.Lookup(context.Background(), from); ok && inst.Players != 0 {
 		t.Errorf("the source instance still holds %d players", inst.Players)
 	}
 }
@@ -581,7 +636,7 @@ func TestNewChannelMovesToADifferentInstance(t *testing.T) {
 
 	// Both instances satisfy the same key, which is what makes them channels
 	// of one zone rather than two unrelated rooms.
-	channels := c.dir.InstancesFor(context.Background(), directory.RoomKey{
+	channels, _ := c.dir.InstancesFor(context.Background(), directory.RoomKey{
 		MapID: "test", Placement: directory.PlacementShared,
 	})
 	if len(channels) != 2 {
@@ -700,7 +755,7 @@ func TestIdleRoomsAreTornDown(t *testing.T) {
 		return c.nodeHosting(instance) == ""
 	})
 
-	if _, ok := c.dir.Lookup(context.Background(), instance); ok {
+	if _, ok, _ := c.dir.Lookup(context.Background(), instance); ok {
 		t.Error("the instance is still in the directory after its room stopped")
 	}
 }

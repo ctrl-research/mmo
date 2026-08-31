@@ -28,6 +28,14 @@ var (
 	// ErrUnknownInstance means the instance is not registered, usually because
 	// it was already released.
 	ErrUnknownInstance = errors.New("directory: unknown instance")
+
+	// ErrNoLiveNode means no world node is currently eligible to host a room.
+	//
+	// Only a shared directory can report this: with one process the node asking
+	// is the node that would host it. It is distinct from ErrNoCapacity because
+	// the fix is different -- capacity means the world is full, this means there
+	// is no world.
+	ErrNoLiveNode = errors.New("directory: no live node")
 )
 
 // NodeID identifies one world node. With a single process there is exactly
@@ -104,6 +112,13 @@ func (i Instance) Full() bool { return i.Players >= i.Capacity }
 //
 // Implementations must be safe for concurrent use: gateways on several
 // goroutines place players while world nodes release instances.
+//
+// The read methods return errors even though the in-memory implementation can
+// never fail one. A network-backed directory can, and the failure has to be
+// distinguishable from the answer: an unreachable Redis returning "this map has
+// no channels" or "that instance does not exist" is not a degraded answer, it is
+// a wrong one, and a caller acting on it refuses a channel switch to a channel
+// that is running fine.
 type Directory interface {
 	// Join reserves a slot for one player in an instance satisfying key,
 	// creating an instance if none has room. The returned Instance reflects
@@ -135,7 +150,7 @@ type Directory interface {
 
 	// InstancesFor returns every live instance satisfying a key, ordered by
 	// ID. For a shared map this is the channel list.
-	InstancesFor(ctx context.Context, key RoomKey) []Instance
+	InstancesFor(ctx context.Context, key RoomKey) ([]Instance, error)
 
 	// Leave releases a slot previously reserved by Join. Releasing the last
 	// slot in an instance does not destroy it: the world node decides when to
@@ -159,12 +174,12 @@ type Directory interface {
 	// keep running.
 	TryRelease(ctx context.Context, id InstanceID) (bool, error)
 
-	// Lookup returns a single instance.
-	Lookup(ctx context.Context, id InstanceID) (Instance, bool)
+	// Lookup returns a single instance, and whether it exists.
+	Lookup(ctx context.Context, id InstanceID) (Instance, bool, error)
 
 	// List returns every live instance, ordered by ID so callers -- metrics,
 	// admin views, tests -- see a stable sequence.
-	List(ctx context.Context) []Instance
+	List(ctx context.Context) ([]Instance, error)
 
 	// Close releases any resources held by the implementation.
 	Close() error
