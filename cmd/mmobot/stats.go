@@ -34,6 +34,8 @@ type stats struct {
 	disconnects atomic.Int64
 	kicks       atomic.Int64
 
+	reconnects atomic.Int64
+
 	inputs    atomic.Uint64
 	casts     atomic.Uint64
 	snapshots atomic.Uint64
@@ -45,6 +47,14 @@ type stats struct {
 	mu  sync.Mutex
 	rtt latencies
 
+	// lostExp is how much experience characters came back from a reconnect with
+	// less of than they had when the connection went -- progress a checkpoint
+	// had not yet written.
+	//
+	// Measured only across a reconnect. Experience drops in ordinary play too:
+	// dying charges a share of it, and these bots die constantly.
+	lostExp []uint64
+
 	// firstError is kept because the hundredth failure is almost always the
 	// first one repeated, and a wall of identical messages hides the one that
 	// is different.
@@ -54,10 +64,18 @@ type stats struct {
 	// dropsByKind is why bots lost connections they had already made, which is
 	// a different question from why they never got one.
 	dropsByKind map[string]int
+
+	// retriesByKind is why reconnects were refused, which during a recovery is
+	// mostly the lease correctly not having expired yet.
+	retriesByKind map[string]int
 }
 
 func newStats() *stats {
-	return &stats{errorsByKind: map[string]int{}, dropsByKind: map[string]int{}}
+	return &stats{
+		errorsByKind:  map[string]int{},
+		dropsByKind:   map[string]int{},
+		retriesByKind: map[string]int{},
+	}
 }
 
 // join records a bot as connected and keeps the high-water mark.
@@ -72,6 +90,13 @@ func (s *stats) join() {
 }
 
 func (s *stats) leave() { s.connected.Add(-1) }
+
+// lostProgress records a character coming back with less than it had.
+func (s *stats) lostProgress(exp uint64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lostExp = append(s.lostExp, exp)
+}
 
 func (s *stats) observeRTT(d time.Duration) {
 	s.mu.Lock()
@@ -111,6 +136,18 @@ func closeReason(err error) string {
 		return msg[:70]
 	}
 	return msg
+}
+
+// retryFailed records a reconnect attempt that did not get in.
+//
+// Counted apart from a first attempt: a cluster recovering from a dead node
+// refusing a character whose lease has not expired yet is correct behaviour,
+// and folding it in with "never got in" would report a healthy recovery as a
+// wall of failures.
+func (s *stats) retryFailed(err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.retriesByKind[kindOf(err)]++
 }
 
 func (s *stats) fail(err error) {
@@ -207,14 +244,18 @@ type report struct {
 	InPerSec        float64
 	OutPerSec       float64
 
+	Reconnects int64
+	LostExp    []uint64
+
 	RTTSamples int
 	RTTp50     time.Duration
 	RTTp99     time.Duration
 	RTTmax     time.Duration
 
-	FirstError   string
-	ErrorsByKind map[string]int
-	DropsByKind  map[string]int
+	FirstError    string
+	ErrorsByKind  map[string]int
+	DropsByKind   map[string]int
+	RetriesByKind map[string]int
 }
 
 // snapshot takes a report over the window since the previous one.
@@ -242,6 +283,7 @@ func (s *stats) snapshot(elapsed, window time.Duration, prev *counters) (report,
 		Failed:      s.failed.Load(),
 		Disconnects: s.disconnects.Load(),
 		Kicks:       s.kicks.Load(),
+		Reconnects:  s.reconnects.Load(),
 
 		InputsPerSec:    per(now.inputs, prev.inputs),
 		SnapshotsPerSec: per(now.snapshots, prev.snapshots),
@@ -273,6 +315,11 @@ func (s *stats) snapshot(elapsed, window time.Duration, prev *counters) (report,
 	r.DropsByKind = make(map[string]int, len(s.dropsByKind))
 	for k, v := range s.dropsByKind {
 		r.DropsByKind[k] = v
+	}
+	r.LostExp = append([]uint64(nil), s.lostExp...)
+	r.RetriesByKind = make(map[string]int, len(s.retriesByKind))
+	for k, v := range s.retriesByKind {
+		r.RetriesByKind[k] = v
 	}
 	s.mu.Unlock()
 
@@ -308,7 +355,28 @@ func (r report) summary(want int) string {
 	if r.Kicks > 0 {
 		fmt.Fprintf(&b, ", %d kicked", r.Kicks)
 	}
+	if r.Reconnects > 0 {
+		fmt.Fprintf(&b, ", %d reconnected", r.Reconnects)
+	}
 	fmt.Fprintln(&b)
+
+	if r.Reconnects > 0 || len(r.LostExp) > 0 {
+		// The question a node dying asks: did anybody lose progress, and how
+		// much. Silence here after a kill is the answer you want.
+		if len(r.LostExp) == 0 {
+			fmt.Fprintln(&b, "  progress       every character came back with everything it had")
+		} else {
+			var total, worst uint64
+			for _, lost := range r.LostExp {
+				total += lost
+				if lost > worst {
+					worst = lost
+				}
+			}
+			fmt.Fprintf(&b, "  progress       %d of %d recoveries lost experience: "+
+				"%d total, worst %d\n", len(r.LostExp), r.Reconnects, total, worst)
+		}
+	}
 
 	fmt.Fprintf(&b, "  input          %.0f/s\n", r.InputsPerSec)
 	fmt.Fprintf(&b, "  snapshots      %.0f/s, %.1f per bot per second\n",
@@ -324,6 +392,13 @@ func (r report) summary(want int) string {
 		fmt.Fprintln(&b, "  dropped mid-run")
 		for _, k := range byCount(r.DropsByKind) {
 			fmt.Fprintf(&b, "    %4d  %s\n", r.DropsByKind[k], k)
+		}
+	}
+
+	if len(r.RetriesByKind) > 0 {
+		fmt.Fprintln(&b, "  reconnects refused")
+		for _, k := range byCount(r.RetriesByKind) {
+			fmt.Fprintf(&b, "    %4d  %s\n", r.RetriesByKind[k], k)
 		}
 	}
 

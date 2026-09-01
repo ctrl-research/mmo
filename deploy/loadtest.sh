@@ -22,6 +22,7 @@ GATEWAYS=2
 RAMP=30s
 DURATION=90s
 PREFIX=load
+KILL_AFTER=""     # seconds into the run to SIGKILL a world node, empty to skip
 DATABASE_URL="${DATABASE_URL:-postgres://mmo:devpassword@localhost:5433/mmo?sslmode=disable}"
 REDIS_ADDR="${REDIS_ADDR:-localhost:6379}"
 NATS_URL="${NATS_URL:-nats://localhost:4222}"
@@ -40,6 +41,7 @@ for arg in "$@"; do
     --ramp=*)     RAMP="${arg#*=}" ;;
     --duration=*) DURATION="${arg#*=}" ;;
     --prefix=*)   PREFIX="${arg#*=}" ;;
+    --kill-after=*) KILL_AFTER="${arg#*=}" ;;
     *) echo "unknown flag: $arg" >&2; exit 2 ;;
   esac
 done
@@ -103,6 +105,7 @@ wait_ready() {
 }
 
 world_admin=()
+world_pids=()
 for i in $(seq 1 "$WORLDS"); do
   port=$((9200 + i))
   DATABASE_URL="$DATABASE_URL" "$out/mmo" \
@@ -111,6 +114,7 @@ for i in $(seq 1 "$WORLDS"); do
     --redis-addr="$REDIS_ADDR" --nats-url="$NATS_URL" \
     --log-json > "$out/world-$i.log" 2>&1 &
   pids+=($!)
+  world_pids+=($!)
   world_admin+=("$port")
 done
 for i in $(seq 1 "$WORLDS"); do wait_ready "$out/world-$i.log" "world-$i"; done
@@ -152,6 +156,25 @@ for i in $(seq 1 "$GATEWAYS"); do
   pids+=($!)
 done
 
+# Chaos: kill a world node while everyone is playing.
+#
+# SIGKILL, not SIGTERM. A graceful shutdown is a different test -- the point
+# here is the case nobody gets to prepare for: the process is gone without
+# releasing a lease, checkpointing, or telling anybody, and recovery has to come
+# from state that was already durable.
+if [ -n "$KILL_AFTER" ]; then
+  (
+    sleep "$KILL_AFTER"
+    victim="${world_pids[0]}"
+    echo
+    echo ">>> killing world-1 (pid $victim) after ${KILL_AFTER}s"
+    kill -9 "$victim" 2>/dev/null || true
+    echo ">>> world-1 is gone; its characters are owned by nobody until their leases lapse"
+    echo
+  ) &
+  pids+=($!)
+fi
+
 for pid in "${bot_pids[@]}"; do wait "$pid" || true; done
 
 echo
@@ -165,7 +188,57 @@ echo "=== what the world nodes did ==="
 for i in $(seq 1 "$WORLDS"); do
   port="${world_admin[$((i-1))]}"
   echo "--- world-$i ---"
-  curl -sf "http://localhost:$port/metrics" | python3 "$root/deploy/tickstats.py" || echo "  (no metrics)"
+  if ! curl -sf --max-time 5 "http://localhost:$port/metrics" > "$out/metrics-$i.txt" 2>/dev/null; then
+    echo "  gone -- this node is not answering, which is the point if it was the one killed"
+    continue
+  fi
+  python3 "$root/deploy/tickstats.py" < "$out/metrics-$i.txt"
+done
+
+if [ -n "$KILL_AFTER" ]; then
+  echo
+  echo "=== what the survivors said about the node that died ==="
+  grep -ihoE '"msg":"[^"]*(lease|ownership|not reachable|refused|unreachable|no responder)[^"]*"' \
+    "$out"/world-*.log "$out"/gateway-*.log | sort | uniq -c | sort -rn | head -8 || echo "  nothing"
+
+  echo
+  echo "=== is the directory still offering the dead node work? ==="
+  if command -v docker >/dev/null; then
+    docker exec mmo-redis-1 redis-cli ZRANGEBYSCORE 'mmo:{dir}:alive' \
+      "$(python3 -c 'import time; print(int(time.time()*1000))')" +inf | sed 's/^/  live: /'
+  fi
+fi
+
+echo
+echo "=== what the gateways did ==="
+for i in $(seq 1 "$GATEWAYS"); do
+  port=$((9300 + i))
+  if ! curl -sf --max-time 5 "http://localhost:$port/metrics" > "$out/gwmetrics-$i.txt" 2>/dev/null; then
+    echo "  gateway-$i is not answering"
+    continue
+  fi
+  python3 - "$out/gwmetrics-$i.txt" "gateway-$i" <<'PYEOF'
+import re, sys
+
+text = open(sys.argv[1]).read()
+def value(name):
+    m = re.search(r'^' + name + r'(?:\{[^}]*\})?\s+(\S+)$', text, re.M)
+    return float(m.group(1)) if m else 0.0
+
+sent = value('mmo_gateway_snapshots_sent_total')
+dropped = value('mmo_gateway_outbound_dropped_total')
+inputs = value('mmo_gateway_inputs_received_total')
+refused = value('mmo_gateway_inputs_dropped_total')
+conns = value('mmo_gateway_connections')
+
+# Dropped output is the one that matters: it is the server giving up on a
+# client rather than letting a tick block, and it is invisible from the
+# client's side except as a world that updates less often than it should.
+share = (dropped / (sent + dropped) * 100) if sent + dropped else 0
+print("  %s: %d connections, %.0f snapshots sent, %.0f dropped (%.1f%%), "
+      "%.0f inputs, %.0f refused"
+      % (sys.argv[2], conns, sent, dropped, share, inputs, refused))
+PYEOF
 done
 
 echo

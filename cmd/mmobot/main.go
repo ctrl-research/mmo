@@ -42,6 +42,7 @@ type options struct {
 	inputRate time.Duration
 	report    time.Duration
 	prefix    string
+	reconnect bool
 }
 
 func run() error {
@@ -56,6 +57,8 @@ func run() error {
 	flag.DurationVar(&opt.inputRate, "input-rate", 50*time.Millisecond,
 		"how often each bot sends movement, matching a client's input tick")
 	flag.DurationVar(&opt.report, "report", 5*time.Second, "how often to print a line")
+	flag.BoolVar(&opt.reconnect, "reconnect", true,
+		"come back after losing a connection, the way a real client does")
 	flag.StringVar(&opt.prefix, "prefix", "bot",
 		"name prefix; bots are <prefix>NNNN and their characters are reused between runs")
 	flag.Parse()
@@ -134,31 +137,85 @@ func run() error {
 	return nil
 }
 
-// runBot is one bot's whole life.
+// runBot is one bot's whole life, including coming back after losing its
+// connection.
+//
+// A real client reconnects, so a bot that gave up on its first disconnect would
+// make a node dying look like permanent data loss -- the players gone because
+// nobody tried to come back rather than because anything failed to recover. It
+// is also what makes "characters recover" measurable rather than asserted.
 func runBot(ctx context.Context, opt options, i int, hs handshake, st *stats) {
 	b := newBot(fmt.Sprintf("%s%04d", opt.prefix, i), opt.server, hs, st)
 
+	for attempt := 0; ctx.Err() == nil; attempt++ {
+		if attempt > 0 {
+			if !opt.reconnect {
+				return
+			}
+			// Backoff, jittered. A node dying disconnects everyone it was
+			// holding at once, and a thousand clients retrying in lockstep is a
+			// thundering herd at the moment the cluster has least to spare --
+			// which would measure the herd rather than the recovery.
+			//
+			// The first wait is deliberately longer than a lease TTL: until the
+			// dead node's lease expires the character genuinely is still owned,
+			// and asking sooner only collects refusals.
+			wait := reconnectBackoff(attempt)
+			sleep(ctx, wait/2+time.Duration(rand.Int64N(int64(wait)+1)))
+			if ctx.Err() != nil {
+				return
+			}
+			st.reconnects.Add(1)
+		}
+
+		if !enter(ctx, b, st, attempt) {
+			continue
+		}
+
+		st.join()
+		b.play(ctx, opt.inputRate)
+		st.leave()
+	}
+}
+
+// enter takes a bot from nothing to in the world, reporting whether it arrived.
+func enter(ctx context.Context, b *bot, st *stats, attempt int) bool {
 	st.connecting.Add(1)
-	if err := b.signIn(ctx); err != nil {
-		st.connecting.Add(-1)
-		if ctx.Err() == nil {
-			st.fail(err)
-		}
-		return
-	}
-	if err := b.connect(ctx); err != nil {
-		st.connecting.Add(-1)
-		if ctx.Err() == nil {
-			st.fail(err)
-		}
-		return
-	}
-	st.connecting.Add(-1)
+	defer st.connecting.Add(-1)
 
-	st.join()
-	defer st.leave()
+	for _, step := range []func(context.Context) error{b.signIn, b.connect} {
+		if err := step(ctx); err != nil {
+			if ctx.Err() == nil {
+				if attempt == 0 {
+					st.fail(err)
+				} else {
+					// A failed *re*connect is a different fact from never
+					// having got in: the cluster is mid-recovery, and refusing
+					// a character whose lease has not expired is correct.
+					st.retryFailed(err)
+				}
+			}
+			return false
+		}
+	}
+	return true
+}
 
-	b.play(ctx, opt.inputRate)
+// reconnectBackoff grows to a ceiling, starting above a lease TTL.
+func reconnectBackoff(attempt int) time.Duration {
+	// A character whose node died is still owned until its lease lapses, so
+	// there is nothing to be gained by asking before then.
+	const first = 35 * time.Second
+	const ceiling = 2 * time.Minute
+
+	wait := first
+	for range attempt - 1 {
+		wait *= 2
+		if wait >= ceiling {
+			return ceiling
+		}
+	}
+	return wait
 }
 
 func reportLoop(ctx context.Context, st *stats, started time.Time, every time.Duration) {

@@ -628,7 +628,7 @@ names already follow and the only one that does not need re-tuning per map.
 - [x] Headless bot client for load generation (`cmd/mmobot`)
 - [x] Grafana dashboards checked in (`deploy/grafana/mmo.json`)
 - [x] Load test: 1000 bots across 3 world nodes (`deploy/loadtest.sh`)
-- [ ] Chaos testing: kill a world node, verify leases expire and characters recover
+- [x] Chaos testing: kill a world node, verify leases expire and characters recover
 - [ ] Graceful drain on shutdown: hand off rooms, checkpoint, disconnect cleanly
 
 **Exit:** 1000 concurrent bots across three world nodes, tick p99 within budget, and killing a node loses at most one checkpoint interval for its players.
@@ -1198,6 +1198,89 @@ a server fault first:
   distinct causes into 157 identical lines reading "waiting for the welcome" --
   a count of how many bots were affected and no clue why, which is the one thing
   the run was for. Grouping prefers the close status now.
+
+### Killing a world node
+
+`deploy/loadtest.sh --bots=150 --worlds=3 --gateways=2 --kill-after=45`. SIGKILL,
+not SIGTERM: a graceful shutdown is a different test, and the point here is the
+case nobody gets to prepare for -- the process is gone without releasing a
+lease, checkpointing, or telling anybody, and recovery has to come from state
+that was already durable.
+
+It found two bugs, and neither was the one the item was written to check. Leases
+expired exactly as designed. What did not work was everything around them.
+
+**A gateway did not notice its world node had died.** The calls a connected
+player makes constantly are published and not waited for -- that is the whole
+point of them -- so a gateway whose world node is gone keeps accepting input and
+forwarding it to a subject nobody is subscribed to. The first chaos run said it
+plainly: at the kill, snapshots went from **20.0 per player per second to 8.8,
+where they stayed for the remaining 105 seconds**, while the gateway reported
+every player as `up / 0 failed` the whole time. A third of the players were
+sitting in a world that had stopped moving, with an open connection and no
+error, and they were never told -- so they never reconnected, so they never
+recovered.
+
+`RemoteWorld` now watches the directory for the nodes holding its players. One
+call per gateway rather than one per player, and a node has to be missing from
+two consecutive checks before its players are disconnected -- node liveness is
+already a TTL three heartbeats deep, so a stall in the gateway should not be
+enough on its own to throw everybody off a node that is fine.
+
+**A dead node's rooms stayed in the directory and kept being handed out.** A room
+is hosted by a process; when that process dies the room dies with it, but its
+registration does not. Two rooms stayed registered on the killed node holding
+**thirty and nineteen phantom players**, and every reconnecting player placed
+into one waited out a request to a node that would never answer. Forever,
+because nothing removed the registration -- which is why the second chaos run
+still had sixteen players who never came back and eighty-three reconnects
+refused with "could not enter the world".
+
+Placement now skips a room whose host is not alive, and reaps it on the way
+past: left in place it keeps its slot count and its share of the node's load
+forever, and every future placement steps over it again. The same check guards a
+channel switch, and the channel *list* stops advertising doors that lead
+nowhere. A private room is the sharpest case -- one instance by definition, so
+counting the dead one told a party their dungeon was full for the rest of time.
+
+With both fixed:
+
+| | |
+| --- | --- |
+| players at the kill | 150 across three nodes |
+| dropped | 48, all told why |
+| reconnected | **48 of 48** |
+| back to full | ~75 seconds |
+| **progress lost** | **none -- every character came back with everything it had** |
+| reconnects refused | none |
+| surviving nodes | tick p99 0.89–1.25ms, zero overruns, rooms held 20 Hz |
+
+**The measurement was wrong first.** The bots compared cumulative experience
+before and after, on the assumption that it only goes up. It does not: dying
+charges a share of the progress made toward the current level, and these bots
+run at mobs constantly. The first version reported hundreds of characters
+"losing progress" in a run where nothing had gone wrong. It now compares only
+across a reconnect, which is the only place a crash can cost anything.
+
+**Bots reconnect now**, which is what makes "characters recover" a thing that
+can be measured rather than asserted. Backoff starts above a lease TTL --
+until the dead node's lease lapses the character genuinely is still owned, and
+asking sooner only collects refusals -- and is jittered, because a node dying
+disconnects everyone it was holding at once and a thousand clients retrying in
+lockstep is a thundering herd at the moment the cluster has least to spare.
+
+**Two things this left open**, both recorded rather than guessed at:
+
+- `mmo_room_players` and `mmo_room_entities` are labelled by map alone, so a
+  node hosting three instances of one map reports the last one's count instead
+  of the total. The dashboard's per-map panels understate the population. Fixing
+  it means giving the room observer the instance, which is a change to an
+  interface the room package owns.
+- Under higher load the snapshot rate settles below the tick rate -- 15.9 per
+  player at a thousand, 15.2 after this recovery, against 20.0 at a hundred --
+  while rooms tick at exactly 20 Hz with zero overruns and the gateways drop
+  nothing. Ticks are being simulated that somebody is not being sent. Where the
+  messages go is not something this run established.
 
 ---
 

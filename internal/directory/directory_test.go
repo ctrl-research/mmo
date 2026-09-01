@@ -1014,3 +1014,182 @@ func TestRedisReaderIsNeverPlacedOn(t *testing.T) {
 		t.Errorf("a room was placed on %q, which hosts nothing", inst.Node)
 	}
 }
+
+// A room on a node that has gone is not handed out, and is not left behind.
+//
+// A room is hosted by a process; when that process dies the room dies with it,
+// but its registration does not. It stays in the directory holding a slot count
+// for players who no longer exist, and placement keeps handing it out --
+// everyone sent there waits out a request to a node that will never answer, and
+// the login fails. Forever, because nothing removed the registration.
+//
+// Found by killing a world node under load: two rooms stayed registered on it
+// holding thirty and nineteen phantom players, and reconnecting bots were
+// refused with "could not enter the world" for the rest of the run.
+
+// stranded returns a directory and an instance on a node that has died.
+//
+// The node registers, takes a room, and then stops heartbeating without
+// releasing anything -- which is what a killed process looks like from here.
+func stranded(t *testing.T, key RoomKey) (*Redis, Instance) {
+	t.Helper()
+
+	addr := os.Getenv("MMO_TEST_REDIS_ADDR")
+	if addr == "" {
+		t.Skip("set MMO_TEST_REDIS_ADDR to run the Redis directory tests")
+	}
+
+	ctx := context.Background()
+	alive := openRedisDirectory(t, addr, "world-alive")
+
+	doomed, err := NewRedis(ctx, alive.client, alive.prefix, "world-doomed")
+	if err != nil {
+		t.Fatalf("second node: %v", err)
+	}
+
+	// A capacity of one means every join fills its instance and the next has to
+	// create another, so two joins put one room on each node -- whichever order
+	// placement picks them in.
+	var onDoomed Instance
+	for range 2 {
+		inst, err := alive.Join(ctx, key, 1)
+		if err != nil {
+			t.Fatalf("placing a room: %v", err)
+		}
+		if inst.Node == "world-doomed" {
+			onDoomed = inst
+		}
+	}
+	if onDoomed.ID == 0 {
+		t.Fatal("neither room landed on world-doomed, so there is nothing to strand")
+	}
+
+	doomed.Close()
+	expireNode(t, alive, "world-doomed")
+	return alive, onDoomed
+}
+
+func TestRedisPlacementReapsRoomsOnDeadNodes(t *testing.T) {
+	key := sharedKey("henesys")
+	dir, dead := stranded(t, key)
+	ctx := context.Background()
+
+	got, err := dir.Join(ctx, key, 1)
+	if err != nil {
+		t.Fatalf("placing after a node died: %v", err)
+	}
+	if got.Node == "world-doomed" {
+		t.Fatalf("placed into a room on a node that has gone (instance %d)", got.ID)
+	}
+
+	// Gone, not merely skipped: left in place it keeps its slot count and its
+	// share of the node's load forever, and every future placement has to step
+	// over it again.
+	if _, found, err := dir.Lookup(ctx, dead.ID); err != nil {
+		t.Fatalf("looking up the reaped instance: %v", err)
+	} else if found {
+		t.Errorf("instance %d is still registered on a node that has gone", dead.ID)
+	}
+
+	// And its share of the node's load with it. This is the counter placement
+	// decides by, and it only ever rises unless something takes rooms back off
+	// it -- so a node that dies and comes back looks permanently busier than it
+	// is, and stops being given work it could do.
+	load, err := dir.client.ZScore(ctx, dir.loadKey(), "world-doomed").Result()
+	if err != nil && !errors.Is(err, redis.Nil) {
+		t.Fatalf("reading the load counter: %v", err)
+	}
+	if load != 0 {
+		t.Errorf("the dead node is still carrying a load of %v for a room that is gone", load)
+	}
+}
+
+// A dead node's channels are not advertised.
+//
+// This is the list a player is shown when they open the channel picker, and
+// offering a channel whose host has gone is offering a door that leads nowhere:
+// they pick it, the switch fails, and nothing about it says why.
+func TestRedisDeadChannelsAreNotAdvertised(t *testing.T) {
+	key := sharedKey("henesys")
+	dir, dead := stranded(t, key)
+
+	// Asserted before anything reaps it, so this is really testing the listing
+	// rather than the cleanup that placement happens to do first.
+	channels, err := dir.InstancesFor(context.Background(), key)
+	if err != nil {
+		t.Fatalf("listing channels: %v", err)
+	}
+	for _, c := range channels {
+		if c.ID == dead.ID {
+			t.Errorf("channel %d on a node that has gone is still being advertised", c.ID)
+		}
+	}
+	if len(channels) == 0 {
+		t.Error("every channel was filtered out; the live one should still be listed")
+	}
+}
+
+// Switching to a channel on a dead node is refused as unknown, not as full.
+//
+// Not full, because the room is not busy -- there is no room. A player told the
+// channel is full waits and tries again; one told it does not exist picks
+// another.
+func TestRedisJoiningAChannelOnADeadNodeIsRefused(t *testing.T) {
+	dir, dead := stranded(t, sharedKey("henesys"))
+
+	_, err := dir.JoinInstance(context.Background(), dead.ID)
+	if !errors.Is(err, ErrUnknownInstance) {
+		t.Errorf("joining a channel on a node that has gone gave %v, want ErrUnknownInstance", err)
+	}
+}
+
+// A private room whose only instance was on a dead node can be made again.
+//
+// A private key is one instance by definition, so the check that stops a second
+// being created has to count the ones that still exist. Counting the dead one
+// means a party whose dungeon node died can never start another -- the directory
+// tells them their dungeon is full, forever.
+func TestRedisPrivateRoomCanBeRemadeAfterItsNodeDies(t *testing.T) {
+	key := privateKey("crypt", "party-1")
+
+	addr := os.Getenv("MMO_TEST_REDIS_ADDR")
+	if addr == "" {
+		t.Skip("set MMO_TEST_REDIS_ADDR to run the Redis directory tests")
+	}
+
+	ctx := context.Background()
+	alive := openRedisDirectory(t, addr, "world-alive")
+
+	doomed, err := NewRedis(ctx, alive.client, alive.prefix, "world-doomed")
+	if err != nil {
+		t.Fatalf("second node: %v", err)
+	}
+
+	// Place the party's dungeon, then kill whichever node got it.
+	inst, err := alive.Join(ctx, key, 6)
+	if err != nil {
+		t.Fatalf("placing the dungeon: %v", err)
+	}
+	doomed.Close()
+	expireNode(t, alive, inst.Node)
+
+	again, err := alive.Join(ctx, key, 6)
+	if err != nil {
+		t.Fatalf("the party could not start another dungeon after their node died: %v", err)
+	}
+	if again.ID == inst.ID {
+		t.Errorf("placed back into the dungeon on the dead node (instance %d)", again.ID)
+	}
+}
+
+// expireNode makes a node look like it stopped heartbeating.
+func expireNode(t *testing.T, r *Redis, node NodeID) {
+	t.Helper()
+
+	// Its liveness entry is scored with the moment it expires, so scoring it in
+	// the past is exactly what three missed heartbeats look like.
+	if err := r.client.ZAdd(context.Background(), r.aliveKey(),
+		redis.Z{Score: 1, Member: string(node)}).Err(); err != nil {
+		t.Fatalf("expiring %s: %v", node, err)
+	}
+}

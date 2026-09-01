@@ -124,6 +124,10 @@ func (r *Redis) nodeSeqKey() string { return r.base() + ":nodeseq" }
 func (r *Redis) keySetKey(key RoomKey) string { return r.base() + ":key:" + key.String() }
 func (r *Redis) instPrefix() string           { return r.base() + ":inst:" }
 
+// keySetPrefix is the stem of every per-room-key set, so a script can find the
+// set an instance belongs to from the instance's own fields.
+func (r *Redis) keySetPrefix() string { return r.base() + ":key:" }
+
 // register adds this node to the placement set.
 //
 // The registration score is assigned once and kept: it is what breaks a tie
@@ -248,6 +252,48 @@ const placeLua = `
 		return best
 	end
 
+	-- liveSet is the nodes heartbeating right now.
+	local function liveSet(alive, now)
+		local live = {}
+		for _, n in ipairs(redis.call('ZRANGEBYSCORE', alive, now, '+inf')) do
+			live[n] = true
+		end
+		return live
+	end
+
+	-- reap removes an instance whose host is not there any more.
+	--
+	-- A room is hosted by a process. When that process dies the room dies with
+	-- it, but its registration does not: it stays in the directory holding a
+	-- slot count for players who no longer exist, and placement keeps handing
+	-- it out. Everyone sent there waits out a request to a node that will never
+	-- answer, and the login fails -- forever, because nothing ever removed the
+	-- registration.
+	--
+	-- Cleaned up at the moment it is noticed rather than by a sweeper. The
+	-- process that would run a sweep is the one that just found the problem,
+	-- and a background job is another thing to deploy and another thing to
+	-- forget to deploy.
+	local function reap(all, load, instPrefix, keySetPrefix, id)
+		local inst = instPrefix .. id
+		local h = redis.call('HMGET', inst, 'node', 'map', 'placement', 'owner')
+		if not h[1] then return end
+
+		local keystr
+		if h[4] == '' or h[4] == false then
+			keystr = h[2] .. '/' .. h[3]
+		else
+			keystr = h[2] .. '/' .. h[3] .. '/' .. h[4]
+		end
+
+		redis.call('ZREM', keySetPrefix .. keystr, id)
+		redis.call('ZREM', all, id)
+		redis.call('DEL', inst)
+		if redis.call('ZSCORE', load, h[1]) then
+			redis.call('ZINCRBY', load, -1, h[1])
+		end
+	end
+
 	local function create(seq, keyset, all, load, instPrefix, node, map, placement, owner, capacity)
 		local id = redis.call('INCR', seq)
 		local key = instPrefix .. id
@@ -282,19 +328,31 @@ var joinScript = redis.NewScript(placeLua + `
 	local owner = ARGV[4]
 	local now = ARGV[5]
 	local instPrefix = ARGV[6]
+	local keySetPrefix = ARGV[7]
 
 	-- The emptiest instance with room. Ascending id, so a tie takes the lowest,
 	-- matching Memory. Filling the emptiest rather than the fullest spreads
 	-- players across channels: under per-player mob layering a packed room is
 	-- disproportionately expensive.
+	local live = liveSet(alive, now)
 	local ids = redis.call('ZRANGE', keyset, 0, -1)
 	local best, bestPlayers
+	local surviving = 0
 	for _, id in ipairs(ids) do
-		local h = redis.call('HMGET', instPrefix .. id, 'players', 'capacity')
+		local h = redis.call('HMGET', instPrefix .. id, 'players', 'capacity', 'node')
 		if h[1] then
-			local players, cap = tonumber(h[1]), tonumber(h[2])
-			if players < cap and (best == nil or players < bestPlayers) then
-				best, bestPlayers = id, players
+			-- A room on a node that is not there is not a room. Removed rather
+			-- than skipped: left in place it keeps its slot count and its share
+			-- of the node's load forever, and every future placement has to
+			-- step over it again.
+			if not live[h[3]] then
+				reap(all, load, instPrefix, keySetPrefix, id)
+			else
+				surviving = surviving + 1
+				local players, cap = tonumber(h[1]), tonumber(h[2])
+				if players < cap and (best == nil or players < bestPlayers) then
+					best, bestPlayers = id, players
+				end
 			end
 		end
 	end
@@ -309,7 +367,7 @@ var joinScript = redis.NewScript(placeLua + `
 	-- A private room is a single instance by definition: if the one that exists
 	-- is full, the party is full, and creating a second would split the group
 	-- across two dungeons.
-	if placement == 'private' and #ids > 0 then
+	if placement == 'private' and surviving > 0 then
 		return {0}
 	end
 
@@ -345,20 +403,37 @@ var newInstanceScript = redis.NewScript(placeLua + `
 `)
 
 // joinInstanceScript reserves a slot in one named instance.
-var joinInstanceScript = redis.NewScript(`
+var joinInstanceScript = redis.NewScript(placeLua + `
 	local inst = KEYS[1]
+	local alive = KEYS[2]
+	local all = KEYS[3]
+	local load = KEYS[4]
+	local id = ARGV[1]
+	local now = ARGV[2]
+	local instPrefix = ARGV[3]
+	local keySetPrefix = ARGV[4]
 
 	if redis.call('EXISTS', inst) == 0 then
 		return {-1}
 	end
 	local h = redis.call('HMGET', inst,
 		'node', 'map', 'placement', 'owner', 'players', 'capacity')
+
+	-- A channel hosted by a node that has gone is not a channel to switch to.
+	-- Reported as unknown rather than full: it is not that the room is busy,
+	-- it is that there is no room. Reaped on the way out for the same reason
+	-- placement does it -- otherwise it is offered again on the next attempt.
+	if not liveSet(alive, now)[h[1]] then
+		reap(all, load, instPrefix, keySetPrefix, id)
+		return {-1}
+	end
+
 	if tonumber(h[5]) >= tonumber(h[6]) then
 		return {0}
 	end
 
 	local players = redis.call('HINCRBY', inst, 'players', 1)
-	return {1, ARGV[1], h[1], h[2], h[3], h[4], tostring(players), h[6]}
+	return {1, id, h[1], h[2], h[3], h[4], tostring(players), h[6]}
 `)
 
 // leaveScript releases one reserved slot, floored at zero.
@@ -453,7 +528,7 @@ func (r *Redis) runPlacement(ctx context.Context, script *redis.Script, key Room
 			r.nodesKey(), r.aliveKey(), r.loadKey(),
 		},
 		capacity, key.MapID, string(key.Placement), key.OwnerKey,
-		r.now().UnixMilli(), r.instPrefix(),
+		r.now().UnixMilli(), r.instPrefix(), r.keySetPrefix(),
 	).Slice()
 	if err != nil {
 		return Instance{}, fmt.Errorf("directory: placing in %s: %w", key, err)
@@ -464,7 +539,9 @@ func (r *Redis) runPlacement(ctx context.Context, script *redis.Script, key Room
 // JoinInstance reserves a slot in one named instance.
 func (r *Redis) JoinInstance(ctx context.Context, id InstanceID) (Instance, error) {
 	res, err := joinInstanceScript.Run(ctx, r.client,
-		[]string{r.instKey(id)}, strconv.FormatUint(uint64(id), 10),
+		[]string{r.instKey(id), r.aliveKey(), r.allKey(), r.loadKey()},
+		strconv.FormatUint(uint64(id), 10), r.now().UnixMilli(),
+		r.instPrefix(), r.keySetPrefix(),
 	).Slice()
 	if err != nil {
 		return Instance{}, fmt.Errorf("directory: joining instance %d: %w", id, err)
@@ -528,12 +605,41 @@ func (r *Redis) release(ctx context.Context, id InstanceID, onlyIfEmpty bool) (i
 }
 
 // InstancesFor returns every live instance satisfying a key, ordered by ID.
+// InstancesFor lists the channels of a map that are actually reachable.
+//
+// Instances on nodes that have stopped heartbeating are left out. This is what
+// a player is shown when they open the channel list, and offering a channel
+// whose host has gone is offering a door that leads nowhere: they pick it, the
+// switch fails, and nothing about it tells them why. Placement reaps those
+// registrations; this only declines to advertise them, because listing is a
+// read and a read should not be the thing that changes the world.
 func (r *Redis) InstancesFor(ctx context.Context, key RoomKey) ([]Instance, error) {
 	ids, err := r.client.ZRange(ctx, r.keySetKey(key), 0, -1).Result()
 	if err != nil {
 		return nil, fmt.Errorf("directory: listing instances for %s: %w", key, err)
 	}
-	return r.loadAll(ctx, ids)
+
+	all, err := r.loadAll(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	live, err := r.LiveNodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	running := make(map[NodeID]bool, len(live))
+	for _, n := range live {
+		running[n] = true
+	}
+
+	out := make([]Instance, 0, len(all))
+	for _, inst := range all {
+		if running[inst.Node] {
+			out = append(out, inst)
+		}
+	}
+	return out, nil
 }
 
 // Lookup returns one instance by ID.
