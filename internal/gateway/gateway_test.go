@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -240,30 +241,56 @@ type client struct {
 	t     *testing.T
 	inbox []*mmov1.ServerMessage
 
-	// readErr is the first read failure that was not a timeout, kept so a
-	// caller can say why nothing arrived instead of guessing.
+	// incoming carries everything the reader goroutine has unpacked. Buffered
+	// generously: a test that is asserting about one message should not stall
+	// the connection carrying the rest.
+	incoming chan *mmov1.ServerMessage
+
+	mu sync.Mutex
+	// readErr is why the connection ended, kept so a caller can say why nothing
+	// arrived instead of guessing.
 	readErr error
 }
 
+// failure returns why the connection ended, if it has.
+func (c *client) failure() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.readErr
+}
+
 // drain reads whatever has arrived and appends it to the inbox.
-// drain reads whatever has arrived and appends it to the inbox.
+// drain moves whatever the reader has collected into the inbox, waiting up to
+// timeout for the first message.
 //
-// A read that failed for any reason other than the timeout is remembered
-// rather than discarded. Swallowing it meant a socket the server had closed
-// looked exactly like a socket that had not said anything yet: recv returned
-// instantly, the caller span until its deadline, and the failure came back as
-// "nothing arrived" when the truth was "the connection was closed, and here is
-// what it said on the way out". Two CI failures were diagnosed as slowness on
-// the strength of that message.
+// Waiting here costs nothing but time: the connection is being read by its own
+// goroutine, so giving up on this call does not give up on the socket.
 func (c *client) drain(timeout time.Duration) {
-	msgs, err := c.recv(timeout)
-	if err != nil {
-		if !errors.Is(err, context.DeadlineExceeded) {
-			c.readErr = err
+	deadline := time.NewTimer(timeout)
+	defer deadline.Stop()
+
+	select {
+	case msg, ok := <-c.incoming:
+		if !ok {
+			return
 		}
+		c.inbox = append(c.inbox, msg)
+	case <-deadline.C:
 		return
 	}
-	c.inbox = append(c.inbox, msgs...)
+
+	// Then everything else already waiting, without another wait.
+	for {
+		select {
+		case msg, ok := <-c.incoming:
+			if !ok {
+				return
+			}
+			c.inbox = append(c.inbox, msg)
+		default:
+			return
+		}
+	}
 }
 
 // findInInbox returns the first message matching a predicate, reading more
@@ -279,7 +306,7 @@ func (c *client) findInInbox(within time.Duration, match func(*mmov1.ServerMessa
 				return m
 			}
 		}
-		if c.readErr != nil || time.Now().After(deadline) {
+		if c.failure() != nil || time.Now().After(deadline) {
 			return nil
 		}
 		c.drain(200 * time.Millisecond)
@@ -297,8 +324,8 @@ func (c *client) why() string {
 				k.GetCode(), k.GetReason())
 		}
 	}
-	if c.readErr != nil {
-		return "the connection failed: " + c.readErr.Error()
+	if err := c.failure(); err != nil {
+		return "the connection failed: " + err.Error()
 	}
 	return "nothing arrived and the connection is still open"
 }
@@ -306,12 +333,71 @@ func (c *client) why() string {
 func (ts *testServer) dial(t *testing.T) *client {
 	t.Helper()
 	wsURL := "ws" + strings.TrimPrefix(ts.url, "http") + "/ws"
-	conn, _, err := websocket.Dial(context.Background(), wsURL, nil)
+
+	// One context for the whole connection, cancelled only when the test is
+	// finished with it. Reads are governed by this and nothing shorter -- see
+	// the reader below for why that matters.
+	ctx, cancel := context.WithCancel(context.Background())
+
+	conn, _, err := websocket.Dial(ctx, wsURL, nil)
 	if err != nil {
+		cancel()
 		t.Fatalf("dial: %v", err)
 	}
-	t.Cleanup(func() { conn.Close(websocket.StatusNormalClosure, "") })
-	return &client{conn: conn, t: t}
+	t.Cleanup(func() {
+		conn.Close(websocket.StatusNormalClosure, "")
+		cancel()
+	})
+
+	c := &client{conn: conn, t: t, incoming: make(chan *mmov1.ServerMessage, 4096)}
+	go c.read(ctx)
+	return c
+}
+
+// read pumps the connection into a channel for the whole life of the client.
+//
+// One goroutine reading with a long-lived context, rather than each caller
+// reading with a timeout of its own. That is not a tidiness preference: a
+// websocket read whose context is cancelled takes the *connection* with it,
+// because a half-consumed frame cannot be abandoned any other way. So a caller
+// that waited 200 ms for a message and gave up was not merely giving up -- it
+// was closing the socket, and every read after it failed with "use of closed
+// network connection".
+//
+// That is the whole flaky-login story in this package. On a loaded CI runner the
+// first short read would time out before the Welcome arrived, the connection
+// would die, and no amount of waiting afterwards could recover it -- which
+// presented as "no Welcome received" and was twice diagnosed as slowness and
+// twice met with a bigger timeout.
+func (c *client) read(ctx context.Context) {
+	defer close(c.incoming)
+
+	for {
+		_, data, err := c.conn.Read(ctx)
+		if err != nil {
+			if ctx.Err() == nil {
+				c.mu.Lock()
+				c.readErr = err
+				c.mu.Unlock()
+			}
+			return
+		}
+
+		var env mmov1.Envelope
+		if err := proto.Unmarshal(data, &env); err != nil {
+			c.mu.Lock()
+			c.readErr = err
+			c.mu.Unlock()
+			return
+		}
+		for _, msg := range env.GetServer() {
+			select {
+			case c.incoming <- msg:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
 }
 
 func (c *client) send(msgs ...*mmov1.ClientMessage) {
@@ -349,20 +435,32 @@ func (c *client) intent(seq uint32, moveX int32, jump bool) {
 	}})
 }
 
-// recv reads one envelope and returns the server messages it batched.
+// recv waits for the next message, or reports why there will not be one.
+//
+// Its callers mostly use it to assert that the server hung up -- a forged
+// ticket, a duplicate Hello, a protocol mismatch -- so the interesting return
+// is the error, and it has to be the connection's own rather than a timeout
+// this call invented.
 func (c *client) recv(timeout time.Duration) ([]*mmov1.ServerMessage, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+	deadline := time.NewTimer(timeout)
+	defer deadline.Stop()
 
-	_, data, err := c.conn.Read(ctx)
-	if err != nil {
-		return nil, err
+	select {
+	case msg, ok := <-c.incoming:
+		if !ok {
+			if err := c.failure(); err != nil {
+				return nil, err
+			}
+			return nil, errors.New("the connection closed")
+		}
+		return []*mmov1.ServerMessage{msg}, nil
+
+	case <-deadline.C:
+		// A quiet connection is not a broken one, so this is not stored as the
+		// connection's failure -- storing it would make every later call give
+		// up on a socket that is fine.
+		return nil, fmt.Errorf("nothing arrived within %s", timeout)
 	}
-	var env mmov1.Envelope
-	if err := proto.Unmarshal(data, &env); err != nil {
-		return nil, err
-	}
-	return env.GetServer(), nil
 }
 
 // awaitWelcome reads until the Welcome arrives, keeping everything else.
