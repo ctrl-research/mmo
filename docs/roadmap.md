@@ -625,7 +625,7 @@ names already follow and the only one that does not need re-tuning per map.
 - [x] Cross-process room handles, so a world node can be deployed more than once
 - [x] Split roles into separate deployments (`--roles=gateway` runs with no simulation)
 - [x] k8s manifests
-- [ ] Headless bot client for load generation
+- [x] Headless bot client for load generation (`cmd/mmobot`)
 - [ ] Grafana dashboards checked in
 - [ ] Load test: 1000 bots across 3 world nodes
 - [ ] Chaos testing: kill a world node, verify leases expire and characters recover
@@ -1017,6 +1017,63 @@ Verified by running it: two world nodes and a gateway as three processes against
 one Redis, NATS and Postgres. Only `world-1` and `world-2` appear in the
 directory. A character created and played through the gateway got 180 snapshots,
 took damage from mobs simulated on `world-1`, and the gateway logged no errors.
+
+### The bot client
+
+`cmd/mmobot` drives a population of headless players at a running server:
+
+```
+mmobot --server=http://localhost:8088 --bots=200 --ramp=20s --duration=2m
+```
+
+**Every bot takes the browser's path.** Dev sign-in, pick a character, ask for a
+ticket over authenticated HTTP, open a socket, say hello. A load tool that
+skipped any of it would be measuring something the game does not do -- and the
+ticket in particular is the whole reason a gateway can be scaled at all.
+
+Building it found the wire format the hard way, twice. Both are the kind of
+thing only a real client hits:
+
+- **Every frame is an `Envelope`**, even when it holds one message, because the
+  server batches a tick's worth into one. A bare `ClientMessage` decodes as an
+  envelope containing nothing, and the server says "malformed handshake" --
+  which sounds like a framing bug in the transport rather than the protocol
+  working exactly as designed.
+- **The handshake carries a content hash**, and the server refuses a client
+  whose content does not match. The bot asks `/healthz` for the protocol version
+  and the hash rather than compiling them in, so a bot built against a different
+  commit fails at the handshake with a message that says so.
+
+**The bots behave like a population, not a benchmark.** Each turns around on its
+own schedule and casts on its own beat, jittered -- a thousand clients acting in
+lockstep produces a load pattern no real population makes, and would hide
+exactly the smoothing the room's action tick exists to provide. They walk
+through portals, so a run that starts in the tutorial ends up spread across
+maps.
+
+**The summary reports the peak, not the final count.** It is printed after
+everyone has hung up, so reporting the live number said "0 of 150 connected" for
+a run where all 150 played happily.
+
+**A dead gauge, found by looking at what the load produced.**
+`mmo_world_instances` was registered and never set, so it read zero for the life
+of the process -- on a dashboard indistinguishable from a node hosting nothing,
+which is the thing you would be looking at the dashboard to find out. The node
+now reports its room count whenever it changes.
+
+Measured on one machine, one process, 150 bots:
+
+| | |
+| --- | --- |
+| input | 3000/s |
+| snapshots | 3000/s, **20.0 per bot** -- the full tick rate, nobody starved |
+| round trip | p50 650µs, p99 1.1ms, max 4ms |
+| bandwidth | 33 KiB/s up, 1.2 MiB/s down |
+| failures | none, no drops, no kicks |
+
+That is the client's side. The server's own tick times are on its admin port,
+and the two are meant to be read together: `mmo_room_tick_duration_seconds` says
+whether it kept up, and these say what it was keeping up with.
 
 ---
 

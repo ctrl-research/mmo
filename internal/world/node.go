@@ -24,17 +24,18 @@ import (
 
 // Node hosts room instances.
 type Node struct {
-	dir      directory.Directory
-	leases   directory.Leases
-	presence directory.Presence
-	parties  directory.Parties
-	store    *store.Store
-	bus      bus.Bus
-	rooms3   *Registry
-	nodeID   string
-	content  *content.Content
-	log      *slog.Logger
-	observer room.Observer
+	dir       directory.Directory
+	leases    directory.Leases
+	presence  directory.Presence
+	parties   directory.Parties
+	store     *store.Store
+	bus       bus.Bus
+	rooms3    *Registry
+	nodeID    string
+	content   *content.Content
+	log       *slog.Logger
+	observer  room.Observer
+	instances func(int)
 
 	// defaultMap is where a player with no saved location starts. Characters
 	// remember their own map from M2 onward.
@@ -127,6 +128,14 @@ type Config struct {
 	Logger     *slog.Logger
 	Observer   room.Observer
 
+	// Instances is called with the number of room instances this node hosts,
+	// whenever that changes.
+	//
+	// A callback rather than a method on room.Observer: how many rooms a node
+	// is running is a fact about the node, and the room has no way to know it.
+	// Optional -- nothing needs it to simulate.
+	Instances func(int)
+
 	// Seed determines every roll every room on this node will make. Zero
 	// draws a fresh one, which is right for a real server; a fixed value makes
 	// a session reproducible, which is what tests and replay want.
@@ -200,6 +209,7 @@ func NewNode(cfg Config) (*Node, error) {
 		defaultMap: cfg.DefaultMap,
 		log:        cfg.Logger,
 		observer:   cfg.Observer,
+		instances:  cfg.Instances,
 		bus:        cfg.Bus,
 		rooms3:     rooms,
 		seed:       seed,
@@ -372,6 +382,7 @@ func (n *Node) ensureRoom(inst directory.Instance, m *content.Map) (room.Handle,
 
 	h := &hosted{room: r, handle: room.NewHandle(r), m: m}
 	n.rooms[inst.ID] = h
+	n.reportInstancesLocked()
 
 	// Registered so another node in this process can reach it. That is what
 	// makes "hosted by a different world role" true rather than nominal.
@@ -395,6 +406,17 @@ func (n *Node) ensureRoom(inst directory.Instance, m *content.Map) (room.Handle,
 
 	n.log.Info("room instance started", "instance", uint64(inst.ID), "map", m.ID)
 	return h.handle, nil
+}
+
+// reportInstancesLocked pushes the room count to whoever is watching.
+//
+// Called with n.mu held, which is what makes the number it reports the one
+// that was just written rather than whatever the map says by the time a
+// separate reader gets to it.
+func (n *Node) reportInstancesLocked() {
+	if n.instances != nil {
+		n.instances(len(n.rooms))
+	}
 }
 
 // Rooms reports how many instances this node hosts.
