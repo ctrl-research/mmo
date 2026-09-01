@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/ctrl-research/mmo/internal/auth"
@@ -263,7 +264,48 @@ func openDirectory(ctx context.Context, cfg config, client *redis.Client, hostsR
 		return nil, err
 	}
 	log.Info("using Redis for the room directory", "addr", cfg.redisAddr, "node", node)
+
+	warnIfDirectoryOutrunsTheBus(ctx, cfg, dir, log)
 	return dir, nil
+}
+
+// warnIfDirectoryOutrunsTheBus catches a configuration that is broken by
+// construction.
+//
+// A shared directory places rooms on any node registered in it, and a node is
+// reached over the bus. So sharing a directory while keeping the bus in-process
+// means rooms get placed on nodes this process cannot talk to, and the only
+// symptom is logins failing with "could not enter the world" while every
+// component reports itself healthy.
+//
+// A warning rather than a refusal: one process with a Redis directory is a
+// perfectly good configuration -- it is the only node in there, so every room
+// lands on itself -- and it is what a single-node deployment with shared leases
+// looks like. It only breaks once somebody else is registered, which is what
+// this checks.
+func warnIfDirectoryOutrunsTheBus(ctx context.Context, cfg config, dir directory.Directory, log *slog.Logger) {
+	if cfg.natsURL != "" {
+		return
+	}
+
+	nodes, err := dir.LiveNodes(ctx)
+	if err != nil {
+		return
+	}
+	others := make([]string, 0, len(nodes))
+	for _, n := range nodes {
+		if string(n) != cfg.nodeID {
+			others = append(others, string(n))
+		}
+	}
+	if len(others) == 0 {
+		return
+	}
+
+	log.Warn("sharing a room directory without sharing a bus: "+
+		"rooms placed on another node cannot be reached from here, "+
+		"and players sent to them will fail to enter. Set --nats-url.",
+		"others", strings.Join(others, ","))
 }
 
 // openPresence chooses where "who is online, and on which node" lives.

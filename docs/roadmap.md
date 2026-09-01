@@ -626,7 +626,7 @@ names already follow and the only one that does not need re-tuning per map.
 - [x] Split roles into separate deployments (`--roles=gateway` runs with no simulation)
 - [x] k8s manifests
 - [x] Headless bot client for load generation (`cmd/mmobot`)
-- [ ] Grafana dashboards checked in
+- [x] Grafana dashboards checked in (`deploy/grafana/mmo.json`)
 - [ ] Load test: 1000 bots across 3 world nodes
 - [ ] Chaos testing: kill a world node, verify leases expire and characters recover
 - [ ] Graceful drain on shutdown: hand off rooms, checkpoint, disconnect cleanly
@@ -1074,6 +1074,61 @@ Measured on one machine, one process, 150 bots:
 That is the client's side. The server's own tick times are on its admin port,
 and the two are meant to be read together: `mmo_room_tick_duration_seconds` says
 whether it kept up, and these say what it was keeping up with.
+
+### The dashboard
+
+`deploy/grafana/mmo.json` — fourteen panels in three rows, in the order the
+questions get asked. Is it keeping up (tick p99 against the 50 ms budget,
+overruns). Who is on (characters and entities per map, connections, instances).
+Throughput and backpressure (input received against dropped, snapshots out,
+and dropped *output*, which is the server giving up on a client rather than
+letting a tick block).
+
+It lives here rather than in the cluster repo, and that is the point. **A
+dashboard is the one piece of a system nothing compiles and nobody tests**, and
+its failure mode is a panel that renders an empty graph -- which looks exactly
+like a system doing nothing. `mmo_world_instances` was registered and never set
+for months and the way that was found was somebody happening to look.
+
+So there are two tests, and they point in opposite directions:
+
+- `TestDashboardOnlyUsesRealMetrics` -- every metric the dashboard names is one
+  the server exports. Renaming a metric in the code now fails a test rather than
+  emptying a panel.
+- `TestEveryMetricIsOnTheDashboard` -- every metric the server exports is on the
+  dashboard, or listed with a reason for not being. This is the direction that
+  catches a metric added and then forgotten, which is how a system ends up
+  instrumented and unobserved.
+
+**A counter that does not exist yet reads as a broken metric.**
+`mmo_room_tick_overruns_total` is label-partitioned by map, and a Prometheus
+counter vec has no series until something increments it -- so the overrun panels
+showed "No data" on a perfectly healthy server, which on a dashboard is the same
+shape as a renamed metric or a target nobody is scraping. The one time you need
+to trust that panel is the one time it has never been touched. `ObserveTick` now
+resolves the counter whether or not the tick overran, so a healthy map reports
+zero.
+
+**Verified against a real Prometheus**, not by reading the JSON: a server in a
+container, a Prometheus scraping it, thirty bots driving load, and every one of
+the dashboard's twenty queries evaluated through the HTTP API. All twenty return
+data -- which is the only way to know that `histogram_quantile` over
+`..._bucket` with a `le` grouping is written correctly, and the check that
+turned up the overruns problem.
+
+The cluster side -- two `VMServiceScrape`s on the admin port and a
+`GrafanaDashboard` fetching the JSON from this repo -- is in the homelab
+repository. Nothing was scraping the server before, so the dashboard would have
+had nothing to draw.
+
+**A misconfiguration found while setting this up.** Sharing a room directory
+without sharing a bus is broken by construction: the directory places rooms on
+any node registered in it, a node is reached over the bus, so rooms land on
+nodes the process cannot talk to. Every component reports itself healthy and the
+only symptom is logins failing with "could not enter the world". A Redis
+directory with an in-process bus is still perfectly good for one node -- it is
+the only node in there -- so this is a warning at startup when another node is
+actually registered, not a refusal.
 
 ---
 
