@@ -20,6 +20,10 @@ type Memory struct {
 	// reproducible rather than flaky.
 	nodes []NodeID
 
+	// withdrawn marks this process as no longer offering to host rooms, which
+	// is the first step of a drain.
+	withdrawn bool
+
 	instances map[InstanceID]*Instance
 	byKey     map[RoomKey][]InstanceID
 	nextID    InstanceID
@@ -61,12 +65,33 @@ func (m *Memory) Nodes() []NodeID {
 	return append([]NodeID(nil), m.nodes...)
 }
 
+// Withdraw takes this node out of the placement set.
+//
+// The in-memory directory belongs to one process, and that process withdrawing
+// means there is nowhere left to place anything. Placement then reports no live
+// node, which is the truth: a single-process deployment that is shutting down
+// has no world to put anybody in.
+func (m *Memory) Withdraw(_ context.Context) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.withdrawn = true
+	return nil
+}
+
 // LiveNodes lists the registered nodes.
 //
 // All of them: an in-memory directory is one process, so every node it knows
 // about is running by definition. The Redis one has to ask, because a node
 // there can stop heartbeating without telling anybody.
 func (m *Memory) LiveNodes(_ context.Context) ([]NodeID, error) {
+	m.mu.Lock()
+	withdrawn := m.withdrawn
+	m.mu.Unlock()
+
+	if withdrawn {
+		return nil, nil
+	}
 	return m.Nodes(), nil
 }
 
@@ -115,11 +140,24 @@ func (m *Memory) Join(_ context.Context, key RoomKey, capacity int) (Instance, e
 		return Instance{}, ErrNoCapacity
 	}
 
-	return *m.createLocked(key, capacity), nil
+	inst := m.createLocked(key, capacity)
+	if inst == nil {
+		return Instance{}, ErrNoLiveNode
+	}
+	return *inst, nil
 }
 
 // createLocked adds an instance with one slot reserved.
+//
+// Returns nil when this process has withdrawn: a room has to be hosted by
+// somebody, and a withdrawn directory has nobody left to offer. Callers turn
+// that into ErrNoLiveNode, which is the honest answer -- it is not that the
+// world is full, it is that there is no world.
 func (m *Memory) createLocked(key RoomKey, capacity int) *Instance {
+	if m.withdrawn {
+		return nil
+	}
+
 	m.nextID++
 	inst := &Instance{
 		ID:       m.nextID,
@@ -149,7 +187,11 @@ func (m *Memory) NewInstance(_ context.Context, key RoomKey, capacity int) (Inst
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return *m.createLocked(key, capacity), nil
+	inst := m.createLocked(key, capacity)
+	if inst == nil {
+		return Instance{}, ErrNoLiveNode
+	}
+	return *inst, nil
 }
 
 // JoinInstance reserves a slot in one named instance.

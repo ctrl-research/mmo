@@ -23,6 +23,7 @@ RAMP=30s
 DURATION=90s
 PREFIX=load
 KILL_AFTER=""     # seconds into the run to SIGKILL a world node, empty to skip
+DRAIN_AFTER=""    # seconds into the run to SIGTERM a world node, empty to skip
 DATABASE_URL="${DATABASE_URL:-postgres://mmo:devpassword@localhost:5433/mmo?sslmode=disable}"
 REDIS_ADDR="${REDIS_ADDR:-localhost:6379}"
 NATS_URL="${NATS_URL:-nats://localhost:4222}"
@@ -42,6 +43,7 @@ for arg in "$@"; do
     --duration=*) DURATION="${arg#*=}" ;;
     --prefix=*)   PREFIX="${arg#*=}" ;;
     --kill-after=*) KILL_AFTER="${arg#*=}" ;;
+    --drain-after=*) DRAIN_AFTER="${arg#*=}" ;;
     *) echo "unknown flag: $arg" >&2; exit 2 ;;
   esac
 done
@@ -175,6 +177,23 @@ if [ -n "$KILL_AFTER" ]; then
   pids+=($!)
 fi
 
+# The other half of chaos: ask a world node to leave, rather than shooting it.
+#
+# SIGTERM, which is what a rolling deploy sends. Everything the kill case has to
+# recover from -- lease waits, phantom rooms, progress since the last checkpoint
+# -- is avoidable when the process knows it is going, and this is the run that
+# says whether it was avoided.
+if [ -n "$DRAIN_AFTER" ]; then
+  (
+    sleep "$DRAIN_AFTER"
+    victim="${world_pids[0]}"
+    echo
+    echo ">>> asking world-1 (pid $victim) to drain after ${DRAIN_AFTER}s"
+    kill -TERM "$victim" 2>/dev/null || true
+  ) &
+  pids+=($!)
+fi
+
 for pid in "${bot_pids[@]}"; do wait "$pid" || true; done
 
 echo
@@ -194,6 +213,16 @@ for i in $(seq 1 "$WORLDS"); do
   fi
   python3 "$root/deploy/tickstats.py" < "$out/metrics-$i.txt"
 done
+
+if [ -n "$DRAIN_AFTER" ]; then
+  echo
+  echo "=== how the drain went ==="
+  # A grep that matches nothing exits 1, and this script runs under `set -e`:
+  # without the guard, a run where the drain logged nothing would fail here
+  # rather than report that it logged nothing.
+  grep -hoE '"msg":"(draining|drained)"[^}]*' "$out"/world-1.log | sed 's/^/  /' || echo "  the node logged no drain at all"
+fi
+
 
 if [ -n "$KILL_AFTER" ]; then
   echo

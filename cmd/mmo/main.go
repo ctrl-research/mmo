@@ -217,7 +217,20 @@ func run() error {
 		if err := node.Start(ctx); err != nil {
 			return err
 		}
+		// Drained before stopped, and the order of the defers matters: they
+		// run last-in-first-out, so this is registered after Stop and
+		// therefore runs before it.
+		//
+		// A drain that ran after Stop would be a drain with no subscriptions
+		// and a cancelled context -- which is to say, an ordinary kill with
+		// extra logging.
 		defer node.Stop()
+		defer func() {
+			drainCtx, cancel := context.WithTimeout(context.Background(),
+				world.DrainTimeout+5*time.Second)
+			defer cancel()
+			node.Drain(drainCtx)
+		}()
 	}
 
 	var servers []*http.Server

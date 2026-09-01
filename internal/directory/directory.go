@@ -158,6 +158,19 @@ type Directory interface {
 	// to do.
 	Leave(ctx context.Context, id InstanceID) error
 
+	// Withdraw takes this node out of the set placement chooses from, without
+	// removing anything it is already hosting.
+	//
+	// The first step of draining. A node that is shutting down still has rooms
+	// and characters to finish with, and it needs to stop being sent new ones
+	// while it does -- otherwise a character arrives at a node that is halfway
+	// through closing its sessions, which is the one place they cannot be
+	// looked after. Letting the liveness TTL do it instead means fifteen
+	// seconds of new arrivals into a process that is leaving.
+	//
+	// Idempotent, and safe on a node that was never registered.
+	Withdraw(ctx context.Context) error
+
 	// LiveNodes lists the world nodes currently heartbeating.
 	//
 	// On the interface because a gateway deployed on its own has to find a

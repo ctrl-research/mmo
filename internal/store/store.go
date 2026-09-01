@@ -101,6 +101,16 @@ func Open(ctx context.Context, cfg Config) (*Store, error) {
 }
 
 // Close releases the pool.
+// MaxConns is how many database connections this store may use at once.
+//
+// Exposed so a caller that wants to do many writes in parallel can size itself
+// to the pool. More concurrent writers than connections does not make the
+// writes faster: it makes them queue inside the pool, where the wait is
+// invisible and counts against whatever deadline the caller set.
+func (s *Store) MaxConns() int {
+	return int(s.pool.Config().MaxConns)
+}
+
 func (s *Store) Close() { s.pool.Close() }
 
 // Pool exposes the underlying pool for tests and for callers that need a

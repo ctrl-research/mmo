@@ -196,6 +196,28 @@ func (r *Redis) Nodes(ctx context.Context) ([]NodeID, error) {
 	return out, nil
 }
 
+// Withdraw takes this node out of the set placement chooses from.
+//
+// Its liveness entry is removed rather than left to expire: the point of
+// draining is to stop new arrivals now, and waiting out the TTL means fifteen
+// more seconds of characters being sent to a process that is closing their
+// sessions.
+//
+// The registration itself is left alone. Its score is what keeps placement
+// order stable across a restart, so removing it would reshuffle load on every
+// rolling deploy -- the same reason a dead node's registration survives.
+func (r *Redis) Withdraw(ctx context.Context) error {
+	if r.node == "" {
+		// A reader-only directory never registered, so there is nothing to
+		// take back.
+		return nil
+	}
+	if err := r.client.ZRem(ctx, r.aliveKey(), string(r.node)).Err(); err != nil {
+		return fmt.Errorf("directory: withdrawing %s: %w", r.node, err)
+	}
+	return nil
+}
+
 // LiveNodes returns the nodes currently eligible to host a room.
 func (r *Redis) LiveNodes(ctx context.Context) ([]NodeID, error) {
 	now := strconv.FormatInt(r.now().UnixMilli(), 10)
