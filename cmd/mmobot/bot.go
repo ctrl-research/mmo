@@ -51,6 +51,40 @@ type bot struct {
 	// compiled in, so a bot built against a different commit fails at the
 	// handshake with something that says so.
 	handshake handshake
+
+	// exp is the cumulative experience the last snapshot reported, and
+	// expAtLoss is what it was when the connection went. Compared on the first
+	// snapshot after reconnecting to see what the crash cost.
+	exp        uint64
+	expAtLoss  uint64
+	recovering bool
+}
+
+// observeExp records progress, and compares it across a reconnect.
+//
+// Only across a reconnect. Experience is not monotonic in play: dying charges a
+// share of the progress made toward the current level, and these bots run at
+// mobs constantly, so a version that treated every decrease as lost progress
+// reported hundreds of "losses" in a run where nothing had gone wrong at all.
+// That was the first thing this measurement said, and it was wrong.
+//
+// What a crash costs is the difference between what the character had when the
+// connection went and what it has on the first snapshot of the next one --
+// whatever the last checkpoint had not yet written.
+func (b *bot) observeExp(seen uint64) {
+	if b.recovering {
+		b.recovering = false
+		if seen < b.expAtLoss {
+			b.stats.lostProgress(b.expAtLoss - seen)
+		}
+	}
+	b.exp = seen
+}
+
+// disconnected marks the point a comparison should be made from.
+func (b *bot) disconnected() {
+	b.expAtLoss = b.exp
+	b.recovering = true
 }
 
 func newBot(name, server string, hs handshake, st *stats) *bot {
@@ -190,6 +224,10 @@ func (b *bot) play(ctx context.Context, inputRate time.Duration) {
 
 	b.actLoop(ctx, inputRate)
 	<-read
+
+	// Whatever this character had when the connection ended is what the next
+	// one is measured against.
+	b.disconnected()
 }
 
 func (b *bot) readLoop(ctx context.Context) {
@@ -209,6 +247,15 @@ func (b *bot) readLoop(ctx context.Context) {
 		switch {
 		case msg.GetSnapshot() != nil:
 			b.stats.snapshots.Add(1)
+
+			// Cumulative experience, from the player's own entity -- the one
+			// field a snapshot never delta-compresses, so it is complete in
+			// every message. It only ever goes up, which makes it the thing to
+			// watch across a node dying: whatever a checkpoint had not yet
+			// written is what a kill costs.
+			if self := msg.GetSnapshot().GetSelf(); self != nil {
+				b.observeExp(self.GetExp())
+			}
 
 		case msg.GetPong() != nil:
 			// The round trip a player would feel: sent from the act loop with

@@ -58,14 +58,120 @@ type RemoteWorld struct {
 	// gatewayID names this gateway, so a world node knows where to send the
 	// messages bound for its players' screens.
 	gatewayID string
+
+	mu   sync.Mutex
+	held map[*remoteSession]struct{}
 }
+
+// nodeWatchInterval is how often a gateway checks that the nodes holding its
+// players are still there.
+//
+// One call to the directory per gateway, not per player: a thousand sessions
+// asking the same question is a thousand round trips for one answer.
+const nodeWatchInterval = 5 * time.Second
+
+// nodeMissesBeforeGiveUp is how many consecutive checks a node has to be absent
+// for before its players are disconnected.
+//
+// Node liveness is already a TTL three heartbeats deep, so a node missing from
+// one poll has been quiet for a while. Requiring two makes a stall in this
+// gateway -- a long GC pause, a slow Redis call -- not enough on its own to
+// throw everybody off a node that is fine.
+const nodeMissesBeforeGiveUp = 2
 
 // NewRemoteWorld returns a World that runs no simulation of its own.
 //
 // The context bounds every subscription it opens, so shutting the gateway down
 // takes its players' subscriptions with it.
 func NewRemoteWorld(ctx context.Context, b bus.Bus, dir directory.Directory, gatewayID string, log *slog.Logger) *RemoteWorld {
-	return &RemoteWorld{bus: b, dir: dir, log: log, lifetime: ctx, gatewayID: gatewayID}
+	w := &RemoteWorld{
+		bus: b, dir: dir, log: log, lifetime: ctx,
+		gatewayID: gatewayID,
+		held:      make(map[*remoteSession]struct{}),
+	}
+	go w.watchNodes()
+	return w
+}
+
+// watchNodes disconnects players whose world node has stopped existing.
+//
+// Nothing else notices. The calls a connected player makes constantly are
+// published and not waited for -- that is the whole point of them -- so a
+// gateway whose world node has died keeps accepting input and forwarding it to
+// a subject nobody is subscribed to. The player sits in a world that has
+// stopped moving, with an open connection and no error, indefinitely.
+//
+// A chaos run showed exactly that: killing one of three world nodes took the
+// snapshot rate from twenty per player per second to nine, where it stayed for
+// the rest of the run, while the gateway reported every player as connected and
+// healthy. The players on the dead node were never told, so they never
+// reconnected, so they never recovered.
+//
+// The directory already knows which nodes are alive -- it is what placement
+// uses to avoid starting rooms on a node that has gone. This asks it.
+func (w *RemoteWorld) watchNodes() {
+	ticker := time.NewTicker(nodeWatchInterval)
+	defer ticker.Stop()
+
+	misses := make(map[directory.NodeID]int)
+
+	for {
+		select {
+		case <-w.lifetime.Done():
+			return
+		case <-ticker.C:
+		}
+
+		nodes, err := w.dir.LiveNodes(w.lifetime)
+		if err != nil {
+			// Not evidence about any node. Acting on a failed lookup would
+			// disconnect everybody the moment the directory hiccups.
+			w.log.Warn("checking which world nodes are alive", "err", err)
+			continue
+		}
+
+		live := make(map[directory.NodeID]bool, len(nodes))
+		for _, n := range nodes {
+			live[n] = true
+			delete(misses, n)
+		}
+
+		for _, s := range w.sessionsOnDeadNodes(live) {
+			misses[s.node]++
+			if misses[s.node] < nodeMissesBeforeGiveUp {
+				continue
+			}
+			w.log.Warn("the node holding a player has gone; closing the connection so they can come back",
+				"node", s.node, "character", s.characterID)
+			s.nodeDied()
+		}
+	}
+}
+
+// sessionsOnDeadNodes returns the sessions whose node is not in the live set.
+func (w *RemoteWorld) sessionsOnDeadNodes(live map[directory.NodeID]bool) []*remoteSession {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	var out []*remoteSession
+	for s := range w.held {
+		if !live[s.node] {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+func (w *RemoteWorld) hold(s *remoteSession) {
+	w.mu.Lock()
+	w.held[s] = struct{}{}
+	w.mu.Unlock()
+}
+
+func (w *RemoteWorld) release(s *remoteSession) {
+	w.mu.Lock()
+	delete(w.held, s)
+	w.mu.Unlock()
 }
 
 // gatewayCallbackSubject is where one character's messages are delivered.
@@ -134,6 +240,11 @@ func (w *RemoteWorld) Enter(ctx context.Context, accountID, characterID uuid.UUI
 		session.node = node
 		session.name = reply.GetName()
 		session.entityID = room.EntityID(reply.GetEntityId())
+		session.world = w
+
+		// Registered only once it is actually on a node, so the watcher never
+		// sees a session with no node to check.
+		w.hold(session)
 		return session, nil
 	}
 
@@ -173,6 +284,10 @@ type remoteSession struct {
 	entityID    room.EntityID
 
 	callback string
+
+	// world is the gateway this session belongs to, so it can take itself out
+	// of the watch list when it ends.
+	world *RemoteWorld
 
 	mu     sync.Mutex
 	sub    bus.Subscription
@@ -233,7 +348,34 @@ func (s *remoteSession) apply(cb *mmov1.SessionCallback) {
 	}
 }
 
+// nodeDied ends a session whose world node has gone.
+//
+// The same path as losing the lease, because it is the same situation from the
+// player's side: this connection is no longer attached to anything, and the way
+// back is a new one. Their character is still safe -- whatever the last
+// checkpoint wrote is what they come back to -- and its lease will lapse on its
+// own, which is what lets them come back at all.
+func (s *remoteSession) nodeDied() {
+	s.mu.Lock()
+	if s.gone {
+		s.mu.Unlock()
+		return
+	}
+	s.gone = true
+	onLost := s.onLost
+	s.mu.Unlock()
+
+	if onLost != nil {
+		onLost("the server holding your character stopped responding")
+	}
+	s.stop()
+}
+
 func (s *remoteSession) stop() {
+	if s.world != nil {
+		s.world.release(s)
+	}
+
 	s.mu.Lock()
 	sub := s.sub
 	s.sub = nil
