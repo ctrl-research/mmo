@@ -197,7 +197,11 @@ func (b *bot) readLoop(ctx context.Context) {
 		msg, err := b.recv(ctx)
 		if err != nil {
 			if ctx.Err() == nil {
-				b.stats.disconnects.Add(1)
+				// Why, not just that it happened. "47 bots dropped" is a
+				// number to go and read logs about; "47 bots dropped with
+				// StatusCode(4005) this character is already in play" is an
+				// answer.
+				b.stats.dropped(err)
 			}
 			return
 		}
@@ -213,7 +217,8 @@ func (b *bot) readLoop(ctx context.Context) {
 			b.stats.observeRTT(time.Since(sent))
 
 		case msg.GetKick() != nil:
-			b.stats.kicks.Add(1)
+			k := msg.GetKick()
+			b.stats.kicked(fmt.Sprintf("code %d: %s", k.GetCode(), k.GetReason()))
 			return
 
 		case msg.GetEvent() != nil:

@@ -91,6 +91,62 @@ var releaseScript = redis.NewScript(`
 	return 1
 `)
 
+// seedScript raises the token counter to at least a floor, never lowering it.
+//
+// Monotonic because several nodes start at once and each seeds from the same
+// database: the last one to run must not undo the others, and a node that
+// started before a busy period must not drag the counter back.
+var seedScript = redis.NewScript(`
+	local counter = KEYS[1]
+	local floor = tonumber(ARGV[1])
+	local current = tonumber(redis.call('GET', counter) or '0')
+
+	if current < floor then
+		redis.call('SET', counter, floor)
+		return {floor, 1}
+	end
+	return {current, 0}
+`)
+
+// Seed raises the fencing counter above a floor, which must be the highest
+// token any character has already been written with.
+//
+// The counter lives in Redis and the tokens it is compared against live in
+// Postgres, so this is the one value in Redis whose loss is not free. Every
+// other thing in there is reconstructible and losing it costs a disconnect --
+// but a counter that restarts at one issues tokens *below* what the database
+// already holds, and the fencing predicate correctly rejects every checkpoint
+// from every character that has played before. The symptom is not an error at
+// startup: it is players losing their progress one lease renewal at a time,
+// with the database doing exactly what it was told to.
+//
+// Redis is normally durable enough for this. "Normally" is doing a lot of work
+// in that sentence: an eviction policy, a flush, or a restore from an empty
+// snapshot all lose it, and the in-memory implementation has always seeded
+// itself for precisely this reason.
+// It reports whether the counter actually had to be raised. Equal is the
+// healthy steady state -- a checkpoint writes the token it holds, so the
+// database catches up to the counter and the two match on the next start.
+// Warning on that would mean warning on every start, which is how a real
+// warning gets ignored.
+func (r *RedisLeases) Seed(ctx context.Context, floor int64) (at int64, raised bool, err error) {
+	if floor <= 0 {
+		return 0, false, nil
+	}
+
+	res, err := seedScript.Run(ctx, r.client, []string{r.counterKey()}, floor).Slice()
+	if err != nil {
+		return 0, false, fmt.Errorf("directory: seeding the lease counter: %w", err)
+	}
+	if len(res) != 2 {
+		return 0, false, errors.New("directory: unexpected seed response")
+	}
+
+	at, _ = res[0].(int64)
+	flag, _ := res[1].(int64)
+	return at, flag == 1, nil
+}
+
 // Acquire takes exclusive ownership of a character.
 func (r *RedisLeases) Acquire(ctx context.Context, characterID string, node NodeID) (Lease, error) {
 	if characterID == "" {

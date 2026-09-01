@@ -89,8 +89,34 @@ func openCoordination(ctx context.Context, cfg config, client *redis.Client, db 
 		return leases, ephemeral, nil
 	}
 
-	log.Info("using Redis for leases and token storage", "addr", cfg.redisAddr)
-	return directory.NewRedisLeases(client, "mmo"),
+	leases := directory.NewRedisLeases(client, "mmo")
+
+	// Seeded from the database for the same reason the in-memory path is. The
+	// counter is in Redis and the tokens it is compared against are in
+	// Postgres, so it is the one value in Redis whose loss is not free: a
+	// counter that restarts below what the database holds fences every
+	// character that has played before, and the symptom is lost progress
+	// rather than an error.
+	highest, err := db.HighestLeaseToken(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	at, raised, err := leases.Seed(ctx, highest)
+	if err != nil {
+		return nil, nil, err
+	}
+	if raised {
+		// Only when it was genuinely behind, which means something lost it.
+		log.Warn("the Redis lease counter was behind the database and has been raised; "+
+			"something lost it, and every character that has played before "+
+			"would have failed its next checkpoint",
+			"raised_to", at)
+	} else {
+		log.Info("using Redis for leases and token storage",
+			"addr", cfg.redisAddr, "tokens_at", at)
+	}
+
+	return leases,
 		auth.NewRedisEphemeral(client, "mmo"),
 		nil
 }
