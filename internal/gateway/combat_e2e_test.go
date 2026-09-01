@@ -150,21 +150,35 @@ func sawPlayer(snaps []*mmov1.Snapshot, id uint32) bool {
 	return false
 }
 
-// fightTimeout is how long a driven fight is given to reach a kill.
+// The budget for a driven fight, in simulated time rather than in seconds.
 //
-// It takes a little over two seconds on an idle machine: walk three hundred
-// units, then land two swings half a second apart. The generous multiple is
-// for CI, where this package shares a runner with the whole suite under the
-// race detector and the driver's own ticker is the first thing to starve --
-// the character walks at whatever rate its intents actually get sent, while
-// the room ticks on regardless.
+// A fight is tick-bound work: the character walks a fixed distance at a fixed
+// speed per tick, then lands swings on the action tick, and the mob dies after
+// a fixed number of them. How long that takes in *seconds* depends entirely on
+// whether the machine is busy -- and this package shares a CI runner with the
+// whole suite under the race detector, where the driver's own ticker is the
+// first thing to starve. The character then walks at whatever rate its intents
+// actually get sent while the room ticks on regardless.
 //
-// Twenty seconds was not enough for that, and failed as "dealt damage but
-// never killed anything": far enough to reach a mob, not far enough to swing
-// at it twice. A timeout this far above the real duration cannot fail for
-// being slow, only for being broken -- and it costs nothing in the passing
-// case, which is every case.
-const fightTimeout = 90 * time.Second
+// Two wall-clock budgets have already been outrun here: twenty seconds, then
+// ninety, each failing as "dealt damage but never killed anything" -- far
+// enough to reach a mob, not far enough to swing at it twice. Raising it again
+// would be the same mistake a third time, because the thing being waited for
+// was never measured in seconds.
+//
+// So the fight is given a number of server ticks instead, read off the
+// snapshots as they arrive. On a loaded machine that is more seconds and
+// exactly as much simulation. It takes about forty ticks on an idle machine.
+const fightTicks = 20 * 60 // a minute of simulated time at 20 Hz
+
+// stallTimeout is the backstop, and the only thing here still measured in
+// seconds.
+//
+// It is not a budget for the fight: it is how long to wait for the server to
+// advance *at all*. A server that is merely slow keeps ticking and the fight
+// keeps progressing; a server that has stopped produces no new ticks, and this
+// is what turns that into a failure rather than a hang.
+const stallTimeout = 30 * time.Second
 
 // A full combat loop over the wire: walk to a mob, hit it until it dies, gain
 // experience, and see loot appear.
@@ -179,28 +193,27 @@ func TestFullCombatLoopOverTheWire(t *testing.T) {
 	var snaps []*mmov1.Snapshot
 	sawDamage, sawDeath, sawExp := false, false, false
 
-	deadline := time.Now().Add(fightTimeout)
-	for time.Now().Before(deadline) && !(sawDeath && sawExp) {
-		ev, sn := c.collect(250 * time.Millisecond)
-		snaps = append(snaps, sn...)
-
-		for _, e := range ev {
-			switch e.Body.(type) {
-			case *mmov1.Event_Damage:
-				sawDamage = true
-			case *mmov1.Event_Died:
-				sawDeath = true
-			case *mmov1.Event_ExpGained:
-				sawExp = true
+	simulated := c.simulateFight(
+		func() bool { return sawDeath && sawExp },
+		func(ev []*mmov1.Event, sn []*mmov1.Snapshot) {
+			snaps = append(snaps, sn...)
+			for _, e := range ev {
+				switch e.Body.(type) {
+				case *mmov1.Event_Damage:
+					sawDamage = true
+				case *mmov1.Event_Died:
+					sawDeath = true
+				case *mmov1.Event_ExpGained:
+					sawExp = true
+				}
 			}
-		}
-	}
+		})
 
 	if !sawDamage {
-		t.Fatalf("never dealt damage after %s of running right and swinging", fightTimeout)
+		t.Fatalf("never dealt damage in %d ticks of running right and swinging", simulated)
 	}
 	if !sawDeath {
-		t.Fatal("dealt damage but never killed anything")
+		t.Fatalf("dealt damage but never killed anything in %d simulated ticks", simulated)
 	}
 	if !sawExp {
 		t.Error("killed something but gained no experience")
@@ -257,17 +270,18 @@ func TestProgressionEventsAreNotBroadcast(t *testing.T) {
 	defer a.driveIntoTheFight()()
 
 	aliceGained := false
-	deadline := time.Now().Add(fightTimeout)
-	for time.Now().Before(deadline) && !aliceGained {
-		ev, _ := a.collect(250 * time.Millisecond)
-		for _, e := range ev {
-			if e.GetExpGained() != nil {
-				aliceGained = true
+	simulated := a.simulateFight(
+		func() bool { return aliceGained },
+		func(ev []*mmov1.Event, _ []*mmov1.Snapshot) {
+			for _, e := range ev {
+				if e.GetExpGained() != nil {
+					aliceGained = true
+				}
 			}
-		}
-	}
+		})
 	if !aliceGained {
-		t.Fatal("alice never reached a kill, so there is nothing to assert about bob")
+		t.Fatalf("alice never reached a kill in %d simulated ticks, "+
+			"so there is nothing to assert about bob", simulated)
 	}
 
 	bobEvents, _ := b.collect(700 * time.Millisecond)
@@ -436,4 +450,41 @@ func (c *client) driveIntoTheFight() (stop func()) {
 		close(quit)
 		<-done
 	}
+}
+
+// simulateFight drives the collect loop until the fight has resolved, the tick
+// budget runs out, or the server stops ticking. It returns how many server
+// ticks passed, which is the only unit any of this is really measured in.
+//
+// enough is asked after every batch; see is handed each batch to record
+// whatever the caller is watching for.
+func (c *client) simulateFight(enough func() bool, see func([]*mmov1.Event, []*mmov1.Snapshot)) uint64 {
+	c.t.Helper()
+
+	var firstTick, lastTick uint64
+	lastProgress := time.Now()
+
+	for !enough() {
+		ev, sn := c.collect(250 * time.Millisecond)
+		see(ev, sn)
+
+		for _, s := range sn {
+			if tick := s.GetTick(); tick > lastTick {
+				lastTick = tick
+				lastProgress = time.Now()
+				if firstTick == 0 {
+					firstTick = tick
+				}
+			}
+		}
+
+		if firstTick != 0 && lastTick-firstTick > fightTicks {
+			return lastTick - firstTick
+		}
+		if time.Since(lastProgress) > stallTimeout {
+			c.t.Fatalf("the server stopped ticking: no new tick in %s (last was %d)",
+				stallTimeout, lastTick)
+		}
+	}
+	return lastTick - firstTick
 }

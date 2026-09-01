@@ -332,7 +332,14 @@ func (c *client) recv(timeout time.Duration) ([]*mmov1.ServerMessage, error) {
 func (c *client) awaitWelcome() *mmov1.Welcome {
 	c.t.Helper()
 
-	m := c.findInInbox(5*time.Second, func(m *mmov1.ServerMessage) bool {
+	// Fifteen seconds, not five. Entering the world is a lease, a read from
+	// Postgres, a placement through the directory and a room being started --
+	// the same shape of work the server gives its own transfer protocol fifteen
+	// seconds for, and for the same stated reason. Five was under the real
+	// duration on a CI runner sharing itself with the whole suite under the
+	// race detector, which failed as "no Welcome received": indistinguishable
+	// from a login that is genuinely broken.
+	m := c.findInInbox(15*time.Second, func(m *mmov1.ServerMessage) bool {
 		return m.GetWelcome() != nil
 	})
 	if m == nil {
