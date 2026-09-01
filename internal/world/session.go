@@ -818,6 +818,20 @@ func (s *Session) closed() bool {
 }
 
 // Close ends the session cleanly: final checkpoint, then release.
+// stopWork tells the session's own goroutine to wind down, without tearing
+// anything else down.
+//
+// The first half of a drain, and it exists because the second half waits. Close
+// gives the session goroutine up to a transfer's worth of time to finish what
+// it is doing, which is right -- a transfer halfway through moving a character
+// must not be cut in half -- but done one session at a time it means a node
+// holding fifty characters needs fifty of those waits in series, which no grace
+// period is long enough for. Signalling all of them first lets the waiting
+// happen at once.
+func (s *Session) stopWork() {
+	s.closeOnce.Do(func() { close(s.done) })
+}
+
 func (s *Session) Close(ctx context.Context) {
 	s.mu.Lock()
 	if s.closedFlag {

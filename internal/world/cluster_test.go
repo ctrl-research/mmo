@@ -44,6 +44,7 @@ type cluster struct {
 	presence directory.Presence
 	parties  directory.Parties
 	dir      directory.Directory
+	leases   directory.Leases
 	bus      bus.Bus
 	store    *store.Store
 	game     *content.Content
@@ -121,7 +122,7 @@ func newCluster(t *testing.T) *cluster {
 
 	c := &cluster{
 		t: t, dir: dir, bus: busA, store: st, game: game,
-		presence: presence, parties: parties, cancel: cancel,
+		presence: presence, parties: parties, leases: leases, cancel: cancel,
 	}
 	c.a = node("node-a", busA, dirA)
 	c.b = node("node-b", busB, dirB)
@@ -935,5 +936,97 @@ func TestInstanceCountIsReported(t *testing.T) {
 	mu.Unlock()
 	if after != before {
 		t.Errorf("re-hosting an existing room reported a change (%d then %d)", before, after)
+	}
+}
+
+// A node that is leaving on purpose leaves nothing behind.
+//
+// The chaos work established what an unannounced death costs: every character
+// waits out a lease TTL before anybody can pick it up, and its rooms stay
+// registered holding slot counts for players who are gone. A drain is the same
+// shutdown with the order reversed, and none of that should survive it.
+func TestDrainingLeavesNothingBehind(t *testing.T) {
+	c := newCluster(t)
+	ctx := context.Background()
+
+	account, character := c.character("Alice")
+	alice, _ := c.enter(c.a, account, character)
+
+	if !alice.InRoom() {
+		t.Fatal("alice is not in a room, so there is nothing to drain")
+	}
+	if c.a.Rooms() == 0 {
+		t.Fatal("the node hosts no rooms, so there is nothing to give up")
+	}
+
+	c.a.Drain(ctx)
+
+	// The lease is released, not left to lapse. That is what makes a player's
+	// reconnect immediate rather than a thirty-second wait.
+	if _, err := c.leases.Acquire(ctx, character.String(), "somebody-else"); err != nil {
+		t.Errorf("the character is still leased after a drain, so nobody can pick it up: %v", err)
+	}
+
+	// And the rooms are given up rather than left for placement to reap.
+	instances, err := c.dir.List(ctx)
+	if err != nil {
+		t.Fatalf("listing instances: %v", err)
+	}
+	for _, inst := range instances {
+		if inst.Node == "node-a" {
+			t.Errorf("instance %d is still registered on a node that has drained", inst.ID)
+		}
+	}
+
+	// Nothing new arrives at a process that is leaving.
+	live, err := c.dir.LiveNodes(ctx)
+	if err != nil {
+		t.Fatalf("listing live nodes: %v", err)
+	}
+	for _, n := range live {
+		if n == "node-a" {
+			t.Error("a drained node is still being offered work")
+		}
+	}
+}
+
+// A drained character is told, and told last.
+//
+// Telling the player before the checkpoint is written would be friendlier and
+// wrong: a client that reconnects quickly lands on another node and takes the
+// lease before this one has finished writing, and the fencing predicate then
+// correctly rejects the write. The player would lose exactly the progress the
+// drain exists to protect.
+func TestDrainTellsThePlayerAfterItHasSavedThem(t *testing.T) {
+	c := newCluster(t)
+
+	account, character := c.character("Alice")
+	alice, _ := c.enter(c.a, account, character)
+
+	var mu sync.Mutex
+	told := 0
+	leaseFreeWhenTold := false
+
+	alice.OnOwnershipLost(func(string) {
+		mu.Lock()
+		defer mu.Unlock()
+		told++
+
+		// The lease has to be gone by the time the player hears anything,
+		// because that is the moment their client starts trying to come back.
+		_, err := c.leases.Acquire(context.Background(),
+			character.String(), "the-node-they-reconnect-to")
+		leaseFreeWhenTold = err == nil
+	})
+
+	c.a.Drain(context.Background())
+
+	mu.Lock()
+	defer mu.Unlock()
+	if told == 0 {
+		t.Fatal("the player was never told the server was restarting")
+	}
+	if !leaseFreeWhenTold {
+		t.Error("the player was told to reconnect while their character was still leased here")
 	}
 }

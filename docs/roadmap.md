@@ -629,7 +629,7 @@ names already follow and the only one that does not need re-tuning per map.
 - [x] Grafana dashboards checked in (`deploy/grafana/mmo.json`)
 - [x] Load test: 1000 bots across 3 world nodes (`deploy/loadtest.sh`)
 - [x] Chaos testing: kill a world node, verify leases expire and characters recover
-- [ ] Graceful drain on shutdown: hand off rooms, checkpoint, disconnect cleanly
+- [x] Graceful drain on shutdown: hand off rooms, checkpoint, disconnect cleanly
 
 **Exit:** 1000 concurrent bots across three world nodes, tick p99 within budget, and killing a node loses at most one checkpoint interval for its players.
 
@@ -1281,6 +1281,67 @@ lockstep is a thundering herd at the moment the cluster has least to spare.
   while rooms tick at exactly 20 Hz with zero overruns and the gateways drop
   nothing. Ticks are being simulated that somebody is not being sent. Where the
   messages go is not something this run established.
+
+### Leaving on purpose
+
+The chaos item established what an unannounced death costs. A drain is the same
+shutdown with the order reversed:
+
+1. **Withdraw from placement**, so nothing new arrives at a process that is
+   leaving. `Directory.Withdraw` removes the liveness entry rather than waiting
+   for it to expire -- otherwise a character arrives fifteen seconds into a
+   shutdown, at the one node that cannot look after it.
+2. **Stop accepting characters** handed over by other nodes, for the same reason.
+3. **For each character: checkpoint, release the lease, and only then tell the
+   player.**
+4. **Give up the rooms**, so nothing is left registered on a node that has gone
+   -- the state a killed node leaves behind for placement to reap.
+
+**Step 3's order is the whole point.** Telling the player first would be
+friendlier: their client could be reconnecting while this node finishes writing.
+But a client that reconnects quickly lands on another node and takes the lease
+before the checkpoint here is written, and the fencing predicate then correctly
+rejects it -- the player losing exactly the progress a drain exists to protect.
+So: write, release, then speak. There is a test that asserts the lease is
+already free at the moment the player is told, because the ordering is the only
+thing making this better than a kill.
+
+**The first version could not finish.** It timed out at its full twenty-second
+budget with a quarter of the characters never seen off. Two reasons, and the
+second was the real one:
+
+- `Close` waits for the session's own goroutine, bounded by a transfer's
+  timeout, because a transfer halfway through moving a character must not be cut
+  in half. Done one character at a time that is fifty such waits in series. Every
+  session is now told to wind down before any of them is waited for, so the
+  waiting happens at once.
+- **Sixteen concurrent checkpoints against a database pool of ten.** More
+  concurrent writers than connections does not make the writes faster; it makes
+  them queue inside the pool, where the wait is invisible and counts against the
+  deadline just the same. A quarter of the characters spent the entire budget
+  waiting for a connection. The drain now sizes itself to `Store.MaxConns`, and
+  gives each character a slice of the remaining budget rather than letting one
+  stuck write spend all of it.
+
+After both: **54 characters seen off in 6.7 seconds.**
+
+| | after a kill | after a drain |
+| --- | --- | --- |
+| players told | only once the gateway noticed | immediately, with a reason |
+| lease | waits out its TTL | released |
+| rooms | left registered, reaped later by placement | given up |
+| back to full | ~75 seconds | ~75 seconds |
+| snapshot rate after | settled at 15.2 per player | back to **20.0** |
+
+The snapshot rate returning to full is the part worth noticing: the kill case
+did not, and that difference is still unexplained -- see the open question from
+the load test.
+
+**One residual, stated rather than explained.** Across 93 recoveries, 91
+characters came back with everything they had and two came back about twelve
+experience short. That window overlapped the harness tearing the cluster down,
+and a control run produces no reconnects at all to compare against, so I could
+not attribute it to the drain. It is not nothing and it is not established.
 
 ---
 

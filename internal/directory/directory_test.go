@@ -1193,3 +1193,48 @@ func expireNode(t *testing.T, r *Redis, node NodeID) {
 		t.Fatalf("expiring %s: %v", node, err)
 	}
 }
+
+// A withdrawn directory offers its node no more work.
+//
+// The first step of a drain: a process that is shutting down still has rooms
+// and characters to finish with, and a character arriving while it closes its
+// sessions arrives at the one place that cannot look after it. Letting the
+// liveness TTL do this instead means fifteen more seconds of new arrivals into
+// a process that is leaving.
+func TestWithdrawStopsPlacement(t *testing.T) {
+	eachDirectory(t, func(t *testing.T, d Directory) {
+		ctx := context.Background()
+
+		// It works before withdrawing, so the refusal afterwards is the
+		// withdrawal rather than something else being wrong.
+		if _, err := d.Join(ctx, sharedKey("henesys"), 10); err != nil {
+			t.Fatalf("placing before withdrawing: %v", err)
+		}
+
+		if err := d.Withdraw(ctx); err != nil {
+			t.Fatalf("withdrawing: %v", err)
+		}
+
+		live, err := d.LiveNodes(ctx)
+		if err != nil {
+			t.Fatalf("listing live nodes: %v", err)
+		}
+		if len(live) != 0 {
+			t.Errorf("a withdrawn directory still lists %v as live", live)
+		}
+
+		// A room that needs creating has nowhere to go. Refused as "no live
+		// node" rather than "no capacity": the world is not full, there is no
+		// world.
+		_, err = d.NewInstance(ctx, sharedKey("ellinia"), 10)
+		if !errors.Is(err, ErrNoLiveNode) {
+			t.Errorf("placing after withdrawing gave %v, want ErrNoLiveNode", err)
+		}
+
+		// Idempotent, because a drain can be asked for twice and a shutdown
+		// path is the worst place for a second call to be an error.
+		if err := d.Withdraw(ctx); err != nil {
+			t.Errorf("withdrawing twice: %v", err)
+		}
+	})
+}
