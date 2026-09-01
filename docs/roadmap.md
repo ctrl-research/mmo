@@ -622,6 +622,7 @@ names already follow and the only one that does not need re-tuning per map.
 
 - [x] `nats` bus implementation
 - [x] `redis` directory implementation (and presence and parties with it)
+- [x] Cross-process room handles, so a world node can be deployed more than once
 - [ ] Split roles into separate deployments; k8s manifests
 - [ ] Headless bot client for load generation
 - [ ] Grafana dashboards checked in
@@ -849,6 +850,71 @@ client, which was harmless while every user opened its own; consolidating onto
 one shared client made it a component unilaterally closing a connection the
 directory, presence and token storage are still using. Nothing called it, so it
 was latent rather than live.
+
+### Rooms in another process
+
+The piece every other M9 item was quietly waiting for, and the one the code had
+been pointing at since M0: `Node.resolve` returned an explicit "cross-process
+room handles arrive in M9" error, and the cluster harness said its shared room
+registry "stands in for M9's remote handles".
+
+Both are gone. A session on one node drives a room on another over the bus, and
+**the cluster suite now runs with a registry per node** -- so the two nodes
+share the bus, the directory, the leases and the database, which is exactly what
+two processes share, and nothing else. Thirty tests fail if the remote handle is
+taken away, which is the measure of how much of the game was resting on that
+shared pointer.
+
+The split is asymmetric on purpose. Three commands return something and are
+request/reply; the other thirteen are published and not waited for. Input
+arrives every client tick, and a round trip per keypress would put the network
+between a key and the simulation -- the room already treats input as a queue
+that can starve, and replays the last one when it does, which is the same
+failure a dropped publish produces and is already handled.
+
+**A publish to a responder is not dropped, it is reinterpreted.** This was the
+real bug, and it is the kind only a test that drives the thing directly can
+find. `Respond` reads every message as a `BusEnvelope`, because that is how a
+request carries its reply subject -- and *any* bytes decode as some envelope. So
+publishing a command straight to a responder's subject succeeded, the handler
+ran with an empty payload, and nothing happened. Thirteen of the sixteen
+methods did nothing at all, and the transfer tests still passed because
+transfers only use the three that wait for an answer. The fix is `bus.Notify`,
+which wraps the payload the way a request does minus the reply subject, and is
+now part of the bus conformance suite.
+
+**Content does not travel.** Portals, stations, recipes and dungeons are named
+and resolved from the receiving node's own content, the same way an incoming
+transfer already resolves its spawn point. Sending the resolved object would
+make the wire format grow with the game's content and would let two nodes
+running different builds disagree silently about what a station makes.
+
+**An empty stat block is not a neutral one.** The "more" layer is a product, so
+a block that fails to decode and is applied as zeroes gives the character no
+life and no damage. `stats.Rebuild` refuses a block of the wrong length -- which
+is what a sender built against a different stat list produces -- and the room
+keeps the block it had, which is stale but playable.
+
+| Claim | How it was checked |
+| --- | --- |
+| The whole game works across processes | The cluster suite with a registry per node: transfers, chat, parties, dungeons, loot, waypoints. 30 tests fail without the remote handle |
+| Input actually crosses | `TestRemoteRoomAppliesInput` -- the highest-frequency call, published rather than awaited, so nothing else would notice it going nowhere |
+| Leaving actually crosses | `TestRemoteRoomLeaveRemovesTheCharacter` -- a Leave that never lands is a ghost nobody can remove |
+| A one-way message reaches a responder | `TestBusNotifyReachesAResponder`, against both buses |
+| A retired room is retryable, not an error | `TestRemoteRoomReportsAMissingRoomAsClosed` -- idle rooms retire, so this is a normal Tuesday, not a failed login |
+| A failed capture is not an empty snapshot | `TestRemoteRoomCaptureFailureIsNotAnEmptySnapshot` -- the caller checkpoints what it gets back |
+| Absent is not empty | `TestAttachmentKeepsAbsentDistinctFromEmpty` -- "leave what the room has" against "set it to nothing", which proto3 cannot express |
+| The portal index decides where you go | `TestResolvePortalEventUsesTheIndex` -- every map in the test content has one portal, so a version ignoring the index passes everything else |
+| A stale room's messages are dropped | `TestStaleRoomCallbacksAreDropped` |
+| Everything round-trips | Nine encode/decode tests, including fixed-point positions, which would land a character inside the floor if rounded |
+| The guards hold | 25 mutations of the wire, the handle, the server and the callbacks -- all caught. Five of the first seven survivors were the publish bug above |
+
+**Known limit:** the callback subject is per character, so a message from a room
+the character has just left can still arrive. The entity id on each callback
+narrows it -- a message about a body they no longer have is dropped -- but
+entity ids are per room, so the old room could have handed out the same one.
+The cost of being wrong is one stale frame that the next snapshot corrects.
+Closing it properly means a subject per attachment rather than per character.
 
 ---
 

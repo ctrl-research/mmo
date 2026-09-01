@@ -179,3 +179,22 @@ func (b *InProc) publishCounted(ctx context.Context, subject string, msg proto.M
 	}
 	return delivered, nil
 }
+
+// Notify sends a one-way message to a subject served by Respond.
+//
+// Respond reads every message as a BusEnvelope, because that is how a request
+// carries its reply subject. A plain Publish of the payload itself is therefore
+// not dropped with an error but *reinterpreted*: proto decodes the command as
+// an envelope, finds nothing in the payload field, and hands the responder an
+// empty message. The send succeeds, the handler runs, and nothing happens.
+//
+// So a fire-and-forget call to a responder has to be wrapped the same way a
+// request is, minus the reply subject. This is that, named so the next caller
+// does not have to rediscover it.
+func Notify(ctx context.Context, b Bus, subject string, msg proto.Message) error {
+	payload, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	return b.Publish(ctx, subject, &mmov1.BusEnvelope{Payload: payload})
+}

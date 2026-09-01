@@ -191,3 +191,333 @@ message GuildUpdate {
   // Disbanded marks the last update a guild will send.
   bool disbanded = 3;
 }
+
+// ---------------------------------------------------------------------------
+// Driving a room in another process.
+//
+// A session lives on the node the player is connected to; the room it is in may
+// be hosted anywhere. Everything below is the room.Handle interface and its two
+// callback interfaces (room.Sink and room.SessionEvents) put on the wire, so
+// the two can be in different processes.
+//
+// Values that come from content -- portals, stations, recipes, dungeons --
+// travel as identifiers and are resolved from the receiving node's own content,
+// the same way an incoming transfer resolves its spawn point. Sending the
+// resolved object instead would make the wire format grow with the game's
+// content, and would let two nodes running different builds disagree silently
+// about what a station makes.
+// ---------------------------------------------------------------------------
+
+// RoomEntity addresses one character inside one room instance.
+message RoomEntity {
+  uint64 instance_id = 1;
+  uint32 entity_id = 2;
+}
+
+// WireProgress is room.Progress.
+message WireProgress {
+  int32 level = 1;
+  int64 exp = 2;
+  int64 gold = 3;
+  string map_id = 4;
+}
+
+// WireLoadoutSlot is one skill on the bar.
+message WireLoadoutSlot {
+  string skill_id = 1;
+  int32 rank = 2;
+  repeated string supports = 3;
+}
+
+// WireVec is a position.
+message WireVec {
+  int32 x = 1;
+  int32 y = 2;
+}
+
+// WireStats is a stats.Block, as its four parallel arrays.
+//
+// Indexed by StatID rather than named, because the block is an array and a
+// map keyed by name would have to agree about names across a deploy. The
+// arrays are sent whole: they are short, and a sparse encoding would need the
+// same length check to be safe anyway.
+message WireStats {
+  repeated int64 base = 1;
+  repeated int64 flat = 2;
+  repeated int64 increased = 3;
+  repeated int64 more = 4;
+}
+
+// WireDerived is everything the session computes from equipment.
+message WireDerived {
+  WireStats block = 1;
+  uint32 max_hp = 2;
+  map<string, int32> tool_power = 3;
+}
+
+// WireSnapshot is room.Snapshot: what a checkpoint writes.
+message WireSnapshot {
+  WireProgress progress = 1;
+
+  // State is the room's own JSON encoding, reused rather than re-modelled:
+  // it is already the format a checkpoint writes to the database, and a second
+  // encoding of the same thing is a second place for the two to disagree.
+  bytes state = 2;
+
+  map<string, int64> secondary = 3;
+}
+
+// WireJoinSpec is room.JoinSpec, minus the parts that cannot travel.
+//
+// Sink and Events are in-process references, so they are not here: a remote
+// join attaches its connection afterwards, which is the same order a transfer
+// already uses.
+message WireJoinSpec {
+  string character_id = 1;
+  string name = 2;
+  WireProgress progress = 3;
+  bytes state = 4;
+  bool fresh = 5;
+  repeated WireLoadoutSlot loadout = 6;
+  string layer_key = 7;
+  repeated string known_waypoints = 8;
+  map<string, int64> secondary = 9;
+  WireVec spawn = 10;
+  bool arrived = 11;
+}
+
+// RoomCommand is one call on room.Handle.
+//
+// One message with a oneof rather than a subject per method: the room is the
+// thing being addressed, and a subject per method would multiply subscriptions
+// by sixteen for no routing benefit.
+message RoomCommand {
+  uint64 instance_id = 1;
+
+  // CallbackSubject is where this room should publish everything it sends back
+  // to the session -- snapshots, chat, loot claims. Set on Join and Attach,
+  // which are the two calls that give a character a connection.
+  string callback_subject = 2;
+
+  oneof body {
+    JoinCommand join = 10;
+    CaptureCommand capture = 11;
+    FreezeCommand freeze = 12;
+    AttachCommand attach = 13;
+    SetLoadoutCommand set_loadout = 14;
+    SetStatsCommand set_stats = 15;
+    ResolveLootCommand resolve_loot = 16;
+    AbortTransferCommand abort_transfer = 17;
+    LeaveCommand leave = 18;
+    InputCommand input = 19;
+    CastCommand cast = 20;
+    InteractCommand interact = 21;
+    CraftCommand craft = 22;
+    ResolveCraftCommand resolve_craft = 23;
+    SayCommand say = 24;
+    SetLayerCommand set_layer = 25;
+  }
+}
+
+message JoinCommand { WireJoinSpec spec = 1; }
+message CaptureCommand { uint32 entity_id = 1; }
+message FreezeCommand { uint32 entity_id = 1; }
+
+message AttachCommand {
+  uint32 entity_id = 1;
+  repeated WireLoadoutSlot loadout = 2;
+  string layer_key = 3;
+  repeated string known_waypoints = 4;
+  map<string, int64> secondary = 5;
+
+  // HasSecondary and HasWaypoints distinguish "leave what the room has" from
+  // "set it to nothing". A nil map and an empty one mean different things here
+  // and proto3 cannot tell them apart.
+  bool has_secondary = 6;
+  bool has_waypoints = 7;
+}
+
+message SetLoadoutCommand {
+  uint32 entity_id = 1;
+  repeated WireLoadoutSlot slots = 2;
+}
+
+message SetStatsCommand {
+  uint32 entity_id = 1;
+  WireDerived derived = 2;
+}
+
+message ResolveLootCommand {
+  uint32 player = 1;
+  uint32 drop_id = 2;
+  bool granted = 3;
+  string reason = 4;
+}
+
+message AbortTransferCommand {
+  uint32 entity_id = 1;
+  string reason = 2;
+}
+
+message LeaveCommand { uint32 entity_id = 1; }
+
+message InputCommand {
+  uint32 entity_id = 1;
+  uint32 seq = 2;
+  int32 move_x = 3;
+  bool jump = 4;
+  bool up = 5;
+  bool down = 6;
+}
+
+message CastCommand {
+  uint32 entity_id = 1;
+  string skill_id = 2;
+  bool facing_left = 3;
+}
+
+message InteractCommand {
+  uint32 entity_id = 1;
+  uint32 target = 2;
+  uint32 kind = 3;
+}
+
+message CraftCommand {
+  uint32 entity_id = 1;
+  uint32 station = 2;
+  string recipe_id = 3;
+}
+
+message ResolveCraftCommand {
+  uint32 player = 1;
+  bool made = 2;
+  string reason = 3;
+}
+
+message SayCommand {
+  uint32 entity_id = 1;
+  string body = 2;
+  int64 at_millis = 3;
+}
+
+message SetLayerCommand {
+  uint32 entity_id = 1;
+  string key = 2;
+  uint32 loot = 3;
+}
+
+// RoomCommandReply answers the three commands that return something.
+//
+// The others are fire-and-forget by design: Input arrives every client tick,
+// and a round trip per input would put the network between a keypress and the
+// simulation.
+message RoomCommandReply {
+  // Error is a failure of the call itself, as opposed to a refusal the caller
+  // is expected to handle -- those come back in the fields below.
+  string error = 1;
+
+  // Join
+  uint32 entity_id = 2;
+
+  // Capture
+  WireSnapshot snapshot = 3;
+  bool found = 4;
+
+  // Attach
+  bool attached = 5;
+
+  // Closed reports that the room is gone, so the caller can retry placement
+  // rather than treating it as an error. It is room.ErrRoomClosed, which the
+  // join path already retries on locally.
+  bool closed = 6;
+}
+
+// RoomCallback is everything a room sends back to the session driving it:
+// room.Sink and room.SessionEvents on one subject.
+//
+// One subject and one message, because they share an ordering requirement --
+// a loot claim that overtook the snapshot showing the drop would be a claim
+// for something the player has not seen yet.
+message RoomCallback {
+  uint32 entity_id = 1;
+
+  oneof body {
+    // Send carries an already-encoded game.v1 ServerMessage rather than the
+    // typed message, so cluster.proto does not import the client-facing
+    // schema -- the same separation ChatDelivery keeps. It is also one fewer
+    // encode: the room hands over bytes it would have had to produce anyway.
+    bytes send = 10;
+    SinkClose close = 11;
+    LootClaimEvent claim_loot = 12;
+    PortalEvent enter_portal = 13;
+    WaypointEvent discover_waypoint = 14;
+    StationEvent open_station = 15;
+    CraftEvent run_craft = 16;
+    GatherEvent grant_gather = 17;
+    RunEndEvent end_run = 18;
+  }
+}
+
+message SinkClose {
+  uint32 code = 1;
+  string reason = 2;
+}
+
+message LootClaimEvent {
+  uint32 player = 1;
+  string character_id = 2;
+  uint32 drop_id = 3;
+
+  // Instance is the item's own JSON encoding -- the same one the database
+  // stores, for the same reason WireSnapshot reuses the room's.
+  bytes instance = 4;
+  uint64 tick = 5;
+}
+
+message PortalEvent {
+  uint32 player = 1;
+  string character_id = 2;
+
+  // The portal is named by the map it is in and its position in that map's
+  // list, and resolved from the receiving node's content.
+  string map_id = 3;
+  uint32 portal_index = 4;
+  uint64 tick = 5;
+}
+
+message WaypointEvent {
+  uint32 player = 1;
+  string character_id = 2;
+  string waypoint_id = 3;
+}
+
+message StationEvent {
+  uint32 player = 1;
+  string character_id = 2;
+  string station_id = 3;
+  uint32 entity_id = 4;
+  map<string, int32> levels = 5;
+}
+
+message CraftEvent {
+  uint32 player = 1;
+  string character_id = 2;
+  string recipe_id = 3;
+  uint64 tick = 4;
+}
+
+message GatherEvent {
+  uint32 player = 1;
+  string character_id = 2;
+  string skill = 3;
+  string item_id = 4;
+  int32 qty = 5;
+  uint64 tick = 6;
+}
+
+message RunEndEvent {
+  uint32 player = 1;
+  string character_id = 2;
+  string dungeon_id = 3;
+  bool cleared = 4;
+}

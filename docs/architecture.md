@@ -89,7 +89,9 @@ One binary, `cmd/mmo`, with roles selected at runtime:
                             (directory, leases, presence)
 ```
 
-Nothing in the game logic changes between these two diagrams. Only the bus and directory implementations differ.
+Nothing in the game logic changes between these two diagrams. Only the bus and directory implementations differ — and the handle a session holds to its room, which is a direct reference when the room is in this process and a bus-backed one when it is not. The room itself does not know the difference: there is one room implementation and one set of rules, and being driven from another process is not a different mode.
+
+The commands that make up that handle split by what they need back. Three return something and are request/reply. The other thirteen are published and not waited for, because input arrives every client tick and a round trip per keypress would put the network between a key and the simulation. A one-way message to a responder has to be wrapped the way a request is (`bus.Notify`): `Respond` reads every message as an envelope, and any bytes decode as *some* envelope, so an unwrapped publish is not rejected but silently emptied.
 
 ## Everything that leaves a room
 

@@ -69,6 +69,7 @@ type Node struct {
 
 	transferSub bus.Subscription
 	hostSub     bus.Subscription
+	roomSub     bus.Subscription
 	chatSubs    []bus.Subscription
 
 	// watched holds the refcounted subscriptions this node has taken out on
@@ -88,6 +89,11 @@ type watchedSubject struct {
 type hosted struct {
 	room   *room.Room
 	handle room.Handle
+
+	// m is the map this instance is running. Kept so a command arriving from
+	// another process can be answered in terms of this node's own content --
+	// naming a portal by its position in the map, for one.
+	m *content.Map
 }
 
 // Config configures a Node.
@@ -235,6 +241,9 @@ func (n *Node) Start(ctx context.Context) error {
 	if err := n.serveHosting(n.ctx); err != nil {
 		return err
 	}
+	if err := n.serveRooms(n.ctx); err != nil {
+		return err
+	}
 	if err := n.serveChat(n.ctx); err != nil {
 		return err
 	}
@@ -252,6 +261,9 @@ type nodeRegistrar interface {
 func (n *Node) Stop() {
 	if n.transferSub != nil {
 		n.transferSub.Close()
+	}
+	if n.roomSub != nil {
+		n.roomSub.Close()
 	}
 	if n.hostSub != nil {
 		n.hostSub.Close()
@@ -274,12 +286,16 @@ func (n *Node) Stop() {
 
 // resolve returns a handle to an instance, wherever it is hosted.
 //
-// Local rooms resolve directly. A room on another node in this process
-// resolves through the shared registry, which is what lets a transfer reach a
-// different world role. A room in another *process* needs a bus-backed handle,
-// which is M9 -- and until then this reports that it cannot be reached rather
-// than silently doing something else.
-func (n *Node) resolve(instance directory.InstanceID, node directory.NodeID) (room.Handle, error) {
+// Three cases, in the order they are cheapest. A room on this node resolves
+// directly. A room on another node inside this process resolves through the
+// shared registry, which is what lets one process run several world roles. A
+// room in another process gets a bus-backed handle, which is the case that
+// makes a world node deployable more than once.
+//
+// The character is needed because a remote handle has to say where the room
+// should send everything back to, and that subject is per character: a node
+// subscribes only to the characters whose connections it is actually holding.
+func (n *Node) resolve(instance directory.InstanceID, node directory.NodeID, characterID string) (room.Handle, error) {
 	n.mu.Lock()
 	hosted, ok := n.rooms[instance]
 	n.mu.Unlock()
@@ -291,8 +307,18 @@ func (n *Node) resolve(instance directory.InstanceID, node directory.NodeID) (ro
 		return h, nil
 	}
 
-	return nil, fmt.Errorf("world: instance %d on node %s is not reachable from here; "+
-		"cross-process room handles arrive in M9", instance, node)
+	if node == "" || string(node) == n.nodeID {
+		// Claimed to be here, and it is not. A bus-backed handle would be
+		// addressed to this node and answered by this node, which is a request
+		// to a room that has already been established not to exist.
+		return nil, fmt.Errorf("world: instance %d is not hosted on this node", instance)
+	}
+	if characterID == "" {
+		return nil, fmt.Errorf("world: a handle to instance %d on node %s needs a character to address callbacks to",
+			instance, node)
+	}
+
+	return n.remoteHandleFor(instance, node, characterID), nil
 }
 
 // ensureRoom returns the room for an instance, starting it if this node is not
@@ -333,7 +359,7 @@ func (n *Node) ensureRoom(inst directory.Instance, m *content.Map) (room.Handle,
 		Retire:    func() bool { return n.retire(inst.ID, m.ID) },
 	})
 
-	h := &hosted{room: r, handle: room.NewHandle(r)}
+	h := &hosted{room: r, handle: room.NewHandle(r), m: m}
 	n.rooms[inst.ID] = h
 
 	// Registered so another node in this process can reach it. That is what

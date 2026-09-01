@@ -28,7 +28,7 @@ func hostSubject(nodeID string) string {
 
 // hostRoom makes sure inst is running, wherever the directory put it, and
 // returns a handle to it.
-func (n *Node) hostRoom(ctx context.Context, inst directory.Instance, m *content.Map) (room.Handle, error) {
+func (n *Node) hostRoom(ctx context.Context, inst directory.Instance, m *content.Map, characterID string) (room.Handle, error) {
 	if string(inst.Node) == n.nodeID {
 		return n.ensureRoom(inst, m)
 	}
@@ -47,7 +47,7 @@ func (n *Node) hostRoom(ctx context.Context, inst directory.Instance, m *content
 			inst.Node, inst.ID, reply.GetError())
 	}
 
-	return n.resolve(inst.ID, inst.Node)
+	return n.resolve(inst.ID, inst.Node, characterID)
 }
 
 // serveHosting accepts requests to start hosting a room.
@@ -123,7 +123,11 @@ func (n *Node) retire(inst directory.InstanceID, mapID string) bool {
 // -- retirement refuses while anyone occupies one -- but a room shutting down
 // for any other reason lands here too, and asking the directory again is always
 // the right answer.
-func (n *Node) placeAndJoin(ctx context.Context, key directory.RoomKey, spec room.JoinSpec) (
+// onRemote is called when the chosen room turns out to be in another process,
+// before anybody joins it. That is the session's cue to subscribe to the
+// room's callbacks: the join itself produces the first snapshot, and a
+// subscription taken afterwards would miss it.
+func (n *Node) placeAndJoin(ctx context.Context, key directory.RoomKey, spec room.JoinSpec, onRemote func()) (
 	room.Handle, directory.InstanceID, room.EntityID, error,
 ) {
 	m, ok := n.content.Maps[key.MapID]
@@ -138,10 +142,14 @@ func (n *Node) placeAndJoin(ctx context.Context, key directory.RoomKey, spec roo
 			return nil, 0, 0, fmt.Errorf("world: placing player: %w", err)
 		}
 
-		handle, err := n.hostRoom(ctx, inst, m)
+		handle, err := n.hostRoom(ctx, inst, m, spec.CharacterID)
 		if err != nil {
 			_ = n.dir.Leave(ctx, inst.ID)
 			return nil, 0, 0, err
+		}
+
+		if _, remote := handle.(*remoteRoom); remote && onRemote != nil {
+			onRemote()
 		}
 
 		entityID, err := handle.Join(ctx, spec)
