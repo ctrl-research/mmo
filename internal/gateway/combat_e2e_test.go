@@ -150,34 +150,35 @@ func sawPlayer(snaps []*mmov1.Snapshot, id uint32) bool {
 	return false
 }
 
-// The budget for a driven fight, in simulated time rather than in seconds.
+// The budget for a driven fight, counted in hits landed.
 //
-// A fight is tick-bound work: the character walks a fixed distance at a fixed
-// speed per tick, then lands swings on the action tick, and the mob dies after
-// a fixed number of them. How long that takes in *seconds* depends entirely on
-// whether the machine is busy -- and this package shares a CI runner with the
-// whole suite under the race detector, where the driver's own ticker is the
-// first thing to starve. The character then walks at whatever rate its intents
-// actually get sent while the room ticks on regardless.
+// Two previous versions counted seconds -- twenty, then ninety -- and both were
+// outrun on a loaded CI runner, each failing as "dealt damage but never killed
+// anything". A third counted the server's own ticks, on the reasoning that a
+// fight is tick-bound work; that was closer but still wrong, and CI said so:
+// "never killed anything in 1204 simulated ticks", which is a minute of
+// simulated time.
 //
-// Two wall-clock budgets have already been outrun here: twenty seconds, then
-// ninety, each failing as "dealt damage but never killed anything" -- far
-// enough to reach a mob, not far enough to swing at it twice. Raising it again
-// would be the same mistake a third time, because the thing being waited for
-// was never measured in seconds.
+// The flaw in all three is the same. The *room* ticks on a clock, but the
+// swings come from this test's own goroutine, and that goroutine is the first
+// thing to starve when the package shares a runner with the whole suite under
+// the race detector. A minute of simulated time can contain almost no swings.
+// So neither seconds nor ticks bound the thing being waited for.
 //
-// So the fight is given a number of server ticks instead, read off the
-// snapshots as they arrive. On a loaded machine that is more seconds and
-// exactly as much simulation. It takes about forty ticks on an idle machine.
-const fightTicks = 20 * 60 // a minute of simulated time at 20 Hz
+// What does is hits. A mob dies after a certain amount of damage, so the honest
+// failure is "we landed plenty and it still would not die" -- which is a
+// statement about the game rather than about the machine. Generous: a starting
+// character kills the first mob in a handful of hits, and this is many times
+// that.
+const fightHits = 60
 
 // stallTimeout is the backstop, and the only thing here still measured in
 // seconds.
 //
-// It is not a budget for the fight: it is how long to wait for the server to
-// advance *at all*. A server that is merely slow keeps ticking and the fight
-// keeps progressing; a server that has stopped produces no new ticks, and this
-// is what turns that into a failure rather than a hang.
+// It is not a budget for the fight: it is how long to wait for *anything* to
+// arrive. A server that is merely slow keeps sending snapshots and the fight
+// keeps progressing; a server that has stopped sends nothing, and this is what
+// turns that into a failure rather than a hang.
 const stallTimeout = 30 * time.Second
 
 // A full combat loop over the wire: walk to a mob, hit it until it dies, gain
@@ -193,14 +194,16 @@ func TestFullCombatLoopOverTheWire(t *testing.T) {
 	var snaps []*mmov1.Snapshot
 	sawDamage, sawDeath, sawExp := false, false, false
 
-	simulated := c.simulateFight(
-		func() bool { return sawDeath && sawExp },
+	hits := 0
+	c.simulateFight(
+		func() bool { return (sawDeath && sawExp) || hits >= fightHits },
 		func(ev []*mmov1.Event, sn []*mmov1.Snapshot) {
 			snaps = append(snaps, sn...)
 			for _, e := range ev {
 				switch e.Body.(type) {
 				case *mmov1.Event_Damage:
 					sawDamage = true
+					hits++
 				case *mmov1.Event_Died:
 					sawDeath = true
 				case *mmov1.Event_ExpGained:
@@ -210,10 +213,10 @@ func TestFullCombatLoopOverTheWire(t *testing.T) {
 		})
 
 	if !sawDamage {
-		t.Fatalf("never dealt damage in %d ticks of running right and swinging", simulated)
+		t.Fatal("never dealt damage at all while running right and swinging")
 	}
 	if !sawDeath {
-		t.Fatalf("dealt damage but never killed anything in %d simulated ticks", simulated)
+		t.Fatalf("landed %d hits and never killed anything", hits)
 	}
 	if !sawExp {
 		t.Error("killed something but gained no experience")
@@ -270,18 +273,22 @@ func TestProgressionEventsAreNotBroadcast(t *testing.T) {
 	defer a.driveIntoTheFight()()
 
 	aliceGained := false
-	simulated := a.simulateFight(
-		func() bool { return aliceGained },
+	hits := 0
+	a.simulateFight(
+		func() bool { return aliceGained || hits >= fightHits },
 		func(ev []*mmov1.Event, _ []*mmov1.Snapshot) {
 			for _, e := range ev {
+				if e.GetDamage() != nil {
+					hits++
+				}
 				if e.GetExpGained() != nil {
 					aliceGained = true
 				}
 			}
 		})
 	if !aliceGained {
-		t.Fatalf("alice never reached a kill in %d simulated ticks, "+
-			"so there is nothing to assert about bob", simulated)
+		t.Fatalf("alice landed %d hits without reaching a kill, "+
+			"so there is nothing to assert about bob", hits)
 	}
 
 	bobEvents, _ := b.collect(700 * time.Millisecond)
@@ -452,16 +459,17 @@ func (c *client) driveIntoTheFight() (stop func()) {
 	}
 }
 
-// simulateFight drives the collect loop until the fight has resolved, the tick
-// budget runs out, or the server stops ticking. It returns how many server
-// ticks passed, which is the only unit any of this is really measured in.
+// simulateFight drives the collect loop until the caller has seen enough, or
+// the server stops saying anything at all.
 //
-// enough is asked after every batch; see is handed each batch to record
-// whatever the caller is watching for.
-func (c *client) simulateFight(enough func() bool, see func([]*mmov1.Event, []*mmov1.Snapshot)) uint64 {
+// The caller decides when to stop, because only the caller knows what it is
+// counting. All this contributes is the backstop: a server that has stopped
+// ticking sends no new snapshots, and that is a failure rather than something
+// to wait out.
+func (c *client) simulateFight(enough func() bool, see func([]*mmov1.Event, []*mmov1.Snapshot)) {
 	c.t.Helper()
 
-	var firstTick, lastTick uint64
+	var lastTick uint64
 	lastProgress := time.Now()
 
 	for !enough() {
@@ -472,19 +480,12 @@ func (c *client) simulateFight(enough func() bool, see func([]*mmov1.Event, []*m
 			if tick := s.GetTick(); tick > lastTick {
 				lastTick = tick
 				lastProgress = time.Now()
-				if firstTick == 0 {
-					firstTick = tick
-				}
 			}
 		}
 
-		if firstTick != 0 && lastTick-firstTick > fightTicks {
-			return lastTick - firstTick
-		}
 		if time.Since(lastProgress) > stallTimeout {
-			c.t.Fatalf("the server stopped ticking: no new tick in %s (last was %d)",
+			c.t.Fatalf("the server stopped ticking: no new snapshot in %s (last tick was %d)",
 				stallTimeout, lastTick)
 		}
 	}
-	return lastTick - firstTick
 }
