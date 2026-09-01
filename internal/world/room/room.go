@@ -205,9 +205,52 @@ type Config struct {
 	Retire func() bool
 }
 
+// TickReport is what one tick of one room looked like.
+//
+// A struct rather than a parameter list because the interesting fields have
+// grown twice and each growth was a signature change for every implementation
+// and every test. It also makes the instance explicit, which the previous
+// signature could not express -- see Instance.
+type TickReport struct {
+	MapID string
+
+	// Instance identifies which room this is, and matters more than it looks.
+	//
+	// Without it a node hosting three channels of one map reports three
+	// measurements that cannot be told apart -- and a gauge set three times
+	// with a label of only the map keeps the last one, so the population reads
+	// as whatever the last channel to tick happened to hold.
+	Instance uint64
+
+	Duration time.Duration
+	Entities int
+
+	// Players is everyone in the room; Frozen is how many of them are being
+	// sent nothing.
+	//
+	// A frozen player is one whose connection dropped or who is mid-transfer --
+	// their body stays in the world so it does not blink in and out, but the
+	// snapshot phase skips them. It is worth counting separately because from
+	// outside it looks exactly like the server failing to keep up: the snapshot
+	// rate falls below the tick rate and nothing is dropped or logged.
+	Players int
+	Frozen  int
+}
+
+// frozenPlayers counts the players the snapshot phase will skip.
+func (r *Room) frozenPlayers() int {
+	n := 0
+	for _, p := range r.players {
+		if p != nil && p.frozen {
+			n++
+		}
+	}
+	return n
+}
+
 // Observer receives per-tick measurements from a room.
 type Observer interface {
-	ObserveTick(mapID string, d time.Duration, entities, players int)
+	ObserveTick(TickReport)
 }
 
 // SessionEvents is the room's channel back to a player's session.
@@ -550,7 +593,14 @@ func (r *Room) doTick() {
 
 	elapsed := time.Since(start)
 	if r.cfg.Observer != nil {
-		r.cfg.Observer.ObserveTick(r.cfg.MapID, elapsed, len(r.entities), len(r.players))
+		r.cfg.Observer.ObserveTick(TickReport{
+			MapID:    r.cfg.MapID,
+			Instance: uint64(r.cfg.InstanceID),
+			Duration: elapsed,
+			Entities: len(r.entities),
+			Players:  len(r.players),
+			Frozen:   r.frozenPlayers(),
+		})
 	}
 	if elapsed > TickBudget {
 		// Over budget means the room is falling behind real time. More nodes

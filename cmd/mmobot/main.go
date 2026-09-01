@@ -101,6 +101,21 @@ func run() error {
 		reportLoop(ctx, st, started, opt.report)
 	}()
 
+	// The summary is measured from the end of the ramp, not from the start.
+	//
+	// A run that spends forty-five seconds connecting a thousand bots and then
+	// ninety seconds at full load has a whole-run average well below the steady
+	// rate, because most of that first window had most of the bots not yet
+	// connected. The average was labelled as such and still read as the steady
+	// figure -- by me, in two write-ups, as an unexplained shortfall in the
+	// snapshot rate. It was the ramp.
+	go func() {
+		sleep(ctx, opt.ramp)
+		if ctx.Err() == nil {
+			st.markSteady()
+		}
+	}()
+
 	var wg sync.WaitGroup
 	for i := range opt.bots {
 		select {
@@ -127,7 +142,7 @@ func run() error {
 	stop()
 	<-done
 
-	final, _ := st.snapshot(time.Since(started), time.Since(started), &counters{})
+	final := st.summarise(started)
 	fmt.Print(final.summary(opt.bots))
 
 	// A run where nobody got in is a failure, however clean the exit looked.

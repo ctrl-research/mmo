@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ctrl-research/mmo/internal/metrics"
+	"github.com/ctrl-research/mmo/internal/world/room"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -73,7 +74,7 @@ func exported(t *testing.T) []string {
 	// Touched so the label-partitioned families exist. A HistogramVec with no
 	// observations reports nothing at all, so without this half the dashboard's
 	// metrics would look absent.
-	m.ObserveTick("test", 0, 1, 1)
+	m.ObserveTick(room.TickReport{MapID: "test", Instance: 1, Entities: 1, Players: 1})
 	m.TickOverruns.WithLabelValues("test").Add(0)
 	m.RoomEntities.WithLabelValues("test").Set(0)
 	m.RoomPlayers.WithLabelValues("test").Set(0)
@@ -143,7 +144,10 @@ func TestOverrunsReportZeroBeforeAnythingOverruns(t *testing.T) {
 	m := metrics.New(registry)
 
 	// A comfortably fast tick: nothing overran.
-	m.ObserveTick("henesys", time.Millisecond, 10, 2)
+	m.ObserveTick(room.TickReport{
+		MapID: "henesys", Instance: 1,
+		Duration: time.Millisecond, Entities: 10, Players: 2,
+	})
 
 	families, err := registry.Gather()
 	if err != nil {
@@ -167,4 +171,85 @@ func TestOverrunsReportZeroBeforeAnythingOverruns(t *testing.T) {
 	}
 	t.Error("a map that ticked without overrunning reports no overrun series at all, " +
 		"so a dashboard cannot tell it apart from a metric that is missing")
+}
+
+// A map's population is the sum of its channels, not the last one to tick.
+//
+// The gauges are labelled by map, and every room used to Set its own count
+// under that label -- so a node hosting three channels of one map reported
+// whichever channel ticked last. The dashboard understated the population by
+// however many channels it did not happen to count, silently, and the only clue
+// was the number looking a bit low.
+func TestPopulationSumsAcrossChannels(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	m := metrics.New(registry)
+
+	// Three channels of one map, each with its own crowd.
+	m.ObserveTick(room.TickReport{MapID: "henesys", Instance: 1, Players: 30, Entities: 300})
+	m.ObserveTick(room.TickReport{MapID: "henesys", Instance: 2, Players: 25, Entities: 250})
+	m.ObserveTick(room.TickReport{MapID: "henesys", Instance: 3, Players: 5, Entities: 50})
+
+	if got := gauge(t, registry, "mmo_room_players", "henesys"); got != 60 {
+		t.Errorf("players on henesys = %v, want 60 (30+25+5)", got)
+	}
+	if got := gauge(t, registry, "mmo_room_entities", "henesys"); got != 600 {
+		t.Errorf("entities on henesys = %v, want 600", got)
+	}
+
+	// A channel that reports again replaces its own figure rather than adding
+	// to it.
+	m.ObserveTick(room.TickReport{MapID: "henesys", Instance: 2, Players: 1, Entities: 10})
+	if got := gauge(t, registry, "mmo_room_players", "henesys"); got != 36 {
+		t.Errorf("after one channel emptied, players = %v, want 36 (30+1+5)", got)
+	}
+
+	// And a channel that retires stops counting. Without this the population
+	// only ever rises: a room that stood empty and let itself go keeps
+	// contributing whatever it held on its last tick.
+	m.ForgetRoom("henesys", 1)
+	if got := gauge(t, registry, "mmo_room_players", "henesys"); got != 6 {
+		t.Errorf("after a channel retired, players = %v, want 6 (1+5)", got)
+	}
+}
+
+// Frozen players are counted, because they are why a snapshot rate can sit
+// below the tick rate with nothing wrong anywhere.
+func TestFrozenPlayersAreReported(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	m := metrics.New(registry)
+
+	m.ObserveTick(room.TickReport{MapID: "henesys", Instance: 1, Players: 30, Frozen: 4})
+	m.ObserveTick(room.TickReport{MapID: "henesys", Instance: 2, Players: 10, Frozen: 1})
+
+	if got := gauge(t, registry, "mmo_room_frozen", "henesys"); got != 5 {
+		t.Errorf("frozen on henesys = %v, want 5", got)
+	}
+	// Not double counted as absent: they are still players in the room.
+	if got := gauge(t, registry, "mmo_room_players", "henesys"); got != 40 {
+		t.Errorf("players on henesys = %v, want 40 including the frozen ones", got)
+	}
+}
+
+// gauge reads one labelled gauge out of a registry.
+func gauge(t *testing.T, registry *prometheus.Registry, name, mapID string) float64 {
+	t.Helper()
+
+	families, err := registry.Gather()
+	if err != nil {
+		t.Fatalf("gathering: %v", err)
+	}
+	for _, f := range families {
+		if f.GetName() != name {
+			continue
+		}
+		for _, metric := range f.GetMetric() {
+			for _, label := range metric.GetLabel() {
+				if label.GetName() == "map" && label.GetValue() == mapID {
+					return metric.GetGauge().GetValue()
+				}
+			}
+		}
+	}
+	t.Fatalf("%s{map=%q} was not exported at all", name, mapID)
+	return 0
 }

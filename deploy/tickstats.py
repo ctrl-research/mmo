@@ -17,6 +17,7 @@ def main() -> None:
     counts: dict[str, float] = {}
     overruns: dict[str, float] = {}
     players: dict[str, float] = {}
+    frozen: dict[str, float] = {}
     entities: dict[str, float] = {}
     instances = 0.0
 
@@ -43,6 +44,8 @@ def main() -> None:
             overruns[mapID] = v
         elif name == "mmo_room_players":
             players[mapID] = v
+        elif name == "mmo_room_frozen":
+            frozen[mapID] = v
         elif name == "mmo_room_entities":
             entities[mapID] = v
         elif name == "mmo_world_instances":
@@ -64,7 +67,8 @@ def main() -> None:
         print(f"  {mapID:<12} {counts[mapID]:>9.0f} "
               f"{ms(q(0.50)):>8} {ms(q(0.99)):>8} {ms(q(0.999)):>8} "
               f"{ms(highest(bs)):>8} {over:>6.0f} "
-              f"{players.get(mapID, 0):>8.0f} {entities.get(mapID, 0):>9.0f}")
+              f"{players.get(mapID, 0):>8.0f} {frozen.get(mapID, 0):>7.0f} "
+              f"{entities.get(mapID, 0):>9.0f}")
 
     print(f"  instances {instances:.0f}, overruns {total_over:.0f}")
 

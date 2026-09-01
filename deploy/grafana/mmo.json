@@ -1013,6 +1013,93 @@
       ],
       "title": "Bandwidth and dropped output",
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "panels": [],
+      "title": "Who is not being sent anything",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Players in a room being sent nothing: their connection dropped, or they are mid-transfer through a portal. Their body stays in the world so it does not blink in and out, but the snapshot phase skips them.\n\nThis is the panel that explains a snapshot rate below the tick rate. Rooms can be ticking at a perfect 20 Hz with nothing dropped anywhere and players still receiving less than twenty a second, because some of them are frozen -- and from outside that is indistinguishable from the server failing to keep up.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisSoftMin": 0,
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 29
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (map) (mmo_room_frozen)",
+          "legendFormat": "{{map}} frozen",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(mmo_room_frozen) / clamp_min(sum(mmo_room_players), 1)",
+          "legendFormat": "share of all players",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Frozen players",
+      "type": "timeseries"
     }
   ],
   "preload": false,

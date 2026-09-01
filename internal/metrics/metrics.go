@@ -8,7 +8,7 @@
 package metrics
 
 import (
-	"time"
+	"sync"
 
 	"github.com/ctrl-research/mmo/internal/world/room"
 	"github.com/prometheus/client_golang/prometheus"
@@ -21,6 +21,12 @@ type Metrics struct {
 	TickOverruns *prometheus.CounterVec
 	RoomEntities *prometheus.GaugeVec
 	RoomPlayers  *prometheus.GaugeVec
+	RoomFrozen   *prometheus.GaugeVec
+
+	// population is what each room last reported, so the exported per-map
+	// gauges can be totals rather than whichever room ticked last.
+	popMu      sync.Mutex
+	population map[string]map[uint64]roomPopulation
 
 	Instances       prometheus.Gauge
 	Connections     prometheus.Gauge
@@ -36,6 +42,7 @@ type Metrics struct {
 // New registers every collector on r and returns them.
 func New(r prometheus.Registerer) *Metrics {
 	m := &Metrics{
+		population: make(map[string]map[uint64]roomPopulation),
 		TickDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: "mmo",
 			Subsystem: "room",
@@ -60,6 +67,15 @@ func New(r prometheus.Registerer) *Metrics {
 			Help: "Entities currently simulated, by map. Under per-player mob " +
 				"layering this scales with layers times mobs, so it is the " +
 				"leading indicator of tick cost.",
+		}, []string{"map"}),
+
+		RoomFrozen: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: "mmo", Subsystem: "room", Name: "frozen",
+			Help: "Players in a room being sent nothing, by map. A frozen " +
+				"player has dropped their connection or is mid-transfer: their " +
+				"body stays in the world so it does not blink in and out, but " +
+				"the snapshot phase skips them. Worth watching because from " +
+				"outside it looks exactly like the server failing to keep up.",
 		}, []string{"map"}),
 
 		RoomPlayers: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -112,6 +128,7 @@ func New(r prometheus.Registerer) *Metrics {
 
 	r.MustRegister(
 		m.TickDuration, m.TickOverruns, m.RoomEntities, m.RoomPlayers,
+		m.RoomFrozen,
 		m.Instances, m.Connections, m.ConnectionsMade,
 		m.InputsReceived, m.InputsDropped,
 		m.SnapshotsSent, m.SnapshotBytes, m.OutboundDropped,
@@ -119,12 +136,28 @@ func New(r prometheus.Registerer) *Metrics {
 	return m
 }
 
+// roomPopulation is one room's last reported headcount.
+type roomPopulation struct {
+	entities, players, frozen int
+}
+
 // ObserveTick records one tick's cost. It satisfies room.Observer, which is
 // how the simulation reports measurements without depending on Prometheus.
-func (m *Metrics) ObserveTick(mapID string, d time.Duration, entities, players int) {
-	m.TickDuration.WithLabelValues(mapID).Observe(d.Seconds())
-	m.RoomEntities.WithLabelValues(mapID).Set(float64(entities))
-	m.RoomPlayers.WithLabelValues(mapID).Set(float64(players))
+func (m *Metrics) ObserveTick(r room.TickReport) {
+	mapID := r.MapID
+	m.TickDuration.WithLabelValues(mapID).Observe(r.Duration.Seconds())
+
+	// Summed across this node's instances of the map rather than Set from each.
+	//
+	// A node hosting three channels of one map used to call Set three times a
+	// tick with a label of only the map, so the gauge kept whichever channel
+	// ticked last -- the population read as one channel's worth however many
+	// there were, and the dashboard understated it by however many it did not
+	// count. The per-instance figures are kept here and only the total is
+	// exported, which keeps one series per map rather than one per room: rooms
+	// come and go, and a gauge labelled by instance would accumulate a series
+	// for every channel the process had ever run.
+	m.perInstance(mapID, r)
 
 	// Resolved whether or not it overran, which is what creates the series at
 	// zero for a map that is behaving. A counter that only exists once it has
@@ -132,9 +165,61 @@ func (m *Metrics) ObserveTick(mapID string, d time.Duration, entities, players i
 	// indistinguishable from a metric that was renamed or a server that is not
 	// being scraped, which is the opposite of what it means.
 	overruns := m.TickOverruns.WithLabelValues(mapID)
-	if d > room.TickBudget {
+	if r.Duration > room.TickBudget {
 		overruns.Inc()
 	}
+}
+
+// perInstance records one room's population and re-exports the map's total.
+func (m *Metrics) perInstance(mapID string, r room.TickReport) {
+	m.popMu.Lock()
+	defer m.popMu.Unlock()
+
+	rooms, ok := m.population[mapID]
+	if !ok {
+		rooms = make(map[uint64]roomPopulation)
+		m.population[mapID] = rooms
+	}
+	rooms[r.Instance] = roomPopulation{
+		entities: r.Entities, players: r.Players, frozen: r.Frozen,
+	}
+
+	var entities, players, frozen int
+	for _, p := range rooms {
+		entities += p.entities
+		players += p.players
+		frozen += p.frozen
+	}
+
+	m.RoomEntities.WithLabelValues(mapID).Set(float64(entities))
+	m.RoomPlayers.WithLabelValues(mapID).Set(float64(players))
+	m.RoomFrozen.WithLabelValues(mapID).Set(float64(frozen))
+}
+
+// ForgetRoom drops an instance's contribution to its map's totals.
+//
+// Called when a room retires. Without it a room that stood empty and let itself
+// go keeps counting whatever it held on its last tick, and the population only
+// ever rises.
+func (m *Metrics) ForgetRoom(mapID string, instance uint64) {
+	m.popMu.Lock()
+	defer m.popMu.Unlock()
+
+	rooms := m.population[mapID]
+	if rooms == nil {
+		return
+	}
+	delete(rooms, instance)
+
+	var entities, players, frozen int
+	for _, p := range rooms {
+		entities += p.entities
+		players += p.players
+		frozen += p.frozen
+	}
+	m.RoomEntities.WithLabelValues(mapID).Set(float64(entities))
+	m.RoomPlayers.WithLabelValues(mapID).Set(float64(players))
+	m.RoomFrozen.WithLabelValues(mapID).Set(float64(frozen))
 }
 
 var _ room.Observer = (*Metrics)(nil)

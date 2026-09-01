@@ -1139,9 +1139,9 @@ the bots split across the gateways the way a load balancer would.
 | | |
 | --- | --- |
 | bots connected | **1000 of 1000**, none dropped, none refused |
-| input | 15,900/s |
-| snapshots | 15,900/s, 15.9 per bot per second |
-| bandwidth | 174 KiB/s up, 6.6 MiB/s down |
+| input | 20,000/s |
+| snapshots | 20,000/s, **20.0 per bot per second** -- the full tick rate |
+| bandwidth | 220 KiB/s up, 8.4 MiB/s down |
 | round trip | p50 610µs, p99 1.3ms |
 | room instances | 36 across three nodes |
 | **tick p99** | **1.90ms / 1.91ms / 1.91ms** against a 50 ms budget |
@@ -1271,16 +1271,12 @@ lockstep is a thundering herd at the moment the cluster has least to spare.
 
 **Two things this left open**, both recorded rather than guessed at:
 
-- `mmo_room_players` and `mmo_room_entities` are labelled by map alone, so a
-  node hosting three instances of one map reports the last one's count instead
-  of the total. The dashboard's per-map panels understate the population. Fixing
-  it means giving the room observer the instance, which is a change to an
-  interface the room package owns.
-- Under higher load the snapshot rate settles below the tick rate -- 15.9 per
-  player at a thousand, 15.2 after this recovery, against 20.0 at a hundred --
-  while rooms tick at exactly 20 Hz with zero overruns and the gateways drop
-  nothing. Ticks are being simulated that somebody is not being sent. Where the
-  messages go is not something this run established.
+- ~~`mmo_room_players` and `mmo_room_entities` are labelled by map alone.~~
+  **Fixed** -- see "Nothing was missing" below.
+- ~~Under higher load the snapshot rate settles below the tick rate.~~
+  **Resolved, and it was not happening.** See "Nothing was missing" below: the
+  figure was a whole-run average including the ramp, and the steady rate at a
+  thousand players is the full twenty per second.
 
 ### Leaving on purpose
 
@@ -1333,15 +1329,62 @@ After both: **54 characters seen off in 6.7 seconds.**
 | back to full | ~75 seconds | ~75 seconds |
 | snapshot rate after | settled at 15.2 per player | back to **20.0** |
 
-The snapshot rate returning to full is the part worth noticing: the kill case
-did not, and that difference is still unexplained -- see the open question from
-the load test.
+The snapshot rate returning to full while the kill case did not is a real
+difference, and it is recovery churn rather than anything structural: after a
+kill, characters are still reconnecting and transferring for a while, and a
+player mid-transfer is frozen and sent nothing. There is now a gauge for that.
 
 **One residual, stated rather than explained.** Across 93 recoveries, 91
 characters came back with everything they had and two came back about twelve
 experience short. That window overlapped the harness tearing the cluster down,
 and a control run produces no reconnects at all to compare against, so I could
 not attribute it to the drain. It is not nothing and it is not established.
+
+### Nothing was missing
+
+Two of M9's write-ups carried an open question: under load the snapshot rate
+seemed to settle below the tick rate -- 15.9 per player at a thousand against
+20.0 at a hundred -- while rooms ticked at exactly 20 Hz with zero overruns and
+nothing dropped anywhere. Ticks being simulated that somebody was not being sent.
+
+**There was no shortfall.** The figure was the load tool's whole-run average,
+which includes the ramp: a run spending forty-five seconds connecting a thousand
+bots and then ninety seconds at full load has an average well below the steady
+rate, because most of that first window had most of the bots not yet connected.
+The tool labelled it as a whole-run average and I read past the label, twice.
+Measured after the ramp, a thousand players receive **20.0 snapshots a second
+each**, which is every tick.
+
+The corrected numbers are in the load test table above. They are better than
+what was reported: 20,000 inputs and 20,000 snapshots a second, 8.4 MiB/s out.
+
+The summary now measures from the end of the ramp and says so, because a label
+that gets read past is a label that does not work.
+
+**The hypothesis was wrong too, which is how the instrumentation got built.**
+The suspicion was frozen players: the snapshot phase skips a player whose
+connection dropped or who is mid-transfer, so a room can tick perfectly and
+still send some of its players nothing. That is real, and worth a gauge -- from
+outside it is indistinguishable from the server failing to keep up. But measured
+mid-run at both six hundred and a thousand players it was **zero**, and the
+snapshot rate was twenty. The mechanism exists and was not the cause.
+
+`mmo_room_frozen` is that gauge, with a panel that says what it is for.
+
+**And a real bug, found on the way.** `mmo_room_players` and
+`mmo_room_entities` were labelled by map alone, and every room set its own count
+under that label -- so a node hosting three channels of one map reported
+whichever channel ticked last. The dashboard understated the population by
+however many channels it did not happen to count, silently, and the only clue
+was the number looking a little low. It was reporting about thirty players per
+map where the truth was two hundred and fifty.
+
+The room observer now takes a `TickReport` carrying the instance, and the
+metrics keep per-room figures internally while exporting the per-map total --
+one series per map rather than one per room, since rooms come and go and a
+gauge labelled by instance would accumulate a series for every channel the
+process had ever run. A retiring room is reported too, or its last headcount
+would count forever and the total would only rise.
 
 ---
 

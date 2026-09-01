@@ -573,3 +573,108 @@ func TestACrowdedSpawnPointStillAdmitsEveryone(t *testing.T) {
 		t.Error("the crowd trailed off in one direction rather than spreading")
 	}
 }
+
+// recordingObserver keeps the last tick report.
+type recordingObserver struct {
+	mu   sync.Mutex
+	last TickReport
+	seen int
+}
+
+func (o *recordingObserver) ObserveTick(r TickReport) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.last = r
+	o.seen++
+}
+
+func (o *recordingObserver) latest() (TickReport, int) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.last, o.seen
+}
+
+// A room reports how many of its players are being sent nothing.
+//
+// A frozen player has dropped their connection or is mid-transfer: their body
+// stays in the world so it does not blink in and out, but the snapshot phase
+// skips them. That is why a room can tick at a perfect 20 Hz with nothing
+// dropped anywhere and its players still receive fewer than twenty snapshots a
+// second -- and from outside it is indistinguishable from the server failing to
+// keep up, which is exactly why it is worth counting.
+func TestTickReportCountsFrozenPlayers(t *testing.T) {
+	game, err := contenttest.Load()
+	if err != nil {
+		t.Fatalf("load test content: %v", err)
+	}
+	m := game.Maps["test"]
+
+	observer := &recordingObserver{}
+	r := New(Config{
+		InstanceID: 7,
+		MapID:      m.ID,
+		Capacity:   10,
+		World:      m.World,
+		Tuning:     sim.DefaultTuning(),
+		Spawn:      m.DefaultSpawn().At,
+		Logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Content:    game,
+		Map:        m,
+		Seed:       0xA11CE,
+		Observer:   observer,
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go r.Run(ctx)
+
+	h := NewHandle(r)
+	var ids []EntityID
+	for _, name := range []string{"alice", "bob"} {
+		id, err := h.Join(ctx, JoinSpec{
+			CharacterID: name, Name: name,
+			Progress: Progress{Level: 1, MapID: m.ID},
+			Fresh:    true, Sink: newSink(),
+		})
+		if err != nil {
+			t.Fatalf("join %s: %v", name, err)
+		}
+		ids = append(ids, id)
+	}
+
+	waitForTick(t, observer, func(r TickReport) bool { return r.Players == 2 })
+
+	got, _ := observer.latest()
+	if got.Frozen != 0 {
+		t.Errorf("nobody is frozen but the report says %d", got.Frozen)
+	}
+	if got.Instance != 7 {
+		t.Errorf("the report names instance %d, want 7 -- without it a node "+
+			"cannot tell its channels of one map apart", got.Instance)
+	}
+
+	// One of them drops.
+	h.Freeze(ctx, ids[0])
+
+	waitForTick(t, observer, func(r TickReport) bool { return r.Frozen == 1 })
+
+	got, _ = observer.latest()
+	if got.Players != 2 {
+		t.Errorf("players = %d, want 2: a frozen player is still in the room", got.Players)
+	}
+}
+
+// waitForTick waits for a report satisfying want.
+func waitForTick(t *testing.T, o *recordingObserver, want func(TickReport) bool) {
+	t.Helper()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if r, seen := o.latest(); seen > 0 && want(r) {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	r, seen := o.latest()
+	t.Fatalf("no tick report matched after %d reports; last was %+v", seen, r)
+}
