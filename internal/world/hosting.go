@@ -110,6 +110,9 @@ func (n *Node) retire(inst directory.InstanceID, mapID string) bool {
 	delete(n.rooms, inst)
 	n.rooms3.Unregister(inst)
 	n.reportInstancesLocked()
+	if n.roomGone != nil {
+		n.roomGone(mapID, uint64(inst))
+	}
 
 	n.log.Info("room instance retired after standing empty",
 		"instance", uint64(inst), "map", mapID)

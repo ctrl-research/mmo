@@ -36,6 +36,7 @@ type Node struct {
 	log       *slog.Logger
 	observer  room.Observer
 	instances func(int)
+	roomGone  func(string, uint64)
 
 	// defaultMap is where a player with no saved location starts. Characters
 	// remember their own map from M2 onward.
@@ -128,6 +129,13 @@ type Config struct {
 	Logger     *slog.Logger
 	Observer   room.Observer
 
+	// RoomRetired is called when a room lets itself go, so a caller keeping
+	// per-room figures can drop it.
+	//
+	// Without it a retired room keeps counting whatever it held on its last
+	// tick, and any total built from those figures only ever rises.
+	RoomRetired func(mapID string, instance uint64)
+
 	// Instances is called with the number of room instances this node hosts,
 	// whenever that changes.
 	//
@@ -210,6 +218,7 @@ func NewNode(cfg Config) (*Node, error) {
 		log:        cfg.Logger,
 		observer:   cfg.Observer,
 		instances:  cfg.Instances,
+		roomGone:   cfg.RoomRetired,
 		bus:        cfg.Bus,
 		rooms3:     rooms,
 		seed:       seed,

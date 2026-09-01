@@ -197,19 +197,20 @@ func run() error {
 	var node *world.Node
 	if roles[RoleWorld] {
 		node, err = world.NewNode(world.Config{
-			Directory:  dir,
-			Leases:     leases,
-			Store:      db,
-			Bus:        msgBus,
-			Presence:   presence,
-			Parties:    parties,
-			NodeID:     cfg.nodeID,
-			Content:    game,
-			DefaultMap: cfg.defaultMap,
-			Logger:     log,
-			Observer:   m,
-			Instances:  func(n int) { m.Instances.Set(float64(n)) },
-			Seed:       cfg.seed,
+			Directory:   dir,
+			Leases:      leases,
+			Store:       db,
+			Bus:         msgBus,
+			Presence:    presence,
+			Parties:     parties,
+			NodeID:      cfg.nodeID,
+			Content:     game,
+			DefaultMap:  cfg.defaultMap,
+			Logger:      log,
+			Observer:    m,
+			Instances:   func(n int) { m.Instances.Set(float64(n)) },
+			RoomRetired: m.ForgetRoom,
+			Seed:        cfg.seed,
 		})
 		if err != nil {
 			return err

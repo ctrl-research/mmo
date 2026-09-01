@@ -2,6 +2,7 @@ package world
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -867,6 +868,8 @@ func TestInstanceCountIsReported(t *testing.T) {
 	var mu sync.Mutex
 	var reported []int
 
+	var retired []string
+
 	n, err := NewNode(Config{
 		Directory:  directory.NewMemory("node-a"),
 		Bus:        bus.NewInProc(),
@@ -878,6 +881,11 @@ func TestInstanceCountIsReported(t *testing.T) {
 		Instances: func(count int) {
 			mu.Lock()
 			reported = append(reported, count)
+			mu.Unlock()
+		},
+		RoomRetired: func(mapID string, instance uint64) {
+			mu.Lock()
+			retired = append(retired, fmt.Sprintf("%s/%d", mapID, instance))
 			mu.Unlock()
 		},
 	})
@@ -910,6 +918,10 @@ func TestInstanceCountIsReported(t *testing.T) {
 	// And down again when a room stands empty and lets itself go. Called
 	// directly here rather than waiting out the idle timer, which is the same
 	// call the room makes when it does.
+	//
+	// The retirement is reported too: anything keeping per-room figures has to
+	// be told, or a room that let itself go keeps counting whatever it held on
+	// its last tick and every total built from it only rises.
 	if !n.retire(directory.InstanceID(100), "test") {
 		t.Fatal("the room refused to retire")
 	}
@@ -921,6 +933,13 @@ func TestInstanceCountIsReported(t *testing.T) {
 	}
 	if got := n.Rooms(); afterRetire != got {
 		t.Errorf("the gauge says %d and the node hosts %d", afterRetire, got)
+	}
+
+	mu.Lock()
+	gone := append([]string(nil), retired...)
+	mu.Unlock()
+	if len(gone) != 1 || gone[0] != "test/100" {
+		t.Errorf("retirements reported as %v, want [test/100]", gone)
 	}
 
 	// Hosting one it already has is not a change, so it must not be reported

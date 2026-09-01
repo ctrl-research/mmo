@@ -47,6 +47,12 @@ type stats struct {
 	mu  sync.Mutex
 	rtt latencies
 
+	// steadyAt and steadyFrom mark the end of the ramp, so the summary reports
+	// the rate under load rather than one averaged over a window where most
+	// bots had not connected yet.
+	steadyAt   time.Time
+	steadyFrom *counters
+
 	// lostExp is how much experience characters came back from a reconnect with
 	// less of than they had when the connection went -- progress a checkpoint
 	// had not yet written.
@@ -96,6 +102,44 @@ func (s *stats) lostProgress(exp uint64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.lostExp = append(s.lostExp, exp)
+}
+
+// markSteady records where the ramp ended, so the summary can report the rate
+// under load rather than an average dragged down by the bots not yet in.
+func (s *stats) markSteady() {
+	now := time.Now()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.steadyAt.IsZero() {
+		s.steadyAt = now
+		s.steadyFrom = &counters{
+			inputs:    s.inputs.Load(),
+			snapshots: s.snapshots.Load(),
+			bytesIn:   s.bytesIn.Load(),
+			bytesOut:  s.bytesOut.Load(),
+		}
+	}
+}
+
+// summarise builds the final report, measured from the end of the ramp if the
+// run got that far.
+func (s *stats) summarise(started time.Time) report {
+	s.mu.Lock()
+	from, at := s.steadyFrom, s.steadyAt
+	s.mu.Unlock()
+
+	if from == nil {
+		// The run ended during the ramp. A whole-run average is all there is,
+		// and it says so.
+		r, _ := s.snapshot(time.Since(started), time.Since(started), &counters{})
+		return r
+	}
+
+	r, _ := s.snapshot(time.Since(started), time.Since(at), from)
+	r.Steady = true
+	r.UnderLoad = time.Since(at).Round(time.Second)
+	return r
 }
 
 func (s *stats) observeRTT(d time.Duration) {
@@ -247,6 +291,11 @@ type report struct {
 	Reconnects int64
 	LostExp    []uint64
 
+	// Steady says the rates below were measured after the ramp, and UnderLoad
+	// is how long that was.
+	Steady    bool
+	UnderLoad time.Duration
+
 	RTTSamples int
 	RTTp50     time.Duration
 	RTTp99     time.Duration
@@ -381,8 +430,14 @@ func (r report) summary(want int) string {
 	fmt.Fprintf(&b, "  input          %.0f/s\n", r.InputsPerSec)
 	fmt.Fprintf(&b, "  snapshots      %.0f/s, %.1f per bot per second\n",
 		r.SnapshotsPerSec, r.SnapshotsPerBot)
-	fmt.Fprintln(&b,
-		"                 (rates are averaged over the whole run, ramp included)")
+	if r.Steady {
+		fmt.Fprintf(&b, "                 (measured over %s under load, after the ramp)\n",
+			r.UnderLoad)
+	} else {
+		fmt.Fprintln(&b,
+			"                 (the run ended during the ramp, so this is a "+
+				"whole-run average and reads low)")
+	}
 	fmt.Fprintf(&b, "  round trip     p50 %s, p99 %s, max %s (%d samples)\n",
 		round(r.RTTp50), round(r.RTTp99), round(r.RTTmax), r.RTTSamples)
 	fmt.Fprintf(&b, "  bandwidth      %s/s up, %s/s down\n",
