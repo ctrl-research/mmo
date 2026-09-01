@@ -402,6 +402,26 @@ split-damage test proves six shares add up to the solo hit, and
 untested part is six humans, network and all, which is a play session rather
 than a test to write.
 
+**Half of that is now evidence.** Six clients form a full party over the wire in
+`TestSixPlayersFormAPartyOverTheWire` — six sockets, invitations asked for and
+answered through the protocol a browser speaks, and every member ending up
+seeing the same six. Every party test before it was at the world level, calling
+into the session directly, and the gateway's own test server had no party table
+wired into it at all: a party message over a socket had nowhere to go, and
+nothing noticed.
+
+**The clear itself is blocked on content, not on the game.** The test crypt is a
+fixture for dungeon *mechanics* — stage gating, lockouts, one instance per party
+— and is shaped for that: two guards of fifteen hundred health that respawn
+every second, in front of the boss. Six characters cannot get through it, which
+is exactly why nothing ever had. Getting there needs a dungeon sized for a
+clear, and it needs a door: there is no portal into the crypt from anywhere, so
+no client can walk in. Two placements were tried and both broke other tests —
+the test map is where every driven character drives and where crowd tests spawn
+a dozen bodies on one point, and a dozen bodies being pushed apart will shove
+one of them through any door within reach; the annex holds four and wants level
+three. A dungeon that can be cleared wants a map of its own.
+
 The encounter came before the dungeon, deliberately: a dungeon with nothing
 worth fighting at the end of it is a corridor, and the entry rules, lockouts
 and completion state are all in service of an encounter that has to exist
@@ -1385,6 +1405,27 @@ one series per map rather than one per room, since rooms come and go and a
 gauge labelled by instance would accumulate a series for every channel the
 process had ever run. A retiring room is reported too, or its last headcount
 would count forever and the total would only rise.
+
+### A player who has just logged in
+
+Going after M7's exit turned up a real race, which is the sort of thing looking
+for one exit criterion is good for.
+
+Presence was announced at the end of `Enter`, after the loadout, the passives
+and the secondary skills had been read back from the database. The room sends
+the Welcome much earlier, during the join -- so between a client drawing the map
+and its character existing in presence there was a window the width of three
+database reads.
+
+In that window the character is invisible. A friend inviting them to a party is
+told **"they are not online"**, about somebody whose client is already showing
+them the world. It is brief and it is real, and it is the kind of thing that
+gets reported as "party invites are flaky" and never reproduced.
+
+Presence is now announced as soon as the character is placed, before anything
+else is read. `TestSixPlayersFormAPartyOverTheWire` fails without it -- the
+first invitation is refused and never sent -- which is what makes it a test
+rather than a comment.
 
 ---
 

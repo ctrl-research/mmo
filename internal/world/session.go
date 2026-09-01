@@ -524,6 +524,18 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 	}
 	s.handle, s.instance, s.entityID = handle, instance, entityID
 
+	// Held and announced as soon as the character is in a room, before the
+	// loadout and the passives are read back.
+	//
+	// The room sends the Welcome during the join above, so from here the player
+	// believes they are in the world -- and everything below is database reads
+	// that take their own time. Announcing after them left a window in which
+	// somebody who had just logged in was invisible: a friend inviting them to
+	// a party in that moment was told "they are not online", about a character
+	// whose client had already drawn the map.
+	n.hold(characterID, s)
+	s.announcePresence(ctx, false)
+
 	// The stat block, the inventory, and the bar, before anything else
 	// observes the character.
 	s.refreshStats(ctx, character.Level)
@@ -532,9 +544,6 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 	// After refreshStats, so the tool power it reports is the one the block was
 	// just built from rather than the one before this login's equipment.
 	s.pushSecondary(secondaryExp)
-
-	n.hold(characterID, s)
-	s.announcePresence(ctx, false)
 
 	// A character who was in a party before they logged out is still in it:
 	// party membership outlives a session, so the layer key and the

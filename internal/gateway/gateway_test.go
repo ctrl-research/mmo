@@ -76,11 +76,23 @@ func newTestServerWithGrace(t *testing.T, grace time.Duration) *testServer {
 	leases := directory.NewMemoryLeases()
 	msgBus := bus.NewInProc()
 
+	// Presence and parties, because a party invitation is addressed by name and
+	// a name is resolved through presence. Without them the node reports that
+	// parties are not available -- which reads, from a client, as an invitation
+	// that simply never arrives.
+	presence := directory.NewMemoryPresence()
+	t.Cleanup(func() { presence.Close() })
+
+	parties := directory.NewMemoryParties(game.Balance.Party.MaxSize)
+	t.Cleanup(func() { parties.Close() })
+
 	node, err := world.NewNode(world.Config{
 		Directory:  dir,
 		Leases:     leases,
 		Store:      st,
 		Bus:        msgBus,
+		Presence:   presence,
+		Parties:    parties,
 		NodeID:     "test-node",
 		Content:    game,
 		DefaultMap: "test",
