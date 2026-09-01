@@ -30,11 +30,11 @@ import (
 // touches -- the directory choosing a node, the fencing token, the checkpoint,
 // the request and reply, the source being torn down only after the destination
 // accepts -- runs here with a real database and two genuinely separate nodes
-// that share nothing but the bus, the directory, and the in-process room
-// registry that stands in for M9's remote handles.
+// that share nothing but the bus, the directory, the leases and the database.
 //
-// If this passes, M9 is configuration. If it were passing because of a local
-// shortcut, M9 would be a rewrite (AGENTS.md invariant 2).
+// They no longer share a room registry. A room on the other node is reached
+// the way one process reaches another: over the bus. That was the last local
+// shortcut in this harness (AGENTS.md invariant 2).
 
 // cluster is two world nodes over one bus and one directory.
 type cluster struct {
@@ -63,12 +63,12 @@ func newCluster(t *testing.T) *cluster {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// Two registries would be more realistic still, but a room on another
-	// *process* needs a bus-backed handle; sharing the registry is what stands
-	// in for that, and it is the only thing these two nodes share beyond what a
-	// real cluster would.
+	// A registry each. The two nodes share the bus, the directory, the leases
+	// and the database -- exactly what two processes would share -- and nothing
+	// else. A room on the other node is therefore not reachable by pointer, so
+	// every cross-node test below drives it through a bus-backed handle, which
+	// is what a second deployment of the world role actually does.
 	leases := directory.NewMemoryLeases()
-	registry := NewRegistry()
 
 	// A directory per node, the same shape as the bus below. With
 	// MMO_TEST_REDIS_ADDR set that is two Redis directories sharing a
@@ -95,7 +95,7 @@ func newCluster(t *testing.T) *cluster {
 			Leases:     leases,
 			Store:      st,
 			Bus:        nodeBus,
-			Rooms:      registry,
+			Rooms:      NewRegistry(),
 			Presence:   presence,
 			Parties:    parties,
 			NodeID:     id,

@@ -295,3 +295,43 @@ func (b *Block) Clone() *Block {
 	c := *b
 	return &c
 }
+
+// Layers returns the block's four modifier arrays, in the order Rebuild takes
+// them: base, flat, increased, more.
+//
+// Exported for one reason: a stat block computed on the node holding a
+// character's equipment has to reach the room simulating them, which may be in
+// another process. Everything else about a block is derived from these four
+// arrays, so they are what a copy has to carry.
+//
+// The slices are copies. Handing out the arrays themselves would let a caller
+// change a live block by writing to what looks like a read.
+func (b *Block) Layers() (base, flat, increased, more []Value) {
+	clone := func(a [NumStats]Value) []Value {
+		out := make([]Value, NumStats)
+		copy(out, a[:])
+		return out
+	}
+	return clone(b.base), clone(b.flat), clone(b.increased), clone(b.more)
+}
+
+// Rebuild reconstructs a block from Layers.
+//
+// A wrong-length slice is refused rather than padded: it means the sender was
+// built against a different stat list, and padding would silently give every
+// stat past the end a value of zero -- which for the "more" layer is not a
+// missing multiplier but a total one, and would zero the character's damage.
+func Rebuild(base, flat, increased, more []Value) (*Block, bool) {
+	for _, layer := range [][]Value{base, flat, increased, more} {
+		if len(layer) != int(NumStats) {
+			return nil, false
+		}
+	}
+
+	b := &Block{}
+	copy(b.base[:], base)
+	copy(b.flat[:], flat)
+	copy(b.increased[:], increased)
+	copy(b.more[:], more)
+	return b, true
+}

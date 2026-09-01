@@ -643,3 +643,78 @@ func TestNATSCarriesMessagesBetweenConnections(t *testing.T) {
 		t.Errorf("reply carried %d, want 77", reply.GetEntityId())
 	}
 }
+
+// A responder can be told something without being asked anything.
+//
+// Half of the room protocol is one-way -- input arrives every client tick and
+// a round trip per keypress is not an option -- while the other half needs an
+// answer. Both go to one responder, so a one-way send has to reach it.
+//
+// The trap this guards is that a plain Publish of the payload does not fail,
+// it is *reinterpreted*: Respond decodes every message as an envelope, and any
+// message decodes as some envelope, so the handler runs with an empty payload
+// and the caller sees a successful send. That silence is why Notify exists and
+// why this is asserted rather than assumed.
+func TestBusNotifyReachesAResponder(t *testing.T) {
+	eachBus(t, func(t *testing.T, b Bus) {
+		ctx := context.Background()
+
+		got := make(chan string, 1)
+		sub, err := b.Respond(ctx, "notify.subject",
+			func(_ context.Context, _ string, payload []byte) (proto.Message, error) {
+				var msg mmov1.RoomClosed
+				if err := proto.Unmarshal(payload, &msg); err != nil {
+					return nil, err
+				}
+				got <- msg.GetMapId()
+				return nil, nil
+			})
+		if err != nil {
+			t.Fatalf("respond: %v", err)
+		}
+		defer sub.Close()
+
+		if err := Notify(ctx, b, "notify.subject", &mmov1.RoomClosed{MapId: "henesys"}); err != nil {
+			t.Fatalf("notify: %v", err)
+		}
+
+		select {
+		case mapID := <-got:
+			if mapID != "henesys" {
+				t.Errorf("the responder saw map %q, want henesys", mapID)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatal("a one-way message never reached the responder")
+		}
+	})
+}
+
+// Notifying does not leave the responder waiting to reply to nobody.
+func TestBusNotifyExpectsNoReply(t *testing.T) {
+	eachBus(t, func(t *testing.T, b Bus) {
+		ctx := context.Background()
+
+		done := make(chan struct{}, 1)
+		sub, err := b.Respond(ctx, "notify.noreply",
+			func(_ context.Context, _ string, _ []byte) (proto.Message, error) {
+				done <- struct{}{}
+				// A responder that answers a notification is answering an
+				// address that does not exist. It must not block or fail.
+				return &mmov1.RoomClosed{MapId: "ignored"}, nil
+			})
+		if err != nil {
+			t.Fatalf("respond: %v", err)
+		}
+		defer sub.Close()
+
+		if err := Notify(ctx, b, "notify.noreply", &mmov1.RoomClosed{}); err != nil {
+			t.Fatalf("notify: %v", err)
+		}
+
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			t.Fatal("the responder never ran")
+		}
+	})
+}

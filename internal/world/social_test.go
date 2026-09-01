@@ -230,6 +230,24 @@ func (c *cluster) party(t *testing.T) (a, b *Session, aSink, bSink *captureSink)
 	eventually(t, "both to be in the party", func() bool {
 		return a.PartyID() != "" && a.PartyID() == b.PartyID()
 	})
+
+	// Membership and the roster are two different events. The party ID is set
+	// by the accepting session before it announces, so waiting on the ID alone
+	// can return before the roster has been published, let alone crossed to
+	// the other node -- and every caller of this helper goes on to assert
+	// something about the roster.
+	eventually(t, "both to have been sent the roster", func() bool {
+		for _, sink := range []*captureSink{aSink, bSink} {
+			states := sink.partyStates()
+			if len(states) == 0 {
+				return false
+			}
+			if len(states[len(states)-1].GetMembers()) != 2 {
+				return false
+			}
+		}
+		return true
+	})
 	return a, b, aSink, bSink
 }
 

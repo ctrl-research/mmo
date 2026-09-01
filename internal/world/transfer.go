@@ -234,15 +234,21 @@ func (s *Session) transfer(ctx context.Context, target *content.Map, at arrival,
 
 	// 6. Only now is the source torn down. Everything before this point could
 	//    fail and leave the character exactly where it was.
-	newHandle, err := s.node.resolve(inst.ID, inst.Node)
+	newHandle, err := s.node.resolve(inst.ID, inst.Node, s.characterID.String())
 	if err != nil {
-		// The destination accepted but cannot be reached from here, which
-		// means a room on another process -- the case M9 completes. The
+		// The destination accepted but cannot be addressed from here. The
 		// character is now in that room, so the session must end rather than
 		// pretend otherwise.
 		s.log.Error("destination room is not reachable from this node",
 			"instance", inst.ID, "node", inst.Node, "err", err)
 		return err
+	}
+
+	// A room in another process sends everything back over the bus, so the
+	// subscription has to exist before the connection is attached -- otherwise
+	// the Welcome that tells the client it has arrived is published to nobody.
+	if _, remote := newHandle.(*remoteRoom); remote {
+		s.watchRoomCallbacks()
 	}
 
 	s.mu.Lock()

@@ -912,6 +912,2712 @@ func (x *GuildUpdate) GetDisbanded() bool {
 	return false
 }
 
+// RoomEntity addresses one character inside one room instance.
+type RoomEntity struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	InstanceId    uint64                 `protobuf:"varint,1,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
+	EntityId      uint32                 `protobuf:"varint,2,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomEntity) Reset() {
+	*x = RoomEntity{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomEntity) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomEntity) ProtoMessage() {}
+
+func (x *RoomEntity) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomEntity.ProtoReflect.Descriptor instead.
+func (*RoomEntity) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *RoomEntity) GetInstanceId() uint64 {
+	if x != nil {
+		return x.InstanceId
+	}
+	return 0
+}
+
+func (x *RoomEntity) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+// WireProgress is room.Progress.
+type WireProgress struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Level         int32                  `protobuf:"varint,1,opt,name=level,proto3" json:"level,omitempty"`
+	Exp           int64                  `protobuf:"varint,2,opt,name=exp,proto3" json:"exp,omitempty"`
+	Gold          int64                  `protobuf:"varint,3,opt,name=gold,proto3" json:"gold,omitempty"`
+	MapId         string                 `protobuf:"bytes,4,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WireProgress) Reset() {
+	*x = WireProgress{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WireProgress) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WireProgress) ProtoMessage() {}
+
+func (x *WireProgress) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WireProgress.ProtoReflect.Descriptor instead.
+func (*WireProgress) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *WireProgress) GetLevel() int32 {
+	if x != nil {
+		return x.Level
+	}
+	return 0
+}
+
+func (x *WireProgress) GetExp() int64 {
+	if x != nil {
+		return x.Exp
+	}
+	return 0
+}
+
+func (x *WireProgress) GetGold() int64 {
+	if x != nil {
+		return x.Gold
+	}
+	return 0
+}
+
+func (x *WireProgress) GetMapId() string {
+	if x != nil {
+		return x.MapId
+	}
+	return ""
+}
+
+// WireLoadoutSlot is one skill on the bar.
+type WireLoadoutSlot struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SkillId       string                 `protobuf:"bytes,1,opt,name=skill_id,json=skillId,proto3" json:"skill_id,omitempty"`
+	Rank          int32                  `protobuf:"varint,2,opt,name=rank,proto3" json:"rank,omitempty"`
+	Supports      []string               `protobuf:"bytes,3,rep,name=supports,proto3" json:"supports,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WireLoadoutSlot) Reset() {
+	*x = WireLoadoutSlot{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WireLoadoutSlot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WireLoadoutSlot) ProtoMessage() {}
+
+func (x *WireLoadoutSlot) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WireLoadoutSlot.ProtoReflect.Descriptor instead.
+func (*WireLoadoutSlot) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *WireLoadoutSlot) GetSkillId() string {
+	if x != nil {
+		return x.SkillId
+	}
+	return ""
+}
+
+func (x *WireLoadoutSlot) GetRank() int32 {
+	if x != nil {
+		return x.Rank
+	}
+	return 0
+}
+
+func (x *WireLoadoutSlot) GetSupports() []string {
+	if x != nil {
+		return x.Supports
+	}
+	return nil
+}
+
+// WireVec is a position.
+type WireVec struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	X             int32                  `protobuf:"varint,1,opt,name=x,proto3" json:"x,omitempty"`
+	Y             int32                  `protobuf:"varint,2,opt,name=y,proto3" json:"y,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WireVec) Reset() {
+	*x = WireVec{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WireVec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WireVec) ProtoMessage() {}
+
+func (x *WireVec) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WireVec.ProtoReflect.Descriptor instead.
+func (*WireVec) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *WireVec) GetX() int32 {
+	if x != nil {
+		return x.X
+	}
+	return 0
+}
+
+func (x *WireVec) GetY() int32 {
+	if x != nil {
+		return x.Y
+	}
+	return 0
+}
+
+// WireStats is a stats.Block, as its four parallel arrays.
+//
+// Indexed by StatID rather than named, because the block is an array and a
+// map keyed by name would have to agree about names across a deploy. The
+// arrays are sent whole: they are short, and a sparse encoding would need the
+// same length check to be safe anyway.
+type WireStats struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Base          []int64                `protobuf:"varint,1,rep,packed,name=base,proto3" json:"base,omitempty"`
+	Flat          []int64                `protobuf:"varint,2,rep,packed,name=flat,proto3" json:"flat,omitempty"`
+	Increased     []int64                `protobuf:"varint,3,rep,packed,name=increased,proto3" json:"increased,omitempty"`
+	More          []int64                `protobuf:"varint,4,rep,packed,name=more,proto3" json:"more,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WireStats) Reset() {
+	*x = WireStats{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WireStats) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WireStats) ProtoMessage() {}
+
+func (x *WireStats) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WireStats.ProtoReflect.Descriptor instead.
+func (*WireStats) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *WireStats) GetBase() []int64 {
+	if x != nil {
+		return x.Base
+	}
+	return nil
+}
+
+func (x *WireStats) GetFlat() []int64 {
+	if x != nil {
+		return x.Flat
+	}
+	return nil
+}
+
+func (x *WireStats) GetIncreased() []int64 {
+	if x != nil {
+		return x.Increased
+	}
+	return nil
+}
+
+func (x *WireStats) GetMore() []int64 {
+	if x != nil {
+		return x.More
+	}
+	return nil
+}
+
+// WireDerived is everything the session computes from equipment.
+type WireDerived struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Block         *WireStats             `protobuf:"bytes,1,opt,name=block,proto3" json:"block,omitempty"`
+	MaxHp         uint32                 `protobuf:"varint,2,opt,name=max_hp,json=maxHp,proto3" json:"max_hp,omitempty"`
+	ToolPower     map[string]int32       `protobuf:"bytes,3,rep,name=tool_power,json=toolPower,proto3" json:"tool_power,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WireDerived) Reset() {
+	*x = WireDerived{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WireDerived) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WireDerived) ProtoMessage() {}
+
+func (x *WireDerived) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WireDerived.ProtoReflect.Descriptor instead.
+func (*WireDerived) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *WireDerived) GetBlock() *WireStats {
+	if x != nil {
+		return x.Block
+	}
+	return nil
+}
+
+func (x *WireDerived) GetMaxHp() uint32 {
+	if x != nil {
+		return x.MaxHp
+	}
+	return 0
+}
+
+func (x *WireDerived) GetToolPower() map[string]int32 {
+	if x != nil {
+		return x.ToolPower
+	}
+	return nil
+}
+
+// WireSnapshot is room.Snapshot: what a checkpoint writes.
+type WireSnapshot struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Progress *WireProgress          `protobuf:"bytes,1,opt,name=progress,proto3" json:"progress,omitempty"`
+	// State is the room's own JSON encoding, reused rather than re-modelled:
+	// it is already the format a checkpoint writes to the database, and a second
+	// encoding of the same thing is a second place for the two to disagree.
+	State         []byte           `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
+	Secondary     map[string]int64 `protobuf:"bytes,3,rep,name=secondary,proto3" json:"secondary,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WireSnapshot) Reset() {
+	*x = WireSnapshot{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WireSnapshot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WireSnapshot) ProtoMessage() {}
+
+func (x *WireSnapshot) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WireSnapshot.ProtoReflect.Descriptor instead.
+func (*WireSnapshot) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *WireSnapshot) GetProgress() *WireProgress {
+	if x != nil {
+		return x.Progress
+	}
+	return nil
+}
+
+func (x *WireSnapshot) GetState() []byte {
+	if x != nil {
+		return x.State
+	}
+	return nil
+}
+
+func (x *WireSnapshot) GetSecondary() map[string]int64 {
+	if x != nil {
+		return x.Secondary
+	}
+	return nil
+}
+
+// WireJoinSpec is room.JoinSpec, minus the parts that cannot travel.
+//
+// Sink and Events are in-process references, so they are not here: a remote
+// join attaches its connection afterwards, which is the same order a transfer
+// already uses.
+type WireJoinSpec struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	CharacterId    string                 `protobuf:"bytes,1,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	Name           string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Progress       *WireProgress          `protobuf:"bytes,3,opt,name=progress,proto3" json:"progress,omitempty"`
+	State          []byte                 `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty"`
+	Fresh          bool                   `protobuf:"varint,5,opt,name=fresh,proto3" json:"fresh,omitempty"`
+	Loadout        []*WireLoadoutSlot     `protobuf:"bytes,6,rep,name=loadout,proto3" json:"loadout,omitempty"`
+	LayerKey       string                 `protobuf:"bytes,7,opt,name=layer_key,json=layerKey,proto3" json:"layer_key,omitempty"`
+	KnownWaypoints []string               `protobuf:"bytes,8,rep,name=known_waypoints,json=knownWaypoints,proto3" json:"known_waypoints,omitempty"`
+	Secondary      map[string]int64       `protobuf:"bytes,9,rep,name=secondary,proto3" json:"secondary,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	Spawn          *WireVec               `protobuf:"bytes,10,opt,name=spawn,proto3" json:"spawn,omitempty"`
+	Arrived        bool                   `protobuf:"varint,11,opt,name=arrived,proto3" json:"arrived,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *WireJoinSpec) Reset() {
+	*x = WireJoinSpec{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WireJoinSpec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WireJoinSpec) ProtoMessage() {}
+
+func (x *WireJoinSpec) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WireJoinSpec.ProtoReflect.Descriptor instead.
+func (*WireJoinSpec) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *WireJoinSpec) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *WireJoinSpec) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *WireJoinSpec) GetProgress() *WireProgress {
+	if x != nil {
+		return x.Progress
+	}
+	return nil
+}
+
+func (x *WireJoinSpec) GetState() []byte {
+	if x != nil {
+		return x.State
+	}
+	return nil
+}
+
+func (x *WireJoinSpec) GetFresh() bool {
+	if x != nil {
+		return x.Fresh
+	}
+	return false
+}
+
+func (x *WireJoinSpec) GetLoadout() []*WireLoadoutSlot {
+	if x != nil {
+		return x.Loadout
+	}
+	return nil
+}
+
+func (x *WireJoinSpec) GetLayerKey() string {
+	if x != nil {
+		return x.LayerKey
+	}
+	return ""
+}
+
+func (x *WireJoinSpec) GetKnownWaypoints() []string {
+	if x != nil {
+		return x.KnownWaypoints
+	}
+	return nil
+}
+
+func (x *WireJoinSpec) GetSecondary() map[string]int64 {
+	if x != nil {
+		return x.Secondary
+	}
+	return nil
+}
+
+func (x *WireJoinSpec) GetSpawn() *WireVec {
+	if x != nil {
+		return x.Spawn
+	}
+	return nil
+}
+
+func (x *WireJoinSpec) GetArrived() bool {
+	if x != nil {
+		return x.Arrived
+	}
+	return false
+}
+
+// RoomCommand is one call on room.Handle.
+//
+// One message with a oneof rather than a subject per method: the room is the
+// thing being addressed, and a subject per method would multiply subscriptions
+// by sixteen for no routing benefit.
+type RoomCommand struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	InstanceId uint64                 `protobuf:"varint,1,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
+	// CallbackSubject is where this room should publish everything it sends back
+	// to the session -- snapshots, chat, loot claims. Set on Join and Attach,
+	// which are the two calls that give a character a connection.
+	CallbackSubject string `protobuf:"bytes,2,opt,name=callback_subject,json=callbackSubject,proto3" json:"callback_subject,omitempty"`
+	// Types that are valid to be assigned to Body:
+	//
+	//	*RoomCommand_Join
+	//	*RoomCommand_Capture
+	//	*RoomCommand_Freeze
+	//	*RoomCommand_Attach
+	//	*RoomCommand_SetLoadout
+	//	*RoomCommand_SetStats
+	//	*RoomCommand_ResolveLoot
+	//	*RoomCommand_AbortTransfer
+	//	*RoomCommand_Leave
+	//	*RoomCommand_Input
+	//	*RoomCommand_Cast
+	//	*RoomCommand_Interact
+	//	*RoomCommand_Craft
+	//	*RoomCommand_ResolveCraft
+	//	*RoomCommand_Say
+	//	*RoomCommand_SetLayer
+	Body          isRoomCommand_Body `protobuf_oneof:"body"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomCommand) Reset() {
+	*x = RoomCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomCommand) ProtoMessage() {}
+
+func (x *RoomCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomCommand.ProtoReflect.Descriptor instead.
+func (*RoomCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *RoomCommand) GetInstanceId() uint64 {
+	if x != nil {
+		return x.InstanceId
+	}
+	return 0
+}
+
+func (x *RoomCommand) GetCallbackSubject() string {
+	if x != nil {
+		return x.CallbackSubject
+	}
+	return ""
+}
+
+func (x *RoomCommand) GetBody() isRoomCommand_Body {
+	if x != nil {
+		return x.Body
+	}
+	return nil
+}
+
+func (x *RoomCommand) GetJoin() *JoinCommand {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCommand_Join); ok {
+			return x.Join
+		}
+	}
+	return nil
+}
+
+func (x *RoomCommand) GetCapture() *CaptureCommand {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCommand_Capture); ok {
+			return x.Capture
+		}
+	}
+	return nil
+}
+
+func (x *RoomCommand) GetFreeze() *FreezeCommand {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCommand_Freeze); ok {
+			return x.Freeze
+		}
+	}
+	return nil
+}
+
+func (x *RoomCommand) GetAttach() *AttachCommand {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCommand_Attach); ok {
+			return x.Attach
+		}
+	}
+	return nil
+}
+
+func (x *RoomCommand) GetSetLoadout() *SetLoadoutCommand {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCommand_SetLoadout); ok {
+			return x.SetLoadout
+		}
+	}
+	return nil
+}
+
+func (x *RoomCommand) GetSetStats() *SetStatsCommand {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCommand_SetStats); ok {
+			return x.SetStats
+		}
+	}
+	return nil
+}
+
+func (x *RoomCommand) GetResolveLoot() *ResolveLootCommand {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCommand_ResolveLoot); ok {
+			return x.ResolveLoot
+		}
+	}
+	return nil
+}
+
+func (x *RoomCommand) GetAbortTransfer() *AbortTransferCommand {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCommand_AbortTransfer); ok {
+			return x.AbortTransfer
+		}
+	}
+	return nil
+}
+
+func (x *RoomCommand) GetLeave() *LeaveCommand {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCommand_Leave); ok {
+			return x.Leave
+		}
+	}
+	return nil
+}
+
+func (x *RoomCommand) GetInput() *InputCommand {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCommand_Input); ok {
+			return x.Input
+		}
+	}
+	return nil
+}
+
+func (x *RoomCommand) GetCast() *CastCommand {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCommand_Cast); ok {
+			return x.Cast
+		}
+	}
+	return nil
+}
+
+func (x *RoomCommand) GetInteract() *InteractCommand {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCommand_Interact); ok {
+			return x.Interact
+		}
+	}
+	return nil
+}
+
+func (x *RoomCommand) GetCraft() *CraftCommand {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCommand_Craft); ok {
+			return x.Craft
+		}
+	}
+	return nil
+}
+
+func (x *RoomCommand) GetResolveCraft() *ResolveCraftCommand {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCommand_ResolveCraft); ok {
+			return x.ResolveCraft
+		}
+	}
+	return nil
+}
+
+func (x *RoomCommand) GetSay() *SayCommand {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCommand_Say); ok {
+			return x.Say
+		}
+	}
+	return nil
+}
+
+func (x *RoomCommand) GetSetLayer() *SetLayerCommand {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCommand_SetLayer); ok {
+			return x.SetLayer
+		}
+	}
+	return nil
+}
+
+type isRoomCommand_Body interface {
+	isRoomCommand_Body()
+}
+
+type RoomCommand_Join struct {
+	Join *JoinCommand `protobuf:"bytes,10,opt,name=join,proto3,oneof"`
+}
+
+type RoomCommand_Capture struct {
+	Capture *CaptureCommand `protobuf:"bytes,11,opt,name=capture,proto3,oneof"`
+}
+
+type RoomCommand_Freeze struct {
+	Freeze *FreezeCommand `protobuf:"bytes,12,opt,name=freeze,proto3,oneof"`
+}
+
+type RoomCommand_Attach struct {
+	Attach *AttachCommand `protobuf:"bytes,13,opt,name=attach,proto3,oneof"`
+}
+
+type RoomCommand_SetLoadout struct {
+	SetLoadout *SetLoadoutCommand `protobuf:"bytes,14,opt,name=set_loadout,json=setLoadout,proto3,oneof"`
+}
+
+type RoomCommand_SetStats struct {
+	SetStats *SetStatsCommand `protobuf:"bytes,15,opt,name=set_stats,json=setStats,proto3,oneof"`
+}
+
+type RoomCommand_ResolveLoot struct {
+	ResolveLoot *ResolveLootCommand `protobuf:"bytes,16,opt,name=resolve_loot,json=resolveLoot,proto3,oneof"`
+}
+
+type RoomCommand_AbortTransfer struct {
+	AbortTransfer *AbortTransferCommand `protobuf:"bytes,17,opt,name=abort_transfer,json=abortTransfer,proto3,oneof"`
+}
+
+type RoomCommand_Leave struct {
+	Leave *LeaveCommand `protobuf:"bytes,18,opt,name=leave,proto3,oneof"`
+}
+
+type RoomCommand_Input struct {
+	Input *InputCommand `protobuf:"bytes,19,opt,name=input,proto3,oneof"`
+}
+
+type RoomCommand_Cast struct {
+	Cast *CastCommand `protobuf:"bytes,20,opt,name=cast,proto3,oneof"`
+}
+
+type RoomCommand_Interact struct {
+	Interact *InteractCommand `protobuf:"bytes,21,opt,name=interact,proto3,oneof"`
+}
+
+type RoomCommand_Craft struct {
+	Craft *CraftCommand `protobuf:"bytes,22,opt,name=craft,proto3,oneof"`
+}
+
+type RoomCommand_ResolveCraft struct {
+	ResolveCraft *ResolveCraftCommand `protobuf:"bytes,23,opt,name=resolve_craft,json=resolveCraft,proto3,oneof"`
+}
+
+type RoomCommand_Say struct {
+	Say *SayCommand `protobuf:"bytes,24,opt,name=say,proto3,oneof"`
+}
+
+type RoomCommand_SetLayer struct {
+	SetLayer *SetLayerCommand `protobuf:"bytes,25,opt,name=set_layer,json=setLayer,proto3,oneof"`
+}
+
+func (*RoomCommand_Join) isRoomCommand_Body() {}
+
+func (*RoomCommand_Capture) isRoomCommand_Body() {}
+
+func (*RoomCommand_Freeze) isRoomCommand_Body() {}
+
+func (*RoomCommand_Attach) isRoomCommand_Body() {}
+
+func (*RoomCommand_SetLoadout) isRoomCommand_Body() {}
+
+func (*RoomCommand_SetStats) isRoomCommand_Body() {}
+
+func (*RoomCommand_ResolveLoot) isRoomCommand_Body() {}
+
+func (*RoomCommand_AbortTransfer) isRoomCommand_Body() {}
+
+func (*RoomCommand_Leave) isRoomCommand_Body() {}
+
+func (*RoomCommand_Input) isRoomCommand_Body() {}
+
+func (*RoomCommand_Cast) isRoomCommand_Body() {}
+
+func (*RoomCommand_Interact) isRoomCommand_Body() {}
+
+func (*RoomCommand_Craft) isRoomCommand_Body() {}
+
+func (*RoomCommand_ResolveCraft) isRoomCommand_Body() {}
+
+func (*RoomCommand_Say) isRoomCommand_Body() {}
+
+func (*RoomCommand_SetLayer) isRoomCommand_Body() {}
+
+type JoinCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Spec          *WireJoinSpec          `protobuf:"bytes,1,opt,name=spec,proto3" json:"spec,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *JoinCommand) Reset() {
+	*x = JoinCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JoinCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JoinCommand) ProtoMessage() {}
+
+func (x *JoinCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use JoinCommand.ProtoReflect.Descriptor instead.
+func (*JoinCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *JoinCommand) GetSpec() *WireJoinSpec {
+	if x != nil {
+		return x.Spec
+	}
+	return nil
+}
+
+type CaptureCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CaptureCommand) Reset() {
+	*x = CaptureCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CaptureCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CaptureCommand) ProtoMessage() {}
+
+func (x *CaptureCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CaptureCommand.ProtoReflect.Descriptor instead.
+func (*CaptureCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *CaptureCommand) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+type FreezeCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FreezeCommand) Reset() {
+	*x = FreezeCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FreezeCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FreezeCommand) ProtoMessage() {}
+
+func (x *FreezeCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FreezeCommand.ProtoReflect.Descriptor instead.
+func (*FreezeCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *FreezeCommand) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+type AttachCommand struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	EntityId       uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	Loadout        []*WireLoadoutSlot     `protobuf:"bytes,2,rep,name=loadout,proto3" json:"loadout,omitempty"`
+	LayerKey       string                 `protobuf:"bytes,3,opt,name=layer_key,json=layerKey,proto3" json:"layer_key,omitempty"`
+	KnownWaypoints []string               `protobuf:"bytes,4,rep,name=known_waypoints,json=knownWaypoints,proto3" json:"known_waypoints,omitempty"`
+	Secondary      map[string]int64       `protobuf:"bytes,5,rep,name=secondary,proto3" json:"secondary,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	// HasSecondary and HasWaypoints distinguish "leave what the room has" from
+	// "set it to nothing". A nil map and an empty one mean different things here
+	// and proto3 cannot tell them apart.
+	HasSecondary  bool `protobuf:"varint,6,opt,name=has_secondary,json=hasSecondary,proto3" json:"has_secondary,omitempty"`
+	HasWaypoints  bool `protobuf:"varint,7,opt,name=has_waypoints,json=hasWaypoints,proto3" json:"has_waypoints,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AttachCommand) Reset() {
+	*x = AttachCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AttachCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AttachCommand) ProtoMessage() {}
+
+func (x *AttachCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AttachCommand.ProtoReflect.Descriptor instead.
+func (*AttachCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AttachCommand) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *AttachCommand) GetLoadout() []*WireLoadoutSlot {
+	if x != nil {
+		return x.Loadout
+	}
+	return nil
+}
+
+func (x *AttachCommand) GetLayerKey() string {
+	if x != nil {
+		return x.LayerKey
+	}
+	return ""
+}
+
+func (x *AttachCommand) GetKnownWaypoints() []string {
+	if x != nil {
+		return x.KnownWaypoints
+	}
+	return nil
+}
+
+func (x *AttachCommand) GetSecondary() map[string]int64 {
+	if x != nil {
+		return x.Secondary
+	}
+	return nil
+}
+
+func (x *AttachCommand) GetHasSecondary() bool {
+	if x != nil {
+		return x.HasSecondary
+	}
+	return false
+}
+
+func (x *AttachCommand) GetHasWaypoints() bool {
+	if x != nil {
+		return x.HasWaypoints
+	}
+	return false
+}
+
+type SetLoadoutCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	Slots         []*WireLoadoutSlot     `protobuf:"bytes,2,rep,name=slots,proto3" json:"slots,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetLoadoutCommand) Reset() {
+	*x = SetLoadoutCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetLoadoutCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetLoadoutCommand) ProtoMessage() {}
+
+func (x *SetLoadoutCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetLoadoutCommand.ProtoReflect.Descriptor instead.
+func (*SetLoadoutCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *SetLoadoutCommand) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *SetLoadoutCommand) GetSlots() []*WireLoadoutSlot {
+	if x != nil {
+		return x.Slots
+	}
+	return nil
+}
+
+type SetStatsCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	Derived       *WireDerived           `protobuf:"bytes,2,opt,name=derived,proto3" json:"derived,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetStatsCommand) Reset() {
+	*x = SetStatsCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetStatsCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetStatsCommand) ProtoMessage() {}
+
+func (x *SetStatsCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetStatsCommand.ProtoReflect.Descriptor instead.
+func (*SetStatsCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *SetStatsCommand) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *SetStatsCommand) GetDerived() *WireDerived {
+	if x != nil {
+		return x.Derived
+	}
+	return nil
+}
+
+type ResolveLootCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Player        uint32                 `protobuf:"varint,1,opt,name=player,proto3" json:"player,omitempty"`
+	DropId        uint32                 `protobuf:"varint,2,opt,name=drop_id,json=dropId,proto3" json:"drop_id,omitempty"`
+	Granted       bool                   `protobuf:"varint,3,opt,name=granted,proto3" json:"granted,omitempty"`
+	Reason        string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolveLootCommand) Reset() {
+	*x = ResolveLootCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolveLootCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolveLootCommand) ProtoMessage() {}
+
+func (x *ResolveLootCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolveLootCommand.ProtoReflect.Descriptor instead.
+func (*ResolveLootCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ResolveLootCommand) GetPlayer() uint32 {
+	if x != nil {
+		return x.Player
+	}
+	return 0
+}
+
+func (x *ResolveLootCommand) GetDropId() uint32 {
+	if x != nil {
+		return x.DropId
+	}
+	return 0
+}
+
+func (x *ResolveLootCommand) GetGranted() bool {
+	if x != nil {
+		return x.Granted
+	}
+	return false
+}
+
+func (x *ResolveLootCommand) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type AbortTransferCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AbortTransferCommand) Reset() {
+	*x = AbortTransferCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AbortTransferCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AbortTransferCommand) ProtoMessage() {}
+
+func (x *AbortTransferCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AbortTransferCommand.ProtoReflect.Descriptor instead.
+func (*AbortTransferCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *AbortTransferCommand) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *AbortTransferCommand) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type LeaveCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LeaveCommand) Reset() {
+	*x = LeaveCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LeaveCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LeaveCommand) ProtoMessage() {}
+
+func (x *LeaveCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LeaveCommand.ProtoReflect.Descriptor instead.
+func (*LeaveCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *LeaveCommand) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+type InputCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	Seq           uint32                 `protobuf:"varint,2,opt,name=seq,proto3" json:"seq,omitempty"`
+	MoveX         int32                  `protobuf:"varint,3,opt,name=move_x,json=moveX,proto3" json:"move_x,omitempty"`
+	Jump          bool                   `protobuf:"varint,4,opt,name=jump,proto3" json:"jump,omitempty"`
+	Up            bool                   `protobuf:"varint,5,opt,name=up,proto3" json:"up,omitempty"`
+	Down          bool                   `protobuf:"varint,6,opt,name=down,proto3" json:"down,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InputCommand) Reset() {
+	*x = InputCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InputCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InputCommand) ProtoMessage() {}
+
+func (x *InputCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InputCommand.ProtoReflect.Descriptor instead.
+func (*InputCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *InputCommand) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *InputCommand) GetSeq() uint32 {
+	if x != nil {
+		return x.Seq
+	}
+	return 0
+}
+
+func (x *InputCommand) GetMoveX() int32 {
+	if x != nil {
+		return x.MoveX
+	}
+	return 0
+}
+
+func (x *InputCommand) GetJump() bool {
+	if x != nil {
+		return x.Jump
+	}
+	return false
+}
+
+func (x *InputCommand) GetUp() bool {
+	if x != nil {
+		return x.Up
+	}
+	return false
+}
+
+func (x *InputCommand) GetDown() bool {
+	if x != nil {
+		return x.Down
+	}
+	return false
+}
+
+type CastCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	SkillId       string                 `protobuf:"bytes,2,opt,name=skill_id,json=skillId,proto3" json:"skill_id,omitempty"`
+	FacingLeft    bool                   `protobuf:"varint,3,opt,name=facing_left,json=facingLeft,proto3" json:"facing_left,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CastCommand) Reset() {
+	*x = CastCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CastCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CastCommand) ProtoMessage() {}
+
+func (x *CastCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CastCommand.ProtoReflect.Descriptor instead.
+func (*CastCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *CastCommand) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *CastCommand) GetSkillId() string {
+	if x != nil {
+		return x.SkillId
+	}
+	return ""
+}
+
+func (x *CastCommand) GetFacingLeft() bool {
+	if x != nil {
+		return x.FacingLeft
+	}
+	return false
+}
+
+type InteractCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	Target        uint32                 `protobuf:"varint,2,opt,name=target,proto3" json:"target,omitempty"`
+	Kind          uint32                 `protobuf:"varint,3,opt,name=kind,proto3" json:"kind,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InteractCommand) Reset() {
+	*x = InteractCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InteractCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InteractCommand) ProtoMessage() {}
+
+func (x *InteractCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InteractCommand.ProtoReflect.Descriptor instead.
+func (*InteractCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *InteractCommand) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *InteractCommand) GetTarget() uint32 {
+	if x != nil {
+		return x.Target
+	}
+	return 0
+}
+
+func (x *InteractCommand) GetKind() uint32 {
+	if x != nil {
+		return x.Kind
+	}
+	return 0
+}
+
+type CraftCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	Station       uint32                 `protobuf:"varint,2,opt,name=station,proto3" json:"station,omitempty"`
+	RecipeId      string                 `protobuf:"bytes,3,opt,name=recipe_id,json=recipeId,proto3" json:"recipe_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CraftCommand) Reset() {
+	*x = CraftCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CraftCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CraftCommand) ProtoMessage() {}
+
+func (x *CraftCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CraftCommand.ProtoReflect.Descriptor instead.
+func (*CraftCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *CraftCommand) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *CraftCommand) GetStation() uint32 {
+	if x != nil {
+		return x.Station
+	}
+	return 0
+}
+
+func (x *CraftCommand) GetRecipeId() string {
+	if x != nil {
+		return x.RecipeId
+	}
+	return ""
+}
+
+type ResolveCraftCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Player        uint32                 `protobuf:"varint,1,opt,name=player,proto3" json:"player,omitempty"`
+	Made          bool                   `protobuf:"varint,2,opt,name=made,proto3" json:"made,omitempty"`
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolveCraftCommand) Reset() {
+	*x = ResolveCraftCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolveCraftCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolveCraftCommand) ProtoMessage() {}
+
+func (x *ResolveCraftCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolveCraftCommand.ProtoReflect.Descriptor instead.
+func (*ResolveCraftCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *ResolveCraftCommand) GetPlayer() uint32 {
+	if x != nil {
+		return x.Player
+	}
+	return 0
+}
+
+func (x *ResolveCraftCommand) GetMade() bool {
+	if x != nil {
+		return x.Made
+	}
+	return false
+}
+
+func (x *ResolveCraftCommand) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type SayCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	Body          string                 `protobuf:"bytes,2,opt,name=body,proto3" json:"body,omitempty"`
+	AtMillis      int64                  `protobuf:"varint,3,opt,name=at_millis,json=atMillis,proto3" json:"at_millis,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SayCommand) Reset() {
+	*x = SayCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SayCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SayCommand) ProtoMessage() {}
+
+func (x *SayCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SayCommand.ProtoReflect.Descriptor instead.
+func (*SayCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *SayCommand) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *SayCommand) GetBody() string {
+	if x != nil {
+		return x.Body
+	}
+	return ""
+}
+
+func (x *SayCommand) GetAtMillis() int64 {
+	if x != nil {
+		return x.AtMillis
+	}
+	return 0
+}
+
+type SetLayerCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityId      uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	Key           string                 `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	Loot          uint32                 `protobuf:"varint,3,opt,name=loot,proto3" json:"loot,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetLayerCommand) Reset() {
+	*x = SetLayerCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetLayerCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetLayerCommand) ProtoMessage() {}
+
+func (x *SetLayerCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetLayerCommand.ProtoReflect.Descriptor instead.
+func (*SetLayerCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *SetLayerCommand) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *SetLayerCommand) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *SetLayerCommand) GetLoot() uint32 {
+	if x != nil {
+		return x.Loot
+	}
+	return 0
+}
+
+// RoomCommandReply answers the three commands that return something.
+//
+// The others are fire-and-forget by design: Input arrives every client tick,
+// and a round trip per input would put the network between a keypress and the
+// simulation.
+type RoomCommandReply struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Error is a failure of the call itself, as opposed to a refusal the caller
+	// is expected to handle -- those come back in the fields below.
+	Error string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	// Join
+	EntityId uint32 `protobuf:"varint,2,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	// Capture
+	Snapshot *WireSnapshot `protobuf:"bytes,3,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
+	Found    bool          `protobuf:"varint,4,opt,name=found,proto3" json:"found,omitempty"`
+	// Attach
+	Attached bool `protobuf:"varint,5,opt,name=attached,proto3" json:"attached,omitempty"`
+	// Closed reports that the room is gone, so the caller can retry placement
+	// rather than treating it as an error. It is room.ErrRoomClosed, which the
+	// join path already retries on locally.
+	Closed        bool `protobuf:"varint,6,opt,name=closed,proto3" json:"closed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomCommandReply) Reset() {
+	*x = RoomCommandReply{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomCommandReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomCommandReply) ProtoMessage() {}
+
+func (x *RoomCommandReply) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomCommandReply.ProtoReflect.Descriptor instead.
+func (*RoomCommandReply) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *RoomCommandReply) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *RoomCommandReply) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *RoomCommandReply) GetSnapshot() *WireSnapshot {
+	if x != nil {
+		return x.Snapshot
+	}
+	return nil
+}
+
+func (x *RoomCommandReply) GetFound() bool {
+	if x != nil {
+		return x.Found
+	}
+	return false
+}
+
+func (x *RoomCommandReply) GetAttached() bool {
+	if x != nil {
+		return x.Attached
+	}
+	return false
+}
+
+func (x *RoomCommandReply) GetClosed() bool {
+	if x != nil {
+		return x.Closed
+	}
+	return false
+}
+
+// RoomCallback is everything a room sends back to the session driving it:
+// room.Sink and room.SessionEvents on one subject.
+//
+// One subject and one message, because they share an ordering requirement --
+// a loot claim that overtook the snapshot showing the drop would be a claim
+// for something the player has not seen yet.
+type RoomCallback struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	EntityId uint32                 `protobuf:"varint,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	// Types that are valid to be assigned to Body:
+	//
+	//	*RoomCallback_Send
+	//	*RoomCallback_Close
+	//	*RoomCallback_ClaimLoot
+	//	*RoomCallback_EnterPortal
+	//	*RoomCallback_DiscoverWaypoint
+	//	*RoomCallback_OpenStation
+	//	*RoomCallback_RunCraft
+	//	*RoomCallback_GrantGather
+	//	*RoomCallback_EndRun
+	Body          isRoomCallback_Body `protobuf_oneof:"body"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomCallback) Reset() {
+	*x = RoomCallback{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomCallback) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomCallback) ProtoMessage() {}
+
+func (x *RoomCallback) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomCallback.ProtoReflect.Descriptor instead.
+func (*RoomCallback) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *RoomCallback) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *RoomCallback) GetBody() isRoomCallback_Body {
+	if x != nil {
+		return x.Body
+	}
+	return nil
+}
+
+func (x *RoomCallback) GetSend() []byte {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCallback_Send); ok {
+			return x.Send
+		}
+	}
+	return nil
+}
+
+func (x *RoomCallback) GetClose() *SinkClose {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCallback_Close); ok {
+			return x.Close
+		}
+	}
+	return nil
+}
+
+func (x *RoomCallback) GetClaimLoot() *LootClaimEvent {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCallback_ClaimLoot); ok {
+			return x.ClaimLoot
+		}
+	}
+	return nil
+}
+
+func (x *RoomCallback) GetEnterPortal() *PortalEvent {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCallback_EnterPortal); ok {
+			return x.EnterPortal
+		}
+	}
+	return nil
+}
+
+func (x *RoomCallback) GetDiscoverWaypoint() *WaypointEvent {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCallback_DiscoverWaypoint); ok {
+			return x.DiscoverWaypoint
+		}
+	}
+	return nil
+}
+
+func (x *RoomCallback) GetOpenStation() *StationEvent {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCallback_OpenStation); ok {
+			return x.OpenStation
+		}
+	}
+	return nil
+}
+
+func (x *RoomCallback) GetRunCraft() *CraftEvent {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCallback_RunCraft); ok {
+			return x.RunCraft
+		}
+	}
+	return nil
+}
+
+func (x *RoomCallback) GetGrantGather() *GatherEvent {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCallback_GrantGather); ok {
+			return x.GrantGather
+		}
+	}
+	return nil
+}
+
+func (x *RoomCallback) GetEndRun() *RunEndEvent {
+	if x != nil {
+		if x, ok := x.Body.(*RoomCallback_EndRun); ok {
+			return x.EndRun
+		}
+	}
+	return nil
+}
+
+type isRoomCallback_Body interface {
+	isRoomCallback_Body()
+}
+
+type RoomCallback_Send struct {
+	// Send carries an already-encoded game.v1 ServerMessage rather than the
+	// typed message, so cluster.proto does not import the client-facing
+	// schema -- the same separation ChatDelivery keeps. It is also one fewer
+	// encode: the room hands over bytes it would have had to produce anyway.
+	Send []byte `protobuf:"bytes,10,opt,name=send,proto3,oneof"`
+}
+
+type RoomCallback_Close struct {
+	Close *SinkClose `protobuf:"bytes,11,opt,name=close,proto3,oneof"`
+}
+
+type RoomCallback_ClaimLoot struct {
+	ClaimLoot *LootClaimEvent `protobuf:"bytes,12,opt,name=claim_loot,json=claimLoot,proto3,oneof"`
+}
+
+type RoomCallback_EnterPortal struct {
+	EnterPortal *PortalEvent `protobuf:"bytes,13,opt,name=enter_portal,json=enterPortal,proto3,oneof"`
+}
+
+type RoomCallback_DiscoverWaypoint struct {
+	DiscoverWaypoint *WaypointEvent `protobuf:"bytes,14,opt,name=discover_waypoint,json=discoverWaypoint,proto3,oneof"`
+}
+
+type RoomCallback_OpenStation struct {
+	OpenStation *StationEvent `protobuf:"bytes,15,opt,name=open_station,json=openStation,proto3,oneof"`
+}
+
+type RoomCallback_RunCraft struct {
+	RunCraft *CraftEvent `protobuf:"bytes,16,opt,name=run_craft,json=runCraft,proto3,oneof"`
+}
+
+type RoomCallback_GrantGather struct {
+	GrantGather *GatherEvent `protobuf:"bytes,17,opt,name=grant_gather,json=grantGather,proto3,oneof"`
+}
+
+type RoomCallback_EndRun struct {
+	EndRun *RunEndEvent `protobuf:"bytes,18,opt,name=end_run,json=endRun,proto3,oneof"`
+}
+
+func (*RoomCallback_Send) isRoomCallback_Body() {}
+
+func (*RoomCallback_Close) isRoomCallback_Body() {}
+
+func (*RoomCallback_ClaimLoot) isRoomCallback_Body() {}
+
+func (*RoomCallback_EnterPortal) isRoomCallback_Body() {}
+
+func (*RoomCallback_DiscoverWaypoint) isRoomCallback_Body() {}
+
+func (*RoomCallback_OpenStation) isRoomCallback_Body() {}
+
+func (*RoomCallback_RunCraft) isRoomCallback_Body() {}
+
+func (*RoomCallback_GrantGather) isRoomCallback_Body() {}
+
+func (*RoomCallback_EndRun) isRoomCallback_Body() {}
+
+type SinkClose struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Code          uint32                 `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SinkClose) Reset() {
+	*x = SinkClose{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SinkClose) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SinkClose) ProtoMessage() {}
+
+func (x *SinkClose) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SinkClose.ProtoReflect.Descriptor instead.
+func (*SinkClose) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *SinkClose) GetCode() uint32 {
+	if x != nil {
+		return x.Code
+	}
+	return 0
+}
+
+func (x *SinkClose) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type LootClaimEvent struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Player      uint32                 `protobuf:"varint,1,opt,name=player,proto3" json:"player,omitempty"`
+	CharacterId string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	DropId      uint32                 `protobuf:"varint,3,opt,name=drop_id,json=dropId,proto3" json:"drop_id,omitempty"`
+	// Instance is the item's own JSON encoding -- the same one the database
+	// stores, for the same reason WireSnapshot reuses the room's.
+	Instance      []byte `protobuf:"bytes,4,opt,name=instance,proto3" json:"instance,omitempty"`
+	Tick          uint64 `protobuf:"varint,5,opt,name=tick,proto3" json:"tick,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LootClaimEvent) Reset() {
+	*x = LootClaimEvent{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LootClaimEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LootClaimEvent) ProtoMessage() {}
+
+func (x *LootClaimEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LootClaimEvent.ProtoReflect.Descriptor instead.
+func (*LootClaimEvent) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *LootClaimEvent) GetPlayer() uint32 {
+	if x != nil {
+		return x.Player
+	}
+	return 0
+}
+
+func (x *LootClaimEvent) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *LootClaimEvent) GetDropId() uint32 {
+	if x != nil {
+		return x.DropId
+	}
+	return 0
+}
+
+func (x *LootClaimEvent) GetInstance() []byte {
+	if x != nil {
+		return x.Instance
+	}
+	return nil
+}
+
+func (x *LootClaimEvent) GetTick() uint64 {
+	if x != nil {
+		return x.Tick
+	}
+	return 0
+}
+
+type PortalEvent struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Player      uint32                 `protobuf:"varint,1,opt,name=player,proto3" json:"player,omitempty"`
+	CharacterId string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	// The portal is named by the map it is in and its position in that map's
+	// list, and resolved from the receiving node's content.
+	MapId         string `protobuf:"bytes,3,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	PortalIndex   uint32 `protobuf:"varint,4,opt,name=portal_index,json=portalIndex,proto3" json:"portal_index,omitempty"`
+	Tick          uint64 `protobuf:"varint,5,opt,name=tick,proto3" json:"tick,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PortalEvent) Reset() {
+	*x = PortalEvent{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PortalEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PortalEvent) ProtoMessage() {}
+
+func (x *PortalEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PortalEvent.ProtoReflect.Descriptor instead.
+func (*PortalEvent) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *PortalEvent) GetPlayer() uint32 {
+	if x != nil {
+		return x.Player
+	}
+	return 0
+}
+
+func (x *PortalEvent) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *PortalEvent) GetMapId() string {
+	if x != nil {
+		return x.MapId
+	}
+	return ""
+}
+
+func (x *PortalEvent) GetPortalIndex() uint32 {
+	if x != nil {
+		return x.PortalIndex
+	}
+	return 0
+}
+
+func (x *PortalEvent) GetTick() uint64 {
+	if x != nil {
+		return x.Tick
+	}
+	return 0
+}
+
+type WaypointEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Player        uint32                 `protobuf:"varint,1,opt,name=player,proto3" json:"player,omitempty"`
+	CharacterId   string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	WaypointId    string                 `protobuf:"bytes,3,opt,name=waypoint_id,json=waypointId,proto3" json:"waypoint_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WaypointEvent) Reset() {
+	*x = WaypointEvent{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WaypointEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WaypointEvent) ProtoMessage() {}
+
+func (x *WaypointEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WaypointEvent.ProtoReflect.Descriptor instead.
+func (*WaypointEvent) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *WaypointEvent) GetPlayer() uint32 {
+	if x != nil {
+		return x.Player
+	}
+	return 0
+}
+
+func (x *WaypointEvent) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *WaypointEvent) GetWaypointId() string {
+	if x != nil {
+		return x.WaypointId
+	}
+	return ""
+}
+
+type StationEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Player        uint32                 `protobuf:"varint,1,opt,name=player,proto3" json:"player,omitempty"`
+	CharacterId   string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	StationId     string                 `protobuf:"bytes,3,opt,name=station_id,json=stationId,proto3" json:"station_id,omitempty"`
+	EntityId      uint32                 `protobuf:"varint,4,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	Levels        map[string]int32       `protobuf:"bytes,5,rep,name=levels,proto3" json:"levels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StationEvent) Reset() {
+	*x = StationEvent{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StationEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StationEvent) ProtoMessage() {}
+
+func (x *StationEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StationEvent.ProtoReflect.Descriptor instead.
+func (*StationEvent) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *StationEvent) GetPlayer() uint32 {
+	if x != nil {
+		return x.Player
+	}
+	return 0
+}
+
+func (x *StationEvent) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *StationEvent) GetStationId() string {
+	if x != nil {
+		return x.StationId
+	}
+	return ""
+}
+
+func (x *StationEvent) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+func (x *StationEvent) GetLevels() map[string]int32 {
+	if x != nil {
+		return x.Levels
+	}
+	return nil
+}
+
+type CraftEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Player        uint32                 `protobuf:"varint,1,opt,name=player,proto3" json:"player,omitempty"`
+	CharacterId   string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	RecipeId      string                 `protobuf:"bytes,3,opt,name=recipe_id,json=recipeId,proto3" json:"recipe_id,omitempty"`
+	Tick          uint64                 `protobuf:"varint,4,opt,name=tick,proto3" json:"tick,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CraftEvent) Reset() {
+	*x = CraftEvent{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CraftEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CraftEvent) ProtoMessage() {}
+
+func (x *CraftEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CraftEvent.ProtoReflect.Descriptor instead.
+func (*CraftEvent) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *CraftEvent) GetPlayer() uint32 {
+	if x != nil {
+		return x.Player
+	}
+	return 0
+}
+
+func (x *CraftEvent) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *CraftEvent) GetRecipeId() string {
+	if x != nil {
+		return x.RecipeId
+	}
+	return ""
+}
+
+func (x *CraftEvent) GetTick() uint64 {
+	if x != nil {
+		return x.Tick
+	}
+	return 0
+}
+
+type GatherEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Player        uint32                 `protobuf:"varint,1,opt,name=player,proto3" json:"player,omitempty"`
+	CharacterId   string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	Skill         string                 `protobuf:"bytes,3,opt,name=skill,proto3" json:"skill,omitempty"`
+	ItemId        string                 `protobuf:"bytes,4,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"`
+	Qty           int32                  `protobuf:"varint,5,opt,name=qty,proto3" json:"qty,omitempty"`
+	Tick          uint64                 `protobuf:"varint,6,opt,name=tick,proto3" json:"tick,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GatherEvent) Reset() {
+	*x = GatherEvent{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GatherEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GatherEvent) ProtoMessage() {}
+
+func (x *GatherEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GatherEvent.ProtoReflect.Descriptor instead.
+func (*GatherEvent) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *GatherEvent) GetPlayer() uint32 {
+	if x != nil {
+		return x.Player
+	}
+	return 0
+}
+
+func (x *GatherEvent) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *GatherEvent) GetSkill() string {
+	if x != nil {
+		return x.Skill
+	}
+	return ""
+}
+
+func (x *GatherEvent) GetItemId() string {
+	if x != nil {
+		return x.ItemId
+	}
+	return ""
+}
+
+func (x *GatherEvent) GetQty() int32 {
+	if x != nil {
+		return x.Qty
+	}
+	return 0
+}
+
+func (x *GatherEvent) GetTick() uint64 {
+	if x != nil {
+		return x.Tick
+	}
+	return 0
+}
+
+type RunEndEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Player        uint32                 `protobuf:"varint,1,opt,name=player,proto3" json:"player,omitempty"`
+	CharacterId   string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	DungeonId     string                 `protobuf:"bytes,3,opt,name=dungeon_id,json=dungeonId,proto3" json:"dungeon_id,omitempty"`
+	Cleared       bool                   `protobuf:"varint,4,opt,name=cleared,proto3" json:"cleared,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunEndEvent) Reset() {
+	*x = RunEndEvent{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunEndEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunEndEvent) ProtoMessage() {}
+
+func (x *RunEndEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunEndEvent.ProtoReflect.Descriptor instead.
+func (*RunEndEvent) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *RunEndEvent) GetPlayer() uint32 {
+	if x != nil {
+		return x.Player
+	}
+	return 0
+}
+
+func (x *RunEndEvent) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *RunEndEvent) GetDungeonId() string {
+	if x != nil {
+		return x.DungeonId
+	}
+	return ""
+}
+
+func (x *RunEndEvent) GetCleared() bool {
+	if x != nil {
+		return x.Cleared
+	}
+	return false
+}
+
 var File_mmo_v1_cluster_proto protoreflect.FileDescriptor
 
 const file_mmo_v1_cluster_proto_rawDesc = "" +
@@ -988,7 +3694,219 @@ const file_mmo_v1_cluster_proto_rawDesc = "" +
 	"\vGuildUpdate\x12\x19\n" +
 	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12\x16\n" +
 	"\x06notice\x18\x02 \x01(\tR\x06notice\x12\x1c\n" +
-	"\tdisbanded\x18\x03 \x01(\bR\tdisbandedB\x8c\x01\n" +
+	"\tdisbanded\x18\x03 \x01(\bR\tdisbanded\"J\n" +
+	"\n" +
+	"RoomEntity\x12\x1f\n" +
+	"\vinstance_id\x18\x01 \x01(\x04R\n" +
+	"instanceId\x12\x1b\n" +
+	"\tentity_id\x18\x02 \x01(\rR\bentityId\"a\n" +
+	"\fWireProgress\x12\x14\n" +
+	"\x05level\x18\x01 \x01(\x05R\x05level\x12\x10\n" +
+	"\x03exp\x18\x02 \x01(\x03R\x03exp\x12\x12\n" +
+	"\x04gold\x18\x03 \x01(\x03R\x04gold\x12\x15\n" +
+	"\x06map_id\x18\x04 \x01(\tR\x05mapId\"\\\n" +
+	"\x0fWireLoadoutSlot\x12\x19\n" +
+	"\bskill_id\x18\x01 \x01(\tR\askillId\x12\x12\n" +
+	"\x04rank\x18\x02 \x01(\x05R\x04rank\x12\x1a\n" +
+	"\bsupports\x18\x03 \x03(\tR\bsupports\"%\n" +
+	"\aWireVec\x12\f\n" +
+	"\x01x\x18\x01 \x01(\x05R\x01x\x12\f\n" +
+	"\x01y\x18\x02 \x01(\x05R\x01y\"e\n" +
+	"\tWireStats\x12\x12\n" +
+	"\x04base\x18\x01 \x03(\x03R\x04base\x12\x12\n" +
+	"\x04flat\x18\x02 \x03(\x03R\x04flat\x12\x1c\n" +
+	"\tincreased\x18\x03 \x03(\x03R\tincreased\x12\x12\n" +
+	"\x04more\x18\x04 \x03(\x03R\x04more\"\xce\x01\n" +
+	"\vWireDerived\x12'\n" +
+	"\x05block\x18\x01 \x01(\v2\x11.mmo.v1.WireStatsR\x05block\x12\x15\n" +
+	"\x06max_hp\x18\x02 \x01(\rR\x05maxHp\x12A\n" +
+	"\n" +
+	"tool_power\x18\x03 \x03(\v2\".mmo.v1.WireDerived.ToolPowerEntryR\ttoolPower\x1a<\n" +
+	"\x0eToolPowerEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"\xd7\x01\n" +
+	"\fWireSnapshot\x120\n" +
+	"\bprogress\x18\x01 \x01(\v2\x14.mmo.v1.WireProgressR\bprogress\x12\x14\n" +
+	"\x05state\x18\x02 \x01(\fR\x05state\x12A\n" +
+	"\tsecondary\x18\x03 \x03(\v2#.mmo.v1.WireSnapshot.SecondaryEntryR\tsecondary\x1a<\n" +
+	"\x0eSecondaryEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\xde\x03\n" +
+	"\fWireJoinSpec\x12!\n" +
+	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x120\n" +
+	"\bprogress\x18\x03 \x01(\v2\x14.mmo.v1.WireProgressR\bprogress\x12\x14\n" +
+	"\x05state\x18\x04 \x01(\fR\x05state\x12\x14\n" +
+	"\x05fresh\x18\x05 \x01(\bR\x05fresh\x121\n" +
+	"\aloadout\x18\x06 \x03(\v2\x17.mmo.v1.WireLoadoutSlotR\aloadout\x12\x1b\n" +
+	"\tlayer_key\x18\a \x01(\tR\blayerKey\x12'\n" +
+	"\x0fknown_waypoints\x18\b \x03(\tR\x0eknownWaypoints\x12A\n" +
+	"\tsecondary\x18\t \x03(\v2#.mmo.v1.WireJoinSpec.SecondaryEntryR\tsecondary\x12%\n" +
+	"\x05spawn\x18\n" +
+	" \x01(\v2\x0f.mmo.v1.WireVecR\x05spawn\x12\x18\n" +
+	"\aarrived\x18\v \x01(\bR\aarrived\x1a<\n" +
+	"\x0eSecondaryEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\xb0\a\n" +
+	"\vRoomCommand\x12\x1f\n" +
+	"\vinstance_id\x18\x01 \x01(\x04R\n" +
+	"instanceId\x12)\n" +
+	"\x10callback_subject\x18\x02 \x01(\tR\x0fcallbackSubject\x12)\n" +
+	"\x04join\x18\n" +
+	" \x01(\v2\x13.mmo.v1.JoinCommandH\x00R\x04join\x122\n" +
+	"\acapture\x18\v \x01(\v2\x16.mmo.v1.CaptureCommandH\x00R\acapture\x12/\n" +
+	"\x06freeze\x18\f \x01(\v2\x15.mmo.v1.FreezeCommandH\x00R\x06freeze\x12/\n" +
+	"\x06attach\x18\r \x01(\v2\x15.mmo.v1.AttachCommandH\x00R\x06attach\x12<\n" +
+	"\vset_loadout\x18\x0e \x01(\v2\x19.mmo.v1.SetLoadoutCommandH\x00R\n" +
+	"setLoadout\x126\n" +
+	"\tset_stats\x18\x0f \x01(\v2\x17.mmo.v1.SetStatsCommandH\x00R\bsetStats\x12?\n" +
+	"\fresolve_loot\x18\x10 \x01(\v2\x1a.mmo.v1.ResolveLootCommandH\x00R\vresolveLoot\x12E\n" +
+	"\x0eabort_transfer\x18\x11 \x01(\v2\x1c.mmo.v1.AbortTransferCommandH\x00R\rabortTransfer\x12,\n" +
+	"\x05leave\x18\x12 \x01(\v2\x14.mmo.v1.LeaveCommandH\x00R\x05leave\x12,\n" +
+	"\x05input\x18\x13 \x01(\v2\x14.mmo.v1.InputCommandH\x00R\x05input\x12)\n" +
+	"\x04cast\x18\x14 \x01(\v2\x13.mmo.v1.CastCommandH\x00R\x04cast\x125\n" +
+	"\binteract\x18\x15 \x01(\v2\x17.mmo.v1.InteractCommandH\x00R\binteract\x12,\n" +
+	"\x05craft\x18\x16 \x01(\v2\x14.mmo.v1.CraftCommandH\x00R\x05craft\x12B\n" +
+	"\rresolve_craft\x18\x17 \x01(\v2\x1b.mmo.v1.ResolveCraftCommandH\x00R\fresolveCraft\x12&\n" +
+	"\x03say\x18\x18 \x01(\v2\x12.mmo.v1.SayCommandH\x00R\x03say\x126\n" +
+	"\tset_layer\x18\x19 \x01(\v2\x17.mmo.v1.SetLayerCommandH\x00R\bsetLayerB\x06\n" +
+	"\x04body\"7\n" +
+	"\vJoinCommand\x12(\n" +
+	"\x04spec\x18\x01 \x01(\v2\x14.mmo.v1.WireJoinSpecR\x04spec\"-\n" +
+	"\x0eCaptureCommand\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\",\n" +
+	"\rFreezeCommand\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\"\xf1\x02\n" +
+	"\rAttachCommand\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x121\n" +
+	"\aloadout\x18\x02 \x03(\v2\x17.mmo.v1.WireLoadoutSlotR\aloadout\x12\x1b\n" +
+	"\tlayer_key\x18\x03 \x01(\tR\blayerKey\x12'\n" +
+	"\x0fknown_waypoints\x18\x04 \x03(\tR\x0eknownWaypoints\x12B\n" +
+	"\tsecondary\x18\x05 \x03(\v2$.mmo.v1.AttachCommand.SecondaryEntryR\tsecondary\x12#\n" +
+	"\rhas_secondary\x18\x06 \x01(\bR\fhasSecondary\x12#\n" +
+	"\rhas_waypoints\x18\a \x01(\bR\fhasWaypoints\x1a<\n" +
+	"\x0eSecondaryEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"_\n" +
+	"\x11SetLoadoutCommand\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12-\n" +
+	"\x05slots\x18\x02 \x03(\v2\x17.mmo.v1.WireLoadoutSlotR\x05slots\"]\n" +
+	"\x0fSetStatsCommand\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12-\n" +
+	"\aderived\x18\x02 \x01(\v2\x13.mmo.v1.WireDerivedR\aderived\"w\n" +
+	"\x12ResolveLootCommand\x12\x16\n" +
+	"\x06player\x18\x01 \x01(\rR\x06player\x12\x17\n" +
+	"\adrop_id\x18\x02 \x01(\rR\x06dropId\x12\x18\n" +
+	"\agranted\x18\x03 \x01(\bR\agranted\x12\x16\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\"K\n" +
+	"\x14AbortTransferCommand\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"+\n" +
+	"\fLeaveCommand\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\"\x8c\x01\n" +
+	"\fInputCommand\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12\x10\n" +
+	"\x03seq\x18\x02 \x01(\rR\x03seq\x12\x15\n" +
+	"\x06move_x\x18\x03 \x01(\x05R\x05moveX\x12\x12\n" +
+	"\x04jump\x18\x04 \x01(\bR\x04jump\x12\x0e\n" +
+	"\x02up\x18\x05 \x01(\bR\x02up\x12\x12\n" +
+	"\x04down\x18\x06 \x01(\bR\x04down\"f\n" +
+	"\vCastCommand\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12\x19\n" +
+	"\bskill_id\x18\x02 \x01(\tR\askillId\x12\x1f\n" +
+	"\vfacing_left\x18\x03 \x01(\bR\n" +
+	"facingLeft\"Z\n" +
+	"\x0fInteractCommand\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12\x16\n" +
+	"\x06target\x18\x02 \x01(\rR\x06target\x12\x12\n" +
+	"\x04kind\x18\x03 \x01(\rR\x04kind\"b\n" +
+	"\fCraftCommand\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12\x18\n" +
+	"\astation\x18\x02 \x01(\rR\astation\x12\x1b\n" +
+	"\trecipe_id\x18\x03 \x01(\tR\brecipeId\"Y\n" +
+	"\x13ResolveCraftCommand\x12\x16\n" +
+	"\x06player\x18\x01 \x01(\rR\x06player\x12\x12\n" +
+	"\x04made\x18\x02 \x01(\bR\x04made\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"Z\n" +
+	"\n" +
+	"SayCommand\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12\x12\n" +
+	"\x04body\x18\x02 \x01(\tR\x04body\x12\x1b\n" +
+	"\tat_millis\x18\x03 \x01(\x03R\batMillis\"T\n" +
+	"\x0fSetLayerCommand\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12\x10\n" +
+	"\x03key\x18\x02 \x01(\tR\x03key\x12\x12\n" +
+	"\x04loot\x18\x03 \x01(\rR\x04loot\"\xc1\x01\n" +
+	"\x10RoomCommandReply\x12\x14\n" +
+	"\x05error\x18\x01 \x01(\tR\x05error\x12\x1b\n" +
+	"\tentity_id\x18\x02 \x01(\rR\bentityId\x120\n" +
+	"\bsnapshot\x18\x03 \x01(\v2\x14.mmo.v1.WireSnapshotR\bsnapshot\x12\x14\n" +
+	"\x05found\x18\x04 \x01(\bR\x05found\x12\x1a\n" +
+	"\battached\x18\x05 \x01(\bR\battached\x12\x16\n" +
+	"\x06closed\x18\x06 \x01(\bR\x06closed\"\x85\x04\n" +
+	"\fRoomCallback\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\rR\bentityId\x12\x14\n" +
+	"\x04send\x18\n" +
+	" \x01(\fH\x00R\x04send\x12)\n" +
+	"\x05close\x18\v \x01(\v2\x11.mmo.v1.SinkCloseH\x00R\x05close\x127\n" +
+	"\n" +
+	"claim_loot\x18\f \x01(\v2\x16.mmo.v1.LootClaimEventH\x00R\tclaimLoot\x128\n" +
+	"\fenter_portal\x18\r \x01(\v2\x13.mmo.v1.PortalEventH\x00R\venterPortal\x12D\n" +
+	"\x11discover_waypoint\x18\x0e \x01(\v2\x15.mmo.v1.WaypointEventH\x00R\x10discoverWaypoint\x129\n" +
+	"\fopen_station\x18\x0f \x01(\v2\x14.mmo.v1.StationEventH\x00R\vopenStation\x121\n" +
+	"\trun_craft\x18\x10 \x01(\v2\x12.mmo.v1.CraftEventH\x00R\brunCraft\x128\n" +
+	"\fgrant_gather\x18\x11 \x01(\v2\x13.mmo.v1.GatherEventH\x00R\vgrantGather\x12.\n" +
+	"\aend_run\x18\x12 \x01(\v2\x13.mmo.v1.RunEndEventH\x00R\x06endRunB\x06\n" +
+	"\x04body\"7\n" +
+	"\tSinkClose\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\rR\x04code\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x94\x01\n" +
+	"\x0eLootClaimEvent\x12\x16\n" +
+	"\x06player\x18\x01 \x01(\rR\x06player\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x17\n" +
+	"\adrop_id\x18\x03 \x01(\rR\x06dropId\x12\x1a\n" +
+	"\binstance\x18\x04 \x01(\fR\binstance\x12\x12\n" +
+	"\x04tick\x18\x05 \x01(\x04R\x04tick\"\x96\x01\n" +
+	"\vPortalEvent\x12\x16\n" +
+	"\x06player\x18\x01 \x01(\rR\x06player\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x15\n" +
+	"\x06map_id\x18\x03 \x01(\tR\x05mapId\x12!\n" +
+	"\fportal_index\x18\x04 \x01(\rR\vportalIndex\x12\x12\n" +
+	"\x04tick\x18\x05 \x01(\x04R\x04tick\"k\n" +
+	"\rWaypointEvent\x12\x16\n" +
+	"\x06player\x18\x01 \x01(\rR\x06player\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x1f\n" +
+	"\vwaypoint_id\x18\x03 \x01(\tR\n" +
+	"waypointId\"\xfa\x01\n" +
+	"\fStationEvent\x12\x16\n" +
+	"\x06player\x18\x01 \x01(\rR\x06player\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x1d\n" +
+	"\n" +
+	"station_id\x18\x03 \x01(\tR\tstationId\x12\x1b\n" +
+	"\tentity_id\x18\x04 \x01(\rR\bentityId\x128\n" +
+	"\x06levels\x18\x05 \x03(\v2 .mmo.v1.StationEvent.LevelsEntryR\x06levels\x1a9\n" +
+	"\vLevelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"x\n" +
+	"\n" +
+	"CraftEvent\x12\x16\n" +
+	"\x06player\x18\x01 \x01(\rR\x06player\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x1b\n" +
+	"\trecipe_id\x18\x03 \x01(\tR\brecipeId\x12\x12\n" +
+	"\x04tick\x18\x04 \x01(\x04R\x04tick\"\x9d\x01\n" +
+	"\vGatherEvent\x12\x16\n" +
+	"\x06player\x18\x01 \x01(\rR\x06player\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x14\n" +
+	"\x05skill\x18\x03 \x01(\tR\x05skill\x12\x17\n" +
+	"\aitem_id\x18\x04 \x01(\tR\x06itemId\x12\x10\n" +
+	"\x03qty\x18\x05 \x01(\x05R\x03qty\x12\x12\n" +
+	"\x04tick\x18\x06 \x01(\x04R\x04tick\"\x81\x01\n" +
+	"\vRunEndEvent\x12\x16\n" +
+	"\x06player\x18\x01 \x01(\rR\x06player\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x1d\n" +
+	"\n" +
+	"dungeon_id\x18\x03 \x01(\tR\tdungeonId\x12\x18\n" +
+	"\acleared\x18\x04 \x01(\bR\aclearedB\x8c\x01\n" +
 	"\n" +
 	"com.mmo.v1B\fClusterProtoP\x01Z7github.com/ctrl-research/mmo/internal/wire/mmo/v1;mmov1\xa2\x02\x03MXX\xaa\x02\x06Mmo.V1\xca\x02\x06Mmo\\V1\xe2\x02\x12Mmo\\V1\\GPBMetadata\xea\x02\aMmo::V1b\x06proto3"
 
@@ -1004,27 +3922,106 @@ func file_mmo_v1_cluster_proto_rawDescGZIP() []byte {
 	return file_mmo_v1_cluster_proto_rawDescData
 }
 
-var file_mmo_v1_cluster_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_mmo_v1_cluster_proto_msgTypes = make([]protoimpl.MessageInfo, 51)
 var file_mmo_v1_cluster_proto_goTypes = []any{
-	(*BusEnvelope)(nil),     // 0: mmo.v1.BusEnvelope
-	(*TransferRequest)(nil), // 1: mmo.v1.TransferRequest
-	(*TransferReply)(nil),   // 2: mmo.v1.TransferReply
-	(*RoomClosed)(nil),      // 3: mmo.v1.RoomClosed
-	(*HostRequest)(nil),     // 4: mmo.v1.HostRequest
-	(*HostReply)(nil),       // 5: mmo.v1.HostReply
-	(*ChatDelivery)(nil),    // 6: mmo.v1.ChatDelivery
-	(*PartyUpdate)(nil),     // 7: mmo.v1.PartyUpdate
-	(*PartyMemberInfo)(nil), // 8: mmo.v1.PartyMemberInfo
-	(*PartyVitals)(nil),     // 9: mmo.v1.PartyVitals
-	(*GuildUpdate)(nil),     // 10: mmo.v1.GuildUpdate
+	(*BusEnvelope)(nil),          // 0: mmo.v1.BusEnvelope
+	(*TransferRequest)(nil),      // 1: mmo.v1.TransferRequest
+	(*TransferReply)(nil),        // 2: mmo.v1.TransferReply
+	(*RoomClosed)(nil),           // 3: mmo.v1.RoomClosed
+	(*HostRequest)(nil),          // 4: mmo.v1.HostRequest
+	(*HostReply)(nil),            // 5: mmo.v1.HostReply
+	(*ChatDelivery)(nil),         // 6: mmo.v1.ChatDelivery
+	(*PartyUpdate)(nil),          // 7: mmo.v1.PartyUpdate
+	(*PartyMemberInfo)(nil),      // 8: mmo.v1.PartyMemberInfo
+	(*PartyVitals)(nil),          // 9: mmo.v1.PartyVitals
+	(*GuildUpdate)(nil),          // 10: mmo.v1.GuildUpdate
+	(*RoomEntity)(nil),           // 11: mmo.v1.RoomEntity
+	(*WireProgress)(nil),         // 12: mmo.v1.WireProgress
+	(*WireLoadoutSlot)(nil),      // 13: mmo.v1.WireLoadoutSlot
+	(*WireVec)(nil),              // 14: mmo.v1.WireVec
+	(*WireStats)(nil),            // 15: mmo.v1.WireStats
+	(*WireDerived)(nil),          // 16: mmo.v1.WireDerived
+	(*WireSnapshot)(nil),         // 17: mmo.v1.WireSnapshot
+	(*WireJoinSpec)(nil),         // 18: mmo.v1.WireJoinSpec
+	(*RoomCommand)(nil),          // 19: mmo.v1.RoomCommand
+	(*JoinCommand)(nil),          // 20: mmo.v1.JoinCommand
+	(*CaptureCommand)(nil),       // 21: mmo.v1.CaptureCommand
+	(*FreezeCommand)(nil),        // 22: mmo.v1.FreezeCommand
+	(*AttachCommand)(nil),        // 23: mmo.v1.AttachCommand
+	(*SetLoadoutCommand)(nil),    // 24: mmo.v1.SetLoadoutCommand
+	(*SetStatsCommand)(nil),      // 25: mmo.v1.SetStatsCommand
+	(*ResolveLootCommand)(nil),   // 26: mmo.v1.ResolveLootCommand
+	(*AbortTransferCommand)(nil), // 27: mmo.v1.AbortTransferCommand
+	(*LeaveCommand)(nil),         // 28: mmo.v1.LeaveCommand
+	(*InputCommand)(nil),         // 29: mmo.v1.InputCommand
+	(*CastCommand)(nil),          // 30: mmo.v1.CastCommand
+	(*InteractCommand)(nil),      // 31: mmo.v1.InteractCommand
+	(*CraftCommand)(nil),         // 32: mmo.v1.CraftCommand
+	(*ResolveCraftCommand)(nil),  // 33: mmo.v1.ResolveCraftCommand
+	(*SayCommand)(nil),           // 34: mmo.v1.SayCommand
+	(*SetLayerCommand)(nil),      // 35: mmo.v1.SetLayerCommand
+	(*RoomCommandReply)(nil),     // 36: mmo.v1.RoomCommandReply
+	(*RoomCallback)(nil),         // 37: mmo.v1.RoomCallback
+	(*SinkClose)(nil),            // 38: mmo.v1.SinkClose
+	(*LootClaimEvent)(nil),       // 39: mmo.v1.LootClaimEvent
+	(*PortalEvent)(nil),          // 40: mmo.v1.PortalEvent
+	(*WaypointEvent)(nil),        // 41: mmo.v1.WaypointEvent
+	(*StationEvent)(nil),         // 42: mmo.v1.StationEvent
+	(*CraftEvent)(nil),           // 43: mmo.v1.CraftEvent
+	(*GatherEvent)(nil),          // 44: mmo.v1.GatherEvent
+	(*RunEndEvent)(nil),          // 45: mmo.v1.RunEndEvent
+	nil,                          // 46: mmo.v1.WireDerived.ToolPowerEntry
+	nil,                          // 47: mmo.v1.WireSnapshot.SecondaryEntry
+	nil,                          // 48: mmo.v1.WireJoinSpec.SecondaryEntry
+	nil,                          // 49: mmo.v1.AttachCommand.SecondaryEntry
+	nil,                          // 50: mmo.v1.StationEvent.LevelsEntry
 }
 var file_mmo_v1_cluster_proto_depIdxs = []int32{
-	8, // 0: mmo.v1.PartyUpdate.members:type_name -> mmo.v1.PartyMemberInfo
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	8,  // 0: mmo.v1.PartyUpdate.members:type_name -> mmo.v1.PartyMemberInfo
+	15, // 1: mmo.v1.WireDerived.block:type_name -> mmo.v1.WireStats
+	46, // 2: mmo.v1.WireDerived.tool_power:type_name -> mmo.v1.WireDerived.ToolPowerEntry
+	12, // 3: mmo.v1.WireSnapshot.progress:type_name -> mmo.v1.WireProgress
+	47, // 4: mmo.v1.WireSnapshot.secondary:type_name -> mmo.v1.WireSnapshot.SecondaryEntry
+	12, // 5: mmo.v1.WireJoinSpec.progress:type_name -> mmo.v1.WireProgress
+	13, // 6: mmo.v1.WireJoinSpec.loadout:type_name -> mmo.v1.WireLoadoutSlot
+	48, // 7: mmo.v1.WireJoinSpec.secondary:type_name -> mmo.v1.WireJoinSpec.SecondaryEntry
+	14, // 8: mmo.v1.WireJoinSpec.spawn:type_name -> mmo.v1.WireVec
+	20, // 9: mmo.v1.RoomCommand.join:type_name -> mmo.v1.JoinCommand
+	21, // 10: mmo.v1.RoomCommand.capture:type_name -> mmo.v1.CaptureCommand
+	22, // 11: mmo.v1.RoomCommand.freeze:type_name -> mmo.v1.FreezeCommand
+	23, // 12: mmo.v1.RoomCommand.attach:type_name -> mmo.v1.AttachCommand
+	24, // 13: mmo.v1.RoomCommand.set_loadout:type_name -> mmo.v1.SetLoadoutCommand
+	25, // 14: mmo.v1.RoomCommand.set_stats:type_name -> mmo.v1.SetStatsCommand
+	26, // 15: mmo.v1.RoomCommand.resolve_loot:type_name -> mmo.v1.ResolveLootCommand
+	27, // 16: mmo.v1.RoomCommand.abort_transfer:type_name -> mmo.v1.AbortTransferCommand
+	28, // 17: mmo.v1.RoomCommand.leave:type_name -> mmo.v1.LeaveCommand
+	29, // 18: mmo.v1.RoomCommand.input:type_name -> mmo.v1.InputCommand
+	30, // 19: mmo.v1.RoomCommand.cast:type_name -> mmo.v1.CastCommand
+	31, // 20: mmo.v1.RoomCommand.interact:type_name -> mmo.v1.InteractCommand
+	32, // 21: mmo.v1.RoomCommand.craft:type_name -> mmo.v1.CraftCommand
+	33, // 22: mmo.v1.RoomCommand.resolve_craft:type_name -> mmo.v1.ResolveCraftCommand
+	34, // 23: mmo.v1.RoomCommand.say:type_name -> mmo.v1.SayCommand
+	35, // 24: mmo.v1.RoomCommand.set_layer:type_name -> mmo.v1.SetLayerCommand
+	18, // 25: mmo.v1.JoinCommand.spec:type_name -> mmo.v1.WireJoinSpec
+	13, // 26: mmo.v1.AttachCommand.loadout:type_name -> mmo.v1.WireLoadoutSlot
+	49, // 27: mmo.v1.AttachCommand.secondary:type_name -> mmo.v1.AttachCommand.SecondaryEntry
+	13, // 28: mmo.v1.SetLoadoutCommand.slots:type_name -> mmo.v1.WireLoadoutSlot
+	16, // 29: mmo.v1.SetStatsCommand.derived:type_name -> mmo.v1.WireDerived
+	17, // 30: mmo.v1.RoomCommandReply.snapshot:type_name -> mmo.v1.WireSnapshot
+	38, // 31: mmo.v1.RoomCallback.close:type_name -> mmo.v1.SinkClose
+	39, // 32: mmo.v1.RoomCallback.claim_loot:type_name -> mmo.v1.LootClaimEvent
+	40, // 33: mmo.v1.RoomCallback.enter_portal:type_name -> mmo.v1.PortalEvent
+	41, // 34: mmo.v1.RoomCallback.discover_waypoint:type_name -> mmo.v1.WaypointEvent
+	42, // 35: mmo.v1.RoomCallback.open_station:type_name -> mmo.v1.StationEvent
+	43, // 36: mmo.v1.RoomCallback.run_craft:type_name -> mmo.v1.CraftEvent
+	44, // 37: mmo.v1.RoomCallback.grant_gather:type_name -> mmo.v1.GatherEvent
+	45, // 38: mmo.v1.RoomCallback.end_run:type_name -> mmo.v1.RunEndEvent
+	50, // 39: mmo.v1.StationEvent.levels:type_name -> mmo.v1.StationEvent.LevelsEntry
+	40, // [40:40] is the sub-list for method output_type
+	40, // [40:40] is the sub-list for method input_type
+	40, // [40:40] is the sub-list for extension type_name
+	40, // [40:40] is the sub-list for extension extendee
+	0,  // [0:40] is the sub-list for field type_name
 }
 
 func init() { file_mmo_v1_cluster_proto_init() }
@@ -1032,13 +4029,42 @@ func file_mmo_v1_cluster_proto_init() {
 	if File_mmo_v1_cluster_proto != nil {
 		return
 	}
+	file_mmo_v1_cluster_proto_msgTypes[19].OneofWrappers = []any{
+		(*RoomCommand_Join)(nil),
+		(*RoomCommand_Capture)(nil),
+		(*RoomCommand_Freeze)(nil),
+		(*RoomCommand_Attach)(nil),
+		(*RoomCommand_SetLoadout)(nil),
+		(*RoomCommand_SetStats)(nil),
+		(*RoomCommand_ResolveLoot)(nil),
+		(*RoomCommand_AbortTransfer)(nil),
+		(*RoomCommand_Leave)(nil),
+		(*RoomCommand_Input)(nil),
+		(*RoomCommand_Cast)(nil),
+		(*RoomCommand_Interact)(nil),
+		(*RoomCommand_Craft)(nil),
+		(*RoomCommand_ResolveCraft)(nil),
+		(*RoomCommand_Say)(nil),
+		(*RoomCommand_SetLayer)(nil),
+	}
+	file_mmo_v1_cluster_proto_msgTypes[37].OneofWrappers = []any{
+		(*RoomCallback_Send)(nil),
+		(*RoomCallback_Close)(nil),
+		(*RoomCallback_ClaimLoot)(nil),
+		(*RoomCallback_EnterPortal)(nil),
+		(*RoomCallback_DiscoverWaypoint)(nil),
+		(*RoomCallback_OpenStation)(nil),
+		(*RoomCallback_RunCraft)(nil),
+		(*RoomCallback_GrantGather)(nil),
+		(*RoomCallback_EndRun)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mmo_v1_cluster_proto_rawDesc), len(file_mmo_v1_cluster_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   51,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

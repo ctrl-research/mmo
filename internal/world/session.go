@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ctrl-research/mmo/internal/bus"
 	"github.com/ctrl-research/mmo/internal/content"
 	"github.com/ctrl-research/mmo/internal/directory"
 	"github.com/ctrl-research/mmo/internal/rng"
@@ -172,6 +173,11 @@ type Session struct {
 	// partyLoot is the party's loot rule, mirrored here because it has to
 	// travel into the room with the layer key.
 	partyLoot string
+
+	// callbackSub carries everything a room in another process sends back --
+	// snapshots, chat, loot claims. Nil while the character is in a room on
+	// this node, which is the common case and costs nothing.
+	callbackSub bus.Subscription
 
 	// partyRoster is the roster this session was last told about, kept so the
 	// once-a-second vitals path can render a member frame without a directory
@@ -456,7 +462,8 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 	// instance and which node, and the room is started there if it is not
 	// already running -- which may be a node other than this one.
 	handle, instance, entityID, err := n.placeAndJoin(ctx,
-		roomKey(n.content.Maps[mapID], s.layerKey()), spec)
+		roomKey(n.content.Maps[mapID], s.layerKey()), spec,
+		func() { s.watchRoomCallbacks() })
 	if err != nil {
 		release()
 		return nil, err
@@ -827,6 +834,10 @@ func (s *Session) detach() {
 
 	handle.Leave(ctx, entityID)
 	s.node.dir.Leave(ctx, instance)
+
+	// After the Leave, not before: the room may have something to say on the
+	// way out, and a subscription dropped first would lose it.
+	s.stopRoomCallbacks()
 }
 
 var _ PlayerSession = (*Session)(nil)
