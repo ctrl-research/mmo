@@ -61,6 +61,15 @@ func (m *Memory) Nodes() []NodeID {
 	return append([]NodeID(nil), m.nodes...)
 }
 
+// LiveNodes lists the registered nodes.
+//
+// All of them: an in-memory directory is one process, so every node it knows
+// about is running by definition. The Redis one has to ask, because a node
+// there can stop heartbeating without telling anybody.
+func (m *Memory) LiveNodes(_ context.Context) ([]NodeID, error) {
+	return m.Nodes(), nil
+}
+
 // placeLocked picks the node to host a new instance.
 //
 // Fewest rooms wins, ties broken by registration order. Counting rooms rather

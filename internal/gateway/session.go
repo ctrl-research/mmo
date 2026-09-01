@@ -283,21 +283,20 @@ func (s *session) readHello(ctx context.Context) error {
 	return nil
 }
 
-// where returns the room and entity to address right now.
+// inRoom reports whether there is anywhere to send this player's input.
 //
 // Read per message rather than cached at connect: a transfer moves the
-// character to a different room with a different entity id, and a cached pair
-// would keep sending input into the map the player has just left.
-func (s *session) where() (room.Handle, room.EntityID) {
-	if s.play == nil {
-		return nil, 0
-	}
-	return s.play.Where()
+// character to a different room, and the session is what knows where that is.
+// The gateway deliberately never holds the room itself -- see PlayerSession.
+func (s *session) inRoom() bool {
+	return s.play != nil && s.play.InRoom()
 }
 
 func (s *session) handleClientMessage(ctx context.Context, cm *mmov1.ClientMessage, limiter *rateLimiter) {
-	handle, entityID := s.where()
-	if handle == nil && cm.GetPing() == nil && cm.GetHello() == nil {
+	// Only "is the character placed", not "give me the room". A gateway may be
+	// in a different process from the world node, where a room handle is not
+	// something it could hold.
+	if !s.inRoom() && cm.GetPing() == nil && cm.GetHello() == nil {
 		return
 	}
 
@@ -313,7 +312,7 @@ func (s *session) handleClientMessage(ctx context.Context, cm *mmov1.ClientMessa
 		// The simulation clamps too. Doing it here as well keeps a hostile
 		// value from ever reaching the room, and keeps the clamp visible at
 		// the trust boundary where it belongs.
-		handle.Input(ctx, entityID, in.GetSeq(), sim.Input{
+		s.play.Input(ctx, in.GetSeq(), sim.Input{
 			MoveX: clampMoveX(in.GetMoveX()),
 			Jump:  in.GetJump(),
 			Up:    in.GetUp(),
@@ -329,7 +328,7 @@ func (s *session) handleClientMessage(ctx context.Context, cm *mmov1.ClientMessa
 			return
 		}
 		c := cm.GetCast()
-		handle.Cast(ctx, entityID, c.GetSkillId(), c.GetFacingLeft())
+		s.play.Cast(ctx, c.GetSkillId(), c.GetFacingLeft())
 
 	case cm.GetInteract() != nil:
 		if !limiter.allow() {
@@ -341,7 +340,7 @@ func (s *session) handleClientMessage(ctx context.Context, cm *mmov1.ClientMessa
 		// ahead of this server is dropped here instead of arriving in the room
 		// as some other kind entirely.
 		if kind, ok := interactKinds[in.GetKind()]; ok {
-			handle.Interact(ctx, entityID, room.EntityID(in.GetEntityId()), kind)
+			s.play.Interact(ctx, room.EntityID(in.GetEntityId()), kind)
 		}
 
 	case cm.GetCraft() != nil:
@@ -350,7 +349,7 @@ func (s *session) handleClientMessage(ctx context.Context, cm *mmov1.ClientMessa
 			return
 		}
 		c := cm.GetCraft()
-		handle.Craft(ctx, entityID, room.EntityID(c.GetEntityId()), c.GetRecipeId())
+		s.play.Craft(ctx, room.EntityID(c.GetEntityId()), c.GetRecipeId())
 
 	case cm.GetItemAction() != nil:
 		if !limiter.allow() {

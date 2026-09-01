@@ -15,6 +15,7 @@ import (
 	"github.com/ctrl-research/mmo/internal/store"
 	mmov1 "github.com/ctrl-research/mmo/internal/wire/mmo/v1"
 	"github.com/ctrl-research/mmo/internal/world/room"
+	"github.com/ctrl-research/mmo/internal/world/sim"
 	"github.com/ctrl-research/mmo/internal/world/stats"
 	"github.com/google/uuid"
 )
@@ -64,6 +65,25 @@ type PlayerSession interface {
 	// character actually needs: reading them separately can straddle a
 	// transfer and produce a handle to one room with an entity from another.
 	Where() (room.Handle, room.EntityID)
+
+	// InRoom reports whether the character is placed. A caller that is only
+	// asking "is there anywhere to send this" wants this rather than Where:
+	// the handle it would get back is an in-process reference, and a gateway
+	// in another process cannot hold one.
+	InRoom() bool
+
+	// The four calls a connected player makes constantly. They are on the
+	// session rather than reached through Where because the session is the
+	// whole of the gateway's API surface: a gateway in another process cannot
+	// hold a room handle, and routing input through the session is what lets
+	// the two be split.
+	//
+	// All four are queued, never waited on. A room mid-tick must not be able
+	// to stall the goroutine reading a socket.
+	Input(ctx context.Context, seq uint32, in sim.Input)
+	Cast(ctx context.Context, skillID string, facingLeft bool)
+	Interact(ctx context.Context, target room.EntityID, kind room.InteractKind)
+	Craft(ctx context.Context, station room.EntityID, recipe string)
 
 	Name() string
 
@@ -277,6 +297,40 @@ func (s *Session) Where() (room.Handle, room.EntityID) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.handle, s.entityID
+}
+
+// InRoom reports whether the character is placed in a room.
+func (s *Session) InRoom() bool {
+	handle, _ := s.Where()
+	return handle != nil
+}
+
+// Input queues one tick of intent.
+func (s *Session) Input(ctx context.Context, seq uint32, in sim.Input) {
+	if handle, id := s.Where(); handle != nil {
+		handle.Input(ctx, id, seq, in)
+	}
+}
+
+// Cast queues a skill request.
+func (s *Session) Cast(ctx context.Context, skillID string, facingLeft bool) {
+	if handle, id := s.Where(); handle != nil {
+		handle.Cast(ctx, id, skillID, facingLeft)
+	}
+}
+
+// Interact queues a request to act on a nearby entity.
+func (s *Session) Interact(ctx context.Context, target room.EntityID, kind room.InteractKind) {
+	if handle, id := s.Where(); handle != nil {
+		handle.Interact(ctx, id, target, kind)
+	}
+}
+
+// Craft queues a request to make something at a station.
+func (s *Session) Craft(ctx context.Context, station room.EntityID, recipe string) {
+	if handle, id := s.Where(); handle != nil {
+		handle.Craft(ctx, id, station, recipe)
+	}
 }
 
 // Name returns the character's name.

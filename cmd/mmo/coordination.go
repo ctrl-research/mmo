@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -12,7 +13,9 @@ import (
 	"github.com/ctrl-research/mmo/internal/auth"
 	"github.com/ctrl-research/mmo/internal/bus"
 	"github.com/ctrl-research/mmo/internal/directory"
+	"github.com/ctrl-research/mmo/internal/gateway"
 	"github.com/ctrl-research/mmo/internal/store"
+	"github.com/ctrl-research/mmo/internal/world"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -268,4 +271,38 @@ func openPresence(cfg config, client *redis.Client, log *slog.Logger) directory.
 	}
 	log.Info("using Redis for presence", "addr", cfg.redisAddr)
 	return directory.NewRedisPresence(client, "mmo")
+}
+
+// openWorld returns what the gateway places characters through.
+//
+// The node itself when this process is running one, and a bus-backed placer
+// when it is not -- which is what makes the gateway role independently
+// deployable. The gateway cannot tell the difference; it holds a PlayerSession
+// either way and never touches a room.
+func openWorld(ctx context.Context, node *world.Node, msgBus bus.Bus, dir directory.Directory,
+	cfg config, log *slog.Logger) (gateway.World, error) {
+
+	if node != nil {
+		return node, nil
+	}
+
+	if cfg.natsURL == "" {
+		// The in-process bus reaches nothing outside this process, so a
+		// gateway using it would publish every login into the void and time
+		// out. Better to refuse at startup, where the message can say why.
+		return nil, errors.New(
+			"running --roles=gateway without world needs --nats-url: " +
+				"the gateway reaches world nodes over the bus, and the in-process bus does not leave this process")
+	}
+	if cfg.redisAddr == "" {
+		// The directory is how a gateway finds a world node to hand a
+		// character to. An in-memory one knows only about this process, which
+		// is not running a world node.
+		return nil, errors.New(
+			"running --roles=gateway without world needs --redis-addr: " +
+				"the gateway finds world nodes through the directory")
+	}
+
+	log.Info("this gateway runs no simulation; placing characters on world nodes over the bus")
+	return world.NewRemoteWorld(ctx, msgBus, dir, cfg.nodeID, log), nil
 }

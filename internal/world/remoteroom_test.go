@@ -129,6 +129,25 @@ func (s *recordingSink) count() int {
 	return len(s.messages)
 }
 
+// selfX is the character's own position in the most recent snapshot.
+//
+// Read from the player's own entity, which is the one field a snapshot never
+// delta-compresses -- so it is complete in every message rather than only in
+// the first.
+func (s *recordingSink) selfX() (int32, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i := len(s.messages) - 1; i >= 0; i-- {
+		snap := s.messages[i].GetSnapshot()
+		if snap == nil || snap.GetSelf() == nil {
+			continue
+		}
+		return snap.GetSelf().GetX(), true
+	}
+	return 0, false
+}
+
 func (s *recordingSink) closeReason() (bool, uint32, string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

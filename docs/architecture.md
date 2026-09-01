@@ -44,7 +44,7 @@ One binary, `cmd/mmo`, with roles selected at runtime:
 
 | Role | Stateful? | Responsibility |
 |---|---|---|
-| `gateway` | Session only | TLS + WebSocket termination, ticket redemption, packet routing to world/social. Horizontally scalable, any client to any gateway. |
+| `gateway` | Socket only | TLS + WebSocket termination, ticket redemption, validation, packet routing to world/social. Runs no simulation and holds no room, lease or character state: `--roles=gateway` starts on its own. Horizontally scalable, any client to any gateway. |
 | `world` | **Yes** | Hosts room instances. Runs the tick loop. Owns live character state for players in its rooms. |
 | `social` | No (Redis-backed) | Chat fanout, party, guild, friends, presence. |
 | `auth` | No | OIDC relying party, allowlist enforcement, session and ticket issuance. HTTP only, not on the game path. |
