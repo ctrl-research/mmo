@@ -220,7 +220,10 @@ func (s *Session) promote(ctx context.Context, targetName string) (directory.Par
 // logged out is exactly when you most want to: presence would say they are not
 // there and refuse.
 func (s *Session) memberNamed(ctx context.Context, name string) (string, error) {
-	party, ok := s.node.parties.Of(ctx, s.characterID.String())
+	party, ok, err := s.node.parties.Of(ctx, s.characterID.String())
+	if err != nil {
+		return "", err
+	}
 	if !ok {
 		return "", directory.ErrNotInParty
 	}
@@ -271,14 +274,22 @@ func (s *Session) announceParty(ctx context.Context, party directory.Party, noti
 // there are six actions and three consequences, and pairing them by hand is
 // how a session ends up subscribed to a party it left.
 func (s *Session) syncPartyMembership(ctx context.Context) {
-	var id directory.PartyID
-	if party, ok := s.node.parties.Of(ctx, s.characterID.String()); ok {
-		id = party.ID
+	// One read, not one per field. Two reads of the same party can disagree --
+	// it can disband between them -- which would subscribe this session to one
+	// party while applying another's loot rule.
+	party, ok, err := s.node.parties.Of(ctx, s.characterID.String())
+	if err != nil {
+		// Reconciling against an answer we do not have would take a player out
+		// of a party that is running fine. Better to leave the session as it
+		// is and let the next change put it right.
+		s.log.Error("reading a party to reconcile against", "err", err)
+		return
 	}
 
+	var id directory.PartyID
 	loot := directory.LootFreeForAll
-	if party, ok := s.node.parties.Of(ctx, s.characterID.String()); ok {
-		loot = party.Loot
+	if ok {
+		id, loot = party.ID, party.Loot
 	}
 
 	s.mu.Lock()
@@ -452,6 +463,13 @@ func partyMessage(err error) string {
 // incremental update shows a roster that is quietly wrong until somebody
 // leaves. An empty member list means "you are not in a party".
 func (s *Session) sendPartyState(party directory.Party) {
+	// Kept so the vitals path can re-render without asking the directory
+	// again. Every roster change reaches this session as a party update
+	// carrying the whole roster, so this is as current as a read would be.
+	s.mu.Lock()
+	s.partyRoster = party
+	s.mu.Unlock()
+
 	state := &mmov1.PartyState{
 		PartyId:           string(party.ID),
 		LeaderCharacterId: party.Leader,
@@ -509,10 +527,16 @@ func (s *Session) recordVitals(v *mmov1.PartyVitals) {
 	s.partyVitals[v.GetCharacterId()] = v
 	s.mu.Unlock()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	// Rendered from the roster this session was last given rather than a fresh
+	// read. Vitals arrive once a second per member, so for a full party that
+	// is thirty-six directory reads a second -- and every one of them would be
+	// a network round trip asking for something the last party update already
+	// carried.
+	s.mu.Lock()
+	party := s.partyRoster
+	s.mu.Unlock()
 
-	if party, ok := s.node.parties.Of(ctx, s.characterID.String()); ok {
+	if party.ID != "" {
 		s.sendPartyState(party)
 	}
 }
@@ -594,7 +618,11 @@ func (s *Session) restoreParty(ctx context.Context) {
 		return
 	}
 
-	party, ok := s.node.parties.Of(ctx, s.characterID.String())
+	party, ok, err := s.node.parties.Of(ctx, s.characterID.String())
+	if err != nil {
+		s.log.Error("reading a party on login", "err", err)
+		return
+	}
 	if !ok {
 		return
 	}

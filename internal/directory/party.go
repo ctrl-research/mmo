@@ -129,7 +129,12 @@ type Parties interface {
 	SetLoot(ctx context.Context, leader, rule string) (Party, error)
 
 	// Of returns the party a character is in.
-	Of(ctx context.Context, characterID string) (Party, bool)
+	//
+	// Reports an error for the reason the directory's Lookup does: an
+	// unreachable Redis answering "not in a party" is not a degraded answer
+	// but a wrong one, and a caller acts on it by dropping somebody's party
+	// chat on the floor.
+	Of(ctx context.Context, characterID string) (Party, bool, error)
 
 	// Rename updates a member's display name, for a character that was renamed
 	// or whose name was not known when they joined.
@@ -147,6 +152,10 @@ const InviteTTL = 60 * time.Second
 // MemoryParties is a Parties held in one process.
 type MemoryParties struct {
 	maxSize int
+
+	// inviteTTL is per-instance so tests can use a short one and watch a real
+	// invitation expire. Both implementations take it the same way.
+	inviteTTL time.Duration
 
 	mu       sync.Mutex
 	parties  map[PartyID]*Party
@@ -167,11 +176,12 @@ func NewMemoryParties(maxSize int) *MemoryParties {
 		maxSize = 6
 	}
 	return &MemoryParties{
-		maxSize:  maxSize,
-		parties:  make(map[PartyID]*Party),
-		memberOf: make(map[string]PartyID),
-		invites:  make(map[string]invitation),
-		now:      time.Now,
+		maxSize:   maxSize,
+		inviteTTL: InviteTTL,
+		parties:   make(map[PartyID]*Party),
+		memberOf:  make(map[string]PartyID),
+		invites:   make(map[string]invitation),
+		now:       time.Now,
 	}
 }
 
@@ -234,7 +244,7 @@ func (m *MemoryParties) Invite(_ context.Context, from Member, to string) (Party
 	}
 
 	m.invites[to] = invitation{
-		party: p.ID, from: from.CharacterID, expires: m.now().Add(InviteTTL),
+		party: p.ID, from: from.CharacterID, expires: m.now().Add(m.inviteTTL),
 	}
 	return *p, nil
 }
@@ -404,19 +414,19 @@ func (m *MemoryParties) SetLoot(_ context.Context, leader, rule string) (Party, 
 }
 
 // Of returns the party a character is in.
-func (m *MemoryParties) Of(_ context.Context, characterID string) (Party, bool) {
+func (m *MemoryParties) Of(_ context.Context, characterID string) (Party, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	id, ok := m.memberOf[characterID]
 	if !ok {
-		return Party{}, false
+		return Party{}, false, nil
 	}
 	p, ok := m.parties[id]
 	if !ok {
-		return Party{}, false
+		return Party{}, false, nil
 	}
-	return *p, true
+	return *p, true, nil
 }
 
 // Rename updates a member's display name.

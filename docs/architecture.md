@@ -107,6 +107,8 @@ Local chat is the exception that proves the rule. It never touches the bus at al
 
 Parties carry their whole roster in every update; guilds carry only a notice and let each node reload. That is a size decision, not an inconsistency: a party is at most six members and the delta would be most of the message anyway, while a guild can be hundreds of rows that every node already has a database connection to read.
 
+Carrying the whole roster is also what keeps the party's hot path off the coordination store. Vitals arrive once a second per member, and each one re-renders the roster; a session renders from the update it was last given rather than re-reading the party, because the update already carried everything the render needs. For a full party that is the difference between thirty-six reads a second and none.
+
 Nothing a *live session* holds can travel at all — the socket, and the channel a room reports portals and loot on, are in-process references to the node the player is connected to. That is why a room handoff hands them over separately (§ Room handoff) rather than packing them into the transfer.
 
 ### Presence is the third seam
@@ -118,6 +120,14 @@ It now has that home: `RedisPresence` keeps two indexes — characters by ID, ID
 The normalised name is *stored in the record*, not derived in Lua. `string.lower` is ASCII-only and does not trim, so a script computing the lookup key would disagree with `NormaliseName` for any name with an accent — and a disagreement leaves a name pointing at a character forever. One definition of the key, in Go.
 
 Presence reads report errors, for the reason the directory's do: an unreachable Redis answering "nobody is online by that name" is not a degraded answer but a wrong one, and a caller acts on it by refusing a whisper to somebody who is standing right there.
+
+### Parties are the fourth
+
+`Parties` owns membership, which spans rooms and nodes by definition — that is most of what makes a party worth having, and it is why the state was never going to survive on one node's heap. Same argument as presence, same conclusion: ephemeral, losable, Redis rather than Postgres.
+
+What is different is that every method has a rule attached, and every rule is a check followed by a write. `RedisParties` makes each one a single Lua script, because a read of the roster followed by a write of it leaves exactly enough room between them for two people to take the last slot, or for somebody demoted in between to kick anyway. Atomicity here is not an optimisation; it is the only thing that makes the guards mean anything.
+
+Invitations are keys with a TTL rather than fields with a stored deadline, so Redis does the expiring and nothing lingers for somebody who was asked once and never came back. One invitation per character: a second replaces the first.
 
 ## The two swappable seams
 

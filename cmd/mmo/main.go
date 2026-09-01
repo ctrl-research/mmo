@@ -30,7 +30,6 @@ import (
 	gamedata "github.com/ctrl-research/mmo/content"
 	"github.com/ctrl-research/mmo/internal/auth"
 	"github.com/ctrl-research/mmo/internal/content"
-	"github.com/ctrl-research/mmo/internal/directory"
 	"github.com/ctrl-research/mmo/internal/gateway"
 	"github.com/ctrl-research/mmo/internal/metrics"
 	"github.com/ctrl-research/mmo/internal/store"
@@ -182,7 +181,7 @@ func run() error {
 	presence := openPresence(cfg, redisClient, log)
 	defer presence.Close()
 
-	parties := directory.NewMemoryParties(game.Balance.Party.MaxSize)
+	parties := openParties(cfg, redisClient, game.Balance.Party.MaxSize, log)
 	defer parties.Close()
 
 	// Redis is optional at hobby scale: with one process, in-memory leases and

@@ -180,7 +180,15 @@ func (s *Session) handleChat(req *mmov1.ChatSend) {
 		s.echo(req.GetChannel(), s.name, body, at, false)
 
 	case mmov1.ChatChannel_CHAT_CHANNEL_PARTY:
-		party, ok := s.node.parties.Of(ctx, s.characterID.String())
+		party, ok, err := s.node.parties.Of(ctx, s.characterID.String())
+		if err != nil {
+			// Not "you are not in a party": they may well be, and telling
+			// somebody they are alone when the lookup failed is worse than
+			// admitting the lookup failed.
+			s.log.Error("reading a party for chat", "err", err)
+			s.notify(req.GetChannel(), "could not reach your party just now")
+			return
+		}
 		if !ok {
 			s.notify(req.GetChannel(), "you are not in a party")
 			return

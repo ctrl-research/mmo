@@ -621,7 +621,7 @@ names already follow and the only one that does not need re-tuning per map.
 *Only now, and only because the seams were built in M0.*
 
 - [x] `nats` bus implementation
-- [x] `redis` directory implementation (and the presence table with it)
+- [x] `redis` directory implementation (and presence and parties with it)
 - [ ] Split roles into separate deployments; k8s manifests
 - [ ] Headless bot client for load generation
 - [ ] Grafana dashboards checked in
@@ -771,6 +771,84 @@ directory, leases, token storage — all to the same server. Adding presence wou
 have made four, so `openRedis` now opens one and threads it through. The dead
 `Watch`/`watcher` machinery on `MemoryPresence` went at the same time: nothing
 outside the file referenced it, and friends lists poll `ByID`.
+
+### Parties
+
+The last coordination table, and the one with actual rules: eleven methods,
+nested state, a leader whose powers move, and an invitation that expires. The
+bus and the directory were one new file behind an unchanged interface; this one
+is the same shape but the interface has more to say.
+
+**Every method is one Lua script**, because every method is a check followed by
+a write. "Is there room?" then "add them" lets two simultaneous accepts both
+take the last slot. "Am I the leader?" then "kick them" lets somebody demoted in
+between kick anyway. Redis runs a script to completion with nothing interleaved,
+which is the only reason any of the guards mean anything -- and
+`TestPartyConcurrentAcceptsNeverExceedCapacity` fires twenty accepts at a party
+with three free slots and asserts exactly three land.
+
+**An invitation is a key with a TTL, not a field with a stored deadline.** Redis
+does the expiring, so no clock crosses the wire and nothing is left behind for
+somebody who was asked once and never logged in again. The TTL is per-instance
+so the tests can use fifty milliseconds and watch a real invitation actually
+expire, rather than asserting against a fake clock that proves only that the
+arithmetic is right.
+
+**cjson encodes an empty table as `{}`.** A disbanded party's roster is empty by
+definition, and `{}` is an object, which does not decode into a JSON array --
+so the first version returned a decode error for the ordinary case of the last
+member leaving. The fix is to drop the field rather than empty it: an absent
+`members` decodes to a nil slice, which is exactly the contract ("a disbanded
+party comes back with no members").
+
+**Two mutation survivors, both real.** One was the check that stops somebody
+already in a party accepting a stale invitation -- reachable, because starting a
+party of your own touches no invitation, so the offer is still standing when you
+answer it. The other was the cleanup of a membership index pointing at a roster
+that is gone: not reachable through the scripts, which are atomic, but very much
+reachable in a store running an eviction policy -- and without it that character
+can never party again, because starting one checks that index. Losing party
+state is supposed to cost a regroup, so being permanently stranded is the one
+outcome that is not allowed.
+
+Writing the suite also turned up an undocumented design property worth pinning
+down: an invitation is keyed by invitee, so **a second invitation silently
+replaces the first**. That is right for a client showing one prompt, but it
+means being asked by somebody else withdraws the earlier offer, which is now
+asserted rather than left as an accident of the key layout.
+
+| Claim | How it was checked |
+| --- | --- |
+| Both tables behave identically | 43 shared tests against Memory and Redis, plus 4 Redis-only |
+| The guards are load-bearing | 32 mutations across both implementations, all caught |
+| Two accepts cannot take one slot | `TestPartyConcurrentAcceptsNeverExceedCapacity`, twenty at once against real Redis |
+| A party of one is not a party | `TestPartyDisbandsWhenOneMemberIsLeft`, and `TestPartyDisbandingLetsMembersRegroup` for the half that strands people |
+| Leadership moves rather than dissolving | `TestPartyTheLeaderLeavingPassesLeadership`, `TestPartyPromotingHandsOverThePowers` |
+| Only the leader may kick, promote, set loot | Three tests, plus `TestPartyTheLeaderMayNotKickThemselves` -- which would disband by the back door, skipping the handover |
+| Disbanding leaves nothing behind | `TestRedisPartiesLeaveNoBookkeepingBehind` -- Redis-only, because an orphaned roster reads exactly like no party at all |
+| Nobody is stranded by lost state | `TestRedisPartiesRecoverFromAVanishedRoster` |
+| Two nodes see one table | `TestRedisPartiesAreSharedBetweenNodes`, and the cross-node party, layer and dungeon tests over real Redis |
+
+**The hot path had to change with it.** `recordVitals` read the party from the
+directory on every vitals push -- once a second per member, so thirty-six reads
+a second for a full party, each of which would now be a network round trip
+asking for something the last party update already carried. The session caches
+the roster it was last given instead. `syncPartyMembership` was reading the same
+party twice in a row for two different fields, which over a network is both a
+wasted trip and a torn read: the party can disband between them, and the session
+would subscribe to one party while applying another's loot rule.
+
+**`Of` reports errors** for the reason `Lookup` and `ByName` do. Five call
+sites. The one that is not a log-and-continue is login: placement depends on
+which party you are in, so a failed read there is refused rather than guessed --
+guessing puts somebody logging back into a dungeon in a fresh instance of their
+own, next to the party still running it.
+
+**A defect from the previous slice, fixed here.** `RedisLeases.Close` closed its
+client, which was harmless while every user opened its own; consolidating onto
+one shared client made it a component unilaterally closing a connection the
+directory, presence and token storage are still using. Nothing called it, so it
+was latent rather than live.
 
 ---
 

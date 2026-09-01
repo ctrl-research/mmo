@@ -35,6 +35,21 @@ func openRedis(ctx context.Context, cfg config) (*redis.Client, func(), error) {
 	return client, func() { client.Close() }, nil
 }
 
+// openParties returns the party table, shared across nodes when Redis is
+// configured.
+//
+// A party spans rooms and nodes by definition, so with the roles split there is
+// no single process whose heap could hold one.
+func openParties(cfg config, client *redis.Client, maxSize int, log *slog.Logger) directory.Parties {
+	if client == nil {
+		log.Info("using an in-process party table; " +
+			"set --redis-addr before running more than one world node")
+		return directory.NewMemoryParties(maxSize)
+	}
+	log.Info("using Redis for parties", "addr", cfg.redisAddr)
+	return directory.NewRedisParties(client, "mmo", maxSize)
+}
+
 // openCoordination sets up lease and token storage.
 //
 // Redis is optional at hobby scale. With one process, in-memory implementations

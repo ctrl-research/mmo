@@ -159,8 +159,12 @@ func (r *RedisLeases) Release(ctx context.Context, l Lease) error {
 	return nil
 }
 
-// Close releases the Redis client.
-func (r *RedisLeases) Close() error { return r.client.Close() }
+// Close releases nothing: the client belongs to whoever opened it.
+//
+// It used to close the client, which was harmless while every user opened its
+// own. One shared client made that a component unilaterally closing a
+// connection the directory, presence and token storage are still using.
+func (r *RedisLeases) Close() error { return nil }
 
 // leaseValue is the stored representation: node and token together, so a
 // comparison establishes both who holds it and which lease it is.

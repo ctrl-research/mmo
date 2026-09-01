@@ -42,7 +42,7 @@ type cluster struct {
 
 	a, b     *Node
 	presence directory.Presence
-	parties  *directory.MemoryParties
+	parties  directory.Parties
 	dir      directory.Directory
 	bus      bus.Bus
 	store    *store.Store
@@ -87,7 +87,7 @@ func newCluster(t *testing.T) *cluster {
 	// is available.
 	busA, busB := testBuses(t)
 	presence := testPresence(t)
-	parties := directory.NewMemoryParties(game.Balance.Party.MaxSize)
+	parties := testParties(t, game.Balance.Party.MaxSize)
 
 	node := func(id string, nodeBus bus.Bus, nodeDir directory.Directory) *Node {
 		n, err := NewNode(Config{
@@ -207,6 +207,34 @@ func testPresence(t *testing.T) directory.Presence {
 		client.Close()
 	})
 	return directory.NewRedisPresence(client, prefix)
+}
+
+// testParties returns one party table shared by every node in the harness.
+//
+// Redis when MMO_TEST_REDIS_ADDR is set, so the cross-node party tests run
+// against the implementation that will actually be deployed rather than a map
+// two nodes happen to share a pointer to.
+func testParties(t *testing.T, maxSize int) directory.Parties {
+	t.Helper()
+
+	addr := os.Getenv("MMO_TEST_REDIS_ADDR")
+	if addr == "" {
+		p := directory.NewMemoryParties(maxSize)
+		t.Cleanup(func() { p.Close() })
+		return p
+	}
+
+	client := redis.NewClient(&redis.Options{Addr: addr})
+	prefix := "mmoworldparty:" + strconv.FormatInt(time.Now().UnixNano(), 36)
+	ctx := context.Background()
+
+	t.Cleanup(func() {
+		if keys, err := client.Keys(ctx, prefix+"*").Result(); err == nil && len(keys) > 0 {
+			client.Del(ctx, keys...)
+		}
+		client.Close()
+	})
+	return directory.NewRedisParties(client, prefix, maxSize)
 }
 
 // testBuses returns one bus per node.

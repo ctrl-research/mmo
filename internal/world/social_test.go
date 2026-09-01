@@ -377,7 +377,10 @@ func TestLeaderCanKickAndPromote(t *testing.T) {
 		t.Fatalf("promote: %v", err)
 	}
 	eventually(t, "Bob to be the leader", func() bool {
-		party, ok := c.parties.Of(ctx, bob.characterID.String())
+		party, ok, err := c.parties.Of(ctx, bob.characterID.String())
+		if err != nil {
+			t.Fatalf("reading bob's party: %v", err)
+		}
 		return ok && party.Leader == bob.characterID.String()
 	})
 
@@ -433,7 +436,10 @@ func TestLootRuleIsTheLeadersToSet(t *testing.T) {
 		t.Fatalf("set loot: %v", err)
 	}
 	eventually(t, "the rule to reach both members", func() bool {
-		party, ok := c.parties.Of(ctx, alice.characterID.String())
+		party, ok, err := c.parties.Of(ctx, alice.characterID.String())
+		if err != nil {
+			t.Fatalf("reading alice's party: %v", err)
+		}
 		return ok && party.Loot == directory.LootRoundRobin && bob.lootRule() == 1
 	})
 }
