@@ -208,6 +208,7 @@ func run() error {
 			DefaultMap: cfg.defaultMap,
 			Logger:     log,
 			Observer:   m,
+			Instances:  func(n int) { m.Instances.Set(float64(n)) },
 			Seed:       cfg.seed,
 		})
 		if err != nil {

@@ -851,3 +851,89 @@ func TestASessionFollowsTheCharacterThroughAPortal(t *testing.T) {
 		return false
 	})
 }
+
+// The room-count gauge follows what the node is actually hosting.
+//
+// It was registered and never set, so it read zero for the life of the
+// process -- which on a dashboard is indistinguishable from a node hosting
+// nothing, and that is exactly the thing you look at the dashboard to find out.
+func TestInstanceCountIsReported(t *testing.T) {
+	game, err := contenttest.Load()
+	if err != nil {
+		t.Fatalf("load content: %v", err)
+	}
+
+	var mu sync.Mutex
+	var reported []int
+
+	n, err := NewNode(Config{
+		Directory:  directory.NewMemory("node-a"),
+		Bus:        bus.NewInProc(),
+		Rooms:      NewRegistry(),
+		NodeID:     "node-a",
+		Content:    game,
+		DefaultMap: "test",
+		Logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Instances: func(count int) {
+			mu.Lock()
+			reported = append(reported, count)
+			mu.Unlock()
+		},
+	})
+	if err != nil {
+		t.Fatalf("new node: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := n.Start(ctx); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	defer n.Stop()
+
+	m := game.Maps["test"]
+	for i, want := range []int{1, 2} {
+		if _, err := n.ensureRoom(directory.Instance{
+			ID: directory.InstanceID(100 + i), Node: "node-a", Capacity: m.Capacity,
+		}, m); err != nil {
+			t.Fatalf("hosting a room: %v", err)
+		}
+
+		mu.Lock()
+		last := reported[len(reported)-1]
+		mu.Unlock()
+		if last != want {
+			t.Errorf("after hosting %d rooms the gauge says %d", want, last)
+		}
+	}
+
+	// And down again when a room stands empty and lets itself go. Called
+	// directly here rather than waiting out the idle timer, which is the same
+	// call the room makes when it does.
+	if !n.retire(directory.InstanceID(100), "test") {
+		t.Fatal("the room refused to retire")
+	}
+	mu.Lock()
+	afterRetire := reported[len(reported)-1]
+	mu.Unlock()
+	if afterRetire != 1 {
+		t.Errorf("after retiring one of two rooms the gauge says %d, want 1", afterRetire)
+	}
+	if got := n.Rooms(); afterRetire != got {
+		t.Errorf("the gauge says %d and the node hosts %d", afterRetire, got)
+	}
+
+	// Hosting one it already has is not a change, so it must not be reported
+	// as one.
+	before := len(reported)
+	if _, err := n.ensureRoom(directory.Instance{
+		ID: 101, Node: "node-a", Capacity: m.Capacity,
+	}, m); err != nil {
+		t.Fatalf("re-hosting: %v", err)
+	}
+	mu.Lock()
+	after := len(reported)
+	mu.Unlock()
+	if after != before {
+		t.Errorf("re-hosting an existing room reported a change (%d then %d)", before, after)
+	}
+}
