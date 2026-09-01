@@ -972,3 +972,45 @@ func TestRedisTryReleaseLeavesNoBookkeepingBehind(t *testing.T) {
 		t.Errorf("node load = %v after a TryRelease, want 0", load)
 	}
 }
+
+// A process that hosts nothing is never placed on.
+//
+// Registering is an offer to host rooms and placement takes the offer, so a
+// gateway that registered would be chosen to run a map it has no simulation
+// for. The player sent there waits out a timeout on a room nobody is going to
+// start -- and a second gateway looking for somewhere to put a character would
+// pick it too.
+func TestRedisReaderIsNeverPlacedOn(t *testing.T) {
+	addr := os.Getenv("MMO_TEST_REDIS_ADDR")
+	if addr == "" {
+		t.Skip("set MMO_TEST_REDIS_ADDR to run the Redis directory tests")
+	}
+
+	ctx := context.Background()
+	world := openRedisDirectory(t, addr, "world-1")
+	gateway := NewRedisReader(world.client, world.prefix)
+	t.Cleanup(func() { gateway.Close() })
+
+	live, err := gateway.LiveNodes(ctx)
+	if err != nil {
+		t.Fatalf("listing live nodes: %v", err)
+	}
+	for _, n := range live {
+		if n != "world-1" {
+			t.Errorf("a process that hosts nothing is listed as live: %s", n)
+		}
+	}
+	if len(live) != 1 {
+		t.Errorf("live nodes are %v, want only the world node", live)
+	}
+
+	// And placement, asked through the gateway's own directory, still lands on
+	// the world node.
+	inst, err := gateway.Join(ctx, RoomKey{MapID: "henesys", Placement: PlacementShared}, 10)
+	if err != nil {
+		t.Fatalf("placing a room: %v", err)
+	}
+	if inst.Node != "world-1" {
+		t.Errorf("a room was placed on %q, which hosts nothing", inst.Node)
+	}
+}

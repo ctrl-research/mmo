@@ -88,6 +88,30 @@ func NewRedis(ctx context.Context, client *redis.Client, prefix string, node Nod
 	return r, nil
 }
 
+// NewRedisReader returns a directory for a process that reads placement but
+// hosts nothing -- a gateway.
+//
+// It never registers and never heartbeats, which is the whole point. A process
+// that registers is offering to host rooms, and placement takes the offer: a
+// gateway that registered would be chosen to run a map it has no simulation
+// for, and the player sent there would wait out a timeout on a room nobody is
+// going to start. It would also be picked by another gateway looking for
+// somewhere to put a character.
+//
+// There is no node ID because there is nothing to identify: this process is
+// never the answer to "where should this room go".
+func NewRedisReader(client *redis.Client, prefix string) *Redis {
+	if prefix == "" {
+		prefix = "mmo"
+	}
+	return &Redis{
+		client: client,
+		prefix: prefix,
+		now:    time.Now,
+		stop:   make(chan struct{}),
+	}
+}
+
 // Key layout. The shared `{dir}` hash tag is deliberate -- see the type comment.
 func (r *Redis) base() string       { return r.prefix + ":{dir}" }
 func (r *Redis) seqKey() string     { return r.base() + ":seq" }
