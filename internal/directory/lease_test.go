@@ -403,3 +403,114 @@ func TestSeedRaisesTheTokenCounter(t *testing.T) {
 			first.Token, second.Token)
 	}
 }
+
+// openRedisLeases returns a Redis lease table with a namespace of its own.
+func openRedisLeases(t *testing.T, addr string) *RedisLeases {
+	t.Helper()
+
+	client := redis.NewClient(&redis.Options{Addr: addr})
+	ctx := context.Background()
+	if err := client.Ping(ctx).Err(); err != nil {
+		t.Fatalf("connecting to Redis: %v", err)
+	}
+
+	prefix := "test:" + uuid.NewString()
+	l := NewRedisLeases(client, prefix)
+	t.Cleanup(func() {
+		if keys, _ := client.Keys(ctx, prefix+":*").Result(); len(keys) > 0 {
+			client.Del(ctx, keys...)
+		}
+		l.Close()
+		client.Close()
+	})
+	return l
+}
+
+// The fencing counter must never issue a token the database has already seen.
+//
+// The counter is in Redis and the tokens it is compared against are in
+// Postgres. Every other thing in Redis is reconstructible and losing it costs a
+// disconnect -- but a counter that restarts below the database's high-water
+// mark hands out tokens the fencing predicate correctly rejects, and every
+// character that has played before loses its next checkpoint. The failure is
+// not an error at startup; it is progress quietly not being saved.
+func TestRedisLeaseCounterCanBeSeededAboveTheDatabase(t *testing.T) {
+	addr := os.Getenv("MMO_TEST_REDIS_ADDR")
+	if addr == "" {
+		t.Skip("set MMO_TEST_REDIS_ADDR to run the Redis lease tests")
+	}
+
+	ctx := context.Background()
+	leases := openRedisLeases(t, addr)
+
+	// Whatever the database has already written, standing in for a Redis that
+	// was flushed, evicted, or restored from an empty snapshot.
+	const highest = 500
+
+	at, raised, err := leases.Seed(ctx, highest)
+	if err != nil {
+		t.Fatalf("seeding: %v", err)
+	}
+	if at != highest {
+		t.Errorf("seeded to %d, want %d", at, highest)
+	}
+	if !raised {
+		t.Error("seeding an empty counter to 500 did not report raising it")
+	}
+
+	lease, err := leases.Acquire(ctx, "char-1", "node-a")
+	if err != nil {
+		t.Fatalf("acquire: %v", err)
+	}
+	if lease.Token <= highest {
+		t.Errorf("token %d is not above the database's %d, so this checkpoint would be fenced",
+			lease.Token, highest)
+	}
+}
+
+// Seeding never lowers the counter.
+//
+// Several nodes start at once and each seeds from the same database, so the
+// last to run must not undo the others -- and a node that started before a busy
+// period must not drag the counter back to what the database said then.
+func TestRedisLeaseSeedNeverGoesBackwards(t *testing.T) {
+	addr := os.Getenv("MMO_TEST_REDIS_ADDR")
+	if addr == "" {
+		t.Skip("set MMO_TEST_REDIS_ADDR to run the Redis lease tests")
+	}
+
+	ctx := context.Background()
+	leases := openRedisLeases(t, addr)
+
+	if _, _, err := leases.Seed(ctx, 1000); err != nil {
+		t.Fatalf("seeding high: %v", err)
+	}
+	at, raised, err := leases.Seed(ctx, 10)
+	if err != nil {
+		t.Fatalf("seeding low: %v", err)
+	}
+	if at != 1000 {
+		t.Errorf("a lower seed moved the counter to %d, want it left at 1000", at)
+	}
+	if raised {
+		// Equal or above is the healthy steady state. Reporting it as a raise
+		// would mean a warning on every start, which is how a real one gets
+		// ignored.
+		if raised {
+			t.Error("a counter that was already high enough was reported as raised")
+		}
+	}
+
+	lease, err := leases.Acquire(ctx, "char-1", "node-a")
+	if err != nil {
+		t.Fatalf("acquire: %v", err)
+	}
+	if lease.Token <= 1000 {
+		t.Errorf("token %d fell back below the high-water mark", lease.Token)
+	}
+
+	// A seed of nothing is not a seed.
+	if at, raised, err := leases.Seed(ctx, 0); err != nil || at != 0 || raised {
+		t.Errorf("seeding zero gave %d (raised=%v), %v; want it to do nothing", at, raised, err)
+	}
+}

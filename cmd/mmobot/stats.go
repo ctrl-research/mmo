@@ -50,10 +50,14 @@ type stats struct {
 	// is different.
 	firstError   string
 	errorsByKind map[string]int
+
+	// dropsByKind is why bots lost connections they had already made, which is
+	// a different question from why they never got one.
+	dropsByKind map[string]int
 }
 
 func newStats() *stats {
-	return &stats{errorsByKind: map[string]int{}}
+	return &stats{errorsByKind: map[string]int{}, dropsByKind: map[string]int{}}
 }
 
 // join records a bot as connected and keeps the high-water mark.
@@ -75,6 +79,40 @@ func (s *stats) observeRTT(d time.Duration) {
 	s.mu.Unlock()
 }
 
+// dropped records a bot losing its connection mid-run, and why.
+func (s *stats) dropped(err error) {
+	s.disconnects.Add(1)
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.dropsByKind[closeReason(err)]++
+}
+
+// kicked records the server closing a bot deliberately, with its stated reason.
+func (s *stats) kicked(reason string) {
+	s.kicks.Add(1)
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.dropsByKind[reason]++
+}
+
+// closeReason pulls the interesting part out of a websocket error.
+//
+// The full text is a sentence of library plumbing wrapped around the one thing
+// that matters -- the close code and what the server said -- and grouping on
+// the whole string produces one bucket per bot.
+func closeReason(err error) string {
+	msg := err.Error()
+	if i := strings.Index(msg, "status = "); i >= 0 {
+		return msg[i+len("status = "):]
+	}
+	if len(msg) > 70 {
+		return msg[:70]
+	}
+	return msg
+}
+
 func (s *stats) fail(err error) {
 	s.failed.Add(1)
 
@@ -90,13 +128,22 @@ func (s *stats) fail(err error) {
 //
 // Whole error strings carry a bot's name and a port number, so counting them
 // raw produces one bucket per bot and a report nobody can read.
+//
+// A close status is preferred over the leading words, because when the server
+// refuses a connection the interesting half is what it said on the way out.
+// Grouping on the prefix instead produced 157 identical lines reading "waiting
+// for the welcome" -- a count of how many bots were affected and no clue as to
+// why, which is the one thing a load test is being run to find out.
 func kindOf(err error) string {
 	msg := err.Error()
+	if i := strings.Index(msg, "status = "); i >= 0 {
+		return msg[i+len("status = "):]
+	}
 	if i := strings.Index(msg, ":"); i > 0 && i < 40 {
 		return msg[:i]
 	}
-	if len(msg) > 60 {
-		return msg[:60]
+	if len(msg) > 70 {
+		return msg[:70]
 	}
 	return msg
 }
@@ -167,6 +214,7 @@ type report struct {
 
 	FirstError   string
 	ErrorsByKind map[string]int
+	DropsByKind  map[string]int
 }
 
 // snapshot takes a report over the window since the previous one.
@@ -222,6 +270,10 @@ func (s *stats) snapshot(elapsed, window time.Duration, prev *counters) (report,
 	for k, v := range s.errorsByKind {
 		r.ErrorsByKind[k] = v
 	}
+	r.DropsByKind = make(map[string]int, len(s.dropsByKind))
+	for k, v := range s.dropsByKind {
+		r.DropsByKind[k] = v
+	}
 	s.mu.Unlock()
 
 	return r, now
@@ -268,16 +320,16 @@ func (r report) summary(want int) string {
 	fmt.Fprintf(&b, "  bandwidth      %s/s up, %s/s down\n",
 		bytes(r.OutPerSec), bytes(r.InPerSec))
 
-	if len(r.ErrorsByKind) > 0 {
-		fmt.Fprintln(&b, "  failures")
-		kinds := make([]string, 0, len(r.ErrorsByKind))
-		for k := range r.ErrorsByKind {
-			kinds = append(kinds, k)
+	if len(r.DropsByKind) > 0 {
+		fmt.Fprintln(&b, "  dropped mid-run")
+		for _, k := range byCount(r.DropsByKind) {
+			fmt.Fprintf(&b, "    %4d  %s\n", r.DropsByKind[k], k)
 		}
-		sort.Slice(kinds, func(i, j int) bool {
-			return r.ErrorsByKind[kinds[i]] > r.ErrorsByKind[kinds[j]]
-		})
-		for _, k := range kinds {
+	}
+
+	if len(r.ErrorsByKind) > 0 {
+		fmt.Fprintln(&b, "  never got in")
+		for _, k := range byCount(r.ErrorsByKind) {
 			fmt.Fprintf(&b, "    %4d  %s\n", r.ErrorsByKind[k], k)
 		}
 		fmt.Fprintf(&b, "  first          %s\n", r.FirstError)
@@ -313,4 +365,14 @@ func bytes(perSec float64) string {
 	default:
 		return fmt.Sprintf("%.1fMiB", perSec/(unit*unit))
 	}
+}
+
+// byCount orders keys by how often they happened, commonest first.
+func byCount(counts map[string]int) []string {
+	keys := make([]string, 0, len(counts))
+	for k := range counts {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool { return counts[keys[i]] > counts[keys[j]] })
+	return keys
 }

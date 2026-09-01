@@ -627,7 +627,7 @@ names already follow and the only one that does not need re-tuning per map.
 - [x] k8s manifests
 - [x] Headless bot client for load generation (`cmd/mmobot`)
 - [x] Grafana dashboards checked in (`deploy/grafana/mmo.json`)
-- [ ] Load test: 1000 bots across 3 world nodes
+- [x] Load test: 1000 bots across 3 world nodes (`deploy/loadtest.sh`)
 - [ ] Chaos testing: kill a world node, verify leases expire and characters recover
 - [ ] Graceful drain on shutdown: hand off rooms, checkpoint, disconnect cleanly
 
@@ -1129,6 +1129,75 @@ only symptom is logins failing with "could not enter the world". A Redis
 directory with an in-process bus is still perfectly good for one node -- it is
 the only node in there -- so this is a warning at startup when another node is
 actually registered, not a refusal.
+
+### A thousand bots
+
+`deploy/loadtest.sh --bots=1000 --worlds=3 --gateways=2`. Three world nodes and
+two gateways as separate processes against one Postgres, Redis and NATS, with
+the bots split across the gateways the way a load balancer would.
+
+| | |
+| --- | --- |
+| bots connected | **1000 of 1000**, none dropped, none refused |
+| input | 15,900/s |
+| snapshots | 15,900/s, 15.9 per bot per second |
+| bandwidth | 174 KiB/s up, 6.6 MiB/s down |
+| round trip | p50 610µs, p99 1.3ms |
+| room instances | 36 across three nodes |
+| **tick p99** | **1.90ms / 1.91ms / 1.91ms** against a 50 ms budget |
+| **overruns** | **zero** |
+| server CPU | ~3.1 of 12 cores for all five processes |
+
+**What this proves and what it does not.** Everything runs on one machine, so
+this measures the machine as much as the design -- though the interesting part is
+that the *servers* used about three cores while the machine as a whole sat at
+load 24, and the tick loop was never starved. Roughly 320 players per core.
+
+It is also a thousand players across **thirty-six rooms**, not a thousand in
+one. That is the shape the design intends -- capacity per instance, channels
+above it -- but a room's tick cost is what was measured, and no room held more
+than thirty.
+
+**Two gateways, which the deployment cannot do yet.** The load test passes a
+shared `SESSION_SECRET`, because a ticket is issued over HTTP by one gateway and
+redeemed on the socket by whichever one the client lands on. That is the single
+thing keeping the deployed gateway at one replica, and this is the first time
+the multi-gateway path has been exercised at all.
+
+**The bug the load test was for.** At 300 bots, 163 of them were dropped with
+"your character was claimed elsewhere" and the server logged 163 fenced
+checkpoints. Nothing had claimed anything: the fencing counter lives in Redis
+and the tokens it is compared against live in Postgres, so a counter that
+restarts below the database's high-water mark issues tokens the fencing
+predicate correctly rejects -- and every character that has played before loses
+its next checkpoint.
+
+The in-memory lease implementation has always seeded itself from the database
+for exactly this reason, with a comment saying so. The Redis one did not. Redis
+is described throughout this document as reconstructible, and losing it as
+costing a disconnect rather than data; that counter is the one value in there
+where it is not true. An eviction policy, a flush, or a restore from an empty
+snapshot all lose it -- and the homelab deployment runs Dragonfly with a
+`maxmemory` limit.
+
+`RedisLeases.Seed` now raises it, monotonically, so several nodes seeding from
+the same database cannot undo each other. It warns only when it actually had to
+raise it: warning on the healthy case means warning on every start, which is how
+a real warning gets ignored.
+
+**Three findings that were the harness, not the server**, each of which read as
+a server fault first:
+
+- Both bot processes were given the same name prefix (`printf '%c' 97` prints
+  `9`, not `a`), so two sets of bots fought over one set of characters and half
+  were refused. The lease was right; the test was wrong.
+- Runs back to back collide for `LeaseTTL`: a killed server does not release
+  its leases, so the next run's bots are refused with "already in play" for
+  thirty seconds. The script waits them out now.
+- Failures were grouped by the first words of the error, which turned 157
+  distinct causes into 157 identical lines reading "waiting for the welcome" --
+  a count of how many bots were affected and no clue why, which is the one thing
+  the run was for. Grouping prefers the close status now.
 
 ---
 
