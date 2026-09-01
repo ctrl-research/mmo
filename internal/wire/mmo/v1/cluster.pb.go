@@ -3618,6 +3618,1415 @@ func (x *RunEndEvent) GetCleared() bool {
 	return false
 }
 
+// EnterRequest asks a world node to take ownership of a character.
+type EnterRequest struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	AccountId   string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	CharacterId string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	// CallbackSubject is where everything bound for the player's screen should
+	// be published. The socket lives on the gateway and cannot travel, so this
+	// is the address that stands in for it.
+	CallbackSubject string `protobuf:"bytes,3,opt,name=callback_subject,json=callbackSubject,proto3" json:"callback_subject,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *EnterRequest) Reset() {
+	*x = EnterRequest{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnterRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnterRequest) ProtoMessage() {}
+
+func (x *EnterRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnterRequest.ProtoReflect.Descriptor instead.
+func (*EnterRequest) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *EnterRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+func (x *EnterRequest) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *EnterRequest) GetCallbackSubject() string {
+	if x != nil {
+		return x.CallbackSubject
+	}
+	return ""
+}
+
+type EnterReply struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Error string                 `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	// Busy distinguishes "somebody else is playing this character" from a
+	// failure, because the two need different words in front of a player.
+	Busy          bool   `protobuf:"varint,2,opt,name=busy,proto3" json:"busy,omitempty"`
+	Name          string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	EntityId      uint32 `protobuf:"varint,4,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnterReply) Reset() {
+	*x = EnterReply{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnterReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnterReply) ProtoMessage() {}
+
+func (x *EnterReply) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnterReply.ProtoReflect.Descriptor instead.
+func (*EnterReply) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *EnterReply) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *EnterReply) GetBusy() bool {
+	if x != nil {
+		return x.Busy
+	}
+	return false
+}
+
+func (x *EnterReply) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *EnterReply) GetEntityId() uint32 {
+	if x != nil {
+		return x.EntityId
+	}
+	return 0
+}
+
+type SessionCommand struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	CharacterId string                 `protobuf:"bytes,1,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	// Types that are valid to be assigned to Body:
+	//
+	//	*SessionCommand_Input
+	//	*SessionCommand_Cast
+	//	*SessionCommand_Interact
+	//	*SessionCommand_Craft
+	//	*SessionCommand_ItemAction
+	//	*SessionCommand_Chat
+	//	*SessionCommand_Party
+	//	*SessionCommand_Guild
+	//	*SessionCommand_Social
+	//	*SessionCommand_Loadout
+	//	*SessionCommand_Passive
+	//	*SessionCommand_Travel
+	//	*SessionCommand_WorldMap
+	//	*SessionCommand_Close
+	//	*SessionCommand_Disconnect
+	Body          isSessionCommand_Body `protobuf_oneof:"body"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionCommand) Reset() {
+	*x = SessionCommand{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[48]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionCommand) ProtoMessage() {}
+
+func (x *SessionCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[48]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionCommand.ProtoReflect.Descriptor instead.
+func (*SessionCommand) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *SessionCommand) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *SessionCommand) GetBody() isSessionCommand_Body {
+	if x != nil {
+		return x.Body
+	}
+	return nil
+}
+
+func (x *SessionCommand) GetInput() *SessionInput {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCommand_Input); ok {
+			return x.Input
+		}
+	}
+	return nil
+}
+
+func (x *SessionCommand) GetCast() *SessionCast {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCommand_Cast); ok {
+			return x.Cast
+		}
+	}
+	return nil
+}
+
+func (x *SessionCommand) GetInteract() *SessionInteract {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCommand_Interact); ok {
+			return x.Interact
+		}
+	}
+	return nil
+}
+
+func (x *SessionCommand) GetCraft() *SessionCraft {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCommand_Craft); ok {
+			return x.Craft
+		}
+	}
+	return nil
+}
+
+func (x *SessionCommand) GetItemAction() *SessionItemAction {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCommand_ItemAction); ok {
+			return x.ItemAction
+		}
+	}
+	return nil
+}
+
+func (x *SessionCommand) GetChat() *SessionChat {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCommand_Chat); ok {
+			return x.Chat
+		}
+	}
+	return nil
+}
+
+func (x *SessionCommand) GetParty() *SessionParty {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCommand_Party); ok {
+			return x.Party
+		}
+	}
+	return nil
+}
+
+func (x *SessionCommand) GetGuild() *SessionGuild {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCommand_Guild); ok {
+			return x.Guild
+		}
+	}
+	return nil
+}
+
+func (x *SessionCommand) GetSocial() *SessionSocial {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCommand_Social); ok {
+			return x.Social
+		}
+	}
+	return nil
+}
+
+func (x *SessionCommand) GetLoadout() *SessionLoadout {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCommand_Loadout); ok {
+			return x.Loadout
+		}
+	}
+	return nil
+}
+
+func (x *SessionCommand) GetPassive() *SessionPassive {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCommand_Passive); ok {
+			return x.Passive
+		}
+	}
+	return nil
+}
+
+func (x *SessionCommand) GetTravel() *SessionTravel {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCommand_Travel); ok {
+			return x.Travel
+		}
+	}
+	return nil
+}
+
+func (x *SessionCommand) GetWorldMap() *SessionWorldMap {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCommand_WorldMap); ok {
+			return x.WorldMap
+		}
+	}
+	return nil
+}
+
+func (x *SessionCommand) GetClose() *SessionClose {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCommand_Close); ok {
+			return x.Close
+		}
+	}
+	return nil
+}
+
+func (x *SessionCommand) GetDisconnect() *SessionDisconnect {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCommand_Disconnect); ok {
+			return x.Disconnect
+		}
+	}
+	return nil
+}
+
+type isSessionCommand_Body interface {
+	isSessionCommand_Body()
+}
+
+type SessionCommand_Input struct {
+	Input *SessionInput `protobuf:"bytes,10,opt,name=input,proto3,oneof"`
+}
+
+type SessionCommand_Cast struct {
+	Cast *SessionCast `protobuf:"bytes,11,opt,name=cast,proto3,oneof"`
+}
+
+type SessionCommand_Interact struct {
+	Interact *SessionInteract `protobuf:"bytes,12,opt,name=interact,proto3,oneof"`
+}
+
+type SessionCommand_Craft struct {
+	Craft *SessionCraft `protobuf:"bytes,13,opt,name=craft,proto3,oneof"`
+}
+
+type SessionCommand_ItemAction struct {
+	ItemAction *SessionItemAction `protobuf:"bytes,14,opt,name=item_action,json=itemAction,proto3,oneof"`
+}
+
+type SessionCommand_Chat struct {
+	Chat *SessionChat `protobuf:"bytes,15,opt,name=chat,proto3,oneof"`
+}
+
+type SessionCommand_Party struct {
+	Party *SessionParty `protobuf:"bytes,16,opt,name=party,proto3,oneof"`
+}
+
+type SessionCommand_Guild struct {
+	Guild *SessionGuild `protobuf:"bytes,17,opt,name=guild,proto3,oneof"`
+}
+
+type SessionCommand_Social struct {
+	Social *SessionSocial `protobuf:"bytes,18,opt,name=social,proto3,oneof"`
+}
+
+type SessionCommand_Loadout struct {
+	Loadout *SessionLoadout `protobuf:"bytes,19,opt,name=loadout,proto3,oneof"`
+}
+
+type SessionCommand_Passive struct {
+	Passive *SessionPassive `protobuf:"bytes,20,opt,name=passive,proto3,oneof"`
+}
+
+type SessionCommand_Travel struct {
+	Travel *SessionTravel `protobuf:"bytes,21,opt,name=travel,proto3,oneof"`
+}
+
+type SessionCommand_WorldMap struct {
+	WorldMap *SessionWorldMap `protobuf:"bytes,22,opt,name=world_map,json=worldMap,proto3,oneof"`
+}
+
+type SessionCommand_Close struct {
+	Close *SessionClose `protobuf:"bytes,23,opt,name=close,proto3,oneof"`
+}
+
+type SessionCommand_Disconnect struct {
+	Disconnect *SessionDisconnect `protobuf:"bytes,24,opt,name=disconnect,proto3,oneof"`
+}
+
+func (*SessionCommand_Input) isSessionCommand_Body() {}
+
+func (*SessionCommand_Cast) isSessionCommand_Body() {}
+
+func (*SessionCommand_Interact) isSessionCommand_Body() {}
+
+func (*SessionCommand_Craft) isSessionCommand_Body() {}
+
+func (*SessionCommand_ItemAction) isSessionCommand_Body() {}
+
+func (*SessionCommand_Chat) isSessionCommand_Body() {}
+
+func (*SessionCommand_Party) isSessionCommand_Body() {}
+
+func (*SessionCommand_Guild) isSessionCommand_Body() {}
+
+func (*SessionCommand_Social) isSessionCommand_Body() {}
+
+func (*SessionCommand_Loadout) isSessionCommand_Body() {}
+
+func (*SessionCommand_Passive) isSessionCommand_Body() {}
+
+func (*SessionCommand_Travel) isSessionCommand_Body() {}
+
+func (*SessionCommand_WorldMap) isSessionCommand_Body() {}
+
+func (*SessionCommand_Close) isSessionCommand_Body() {}
+
+func (*SessionCommand_Disconnect) isSessionCommand_Body() {}
+
+type SessionInput struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Seq           uint32                 `protobuf:"varint,1,opt,name=seq,proto3" json:"seq,omitempty"`
+	MoveX         int32                  `protobuf:"varint,2,opt,name=move_x,json=moveX,proto3" json:"move_x,omitempty"`
+	Jump          bool                   `protobuf:"varint,3,opt,name=jump,proto3" json:"jump,omitempty"`
+	Up            bool                   `protobuf:"varint,4,opt,name=up,proto3" json:"up,omitempty"`
+	Down          bool                   `protobuf:"varint,5,opt,name=down,proto3" json:"down,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionInput) Reset() {
+	*x = SessionInput{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionInput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionInput) ProtoMessage() {}
+
+func (x *SessionInput) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionInput.ProtoReflect.Descriptor instead.
+func (*SessionInput) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{49}
+}
+
+func (x *SessionInput) GetSeq() uint32 {
+	if x != nil {
+		return x.Seq
+	}
+	return 0
+}
+
+func (x *SessionInput) GetMoveX() int32 {
+	if x != nil {
+		return x.MoveX
+	}
+	return 0
+}
+
+func (x *SessionInput) GetJump() bool {
+	if x != nil {
+		return x.Jump
+	}
+	return false
+}
+
+func (x *SessionInput) GetUp() bool {
+	if x != nil {
+		return x.Up
+	}
+	return false
+}
+
+func (x *SessionInput) GetDown() bool {
+	if x != nil {
+		return x.Down
+	}
+	return false
+}
+
+type SessionCast struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SkillId       string                 `protobuf:"bytes,1,opt,name=skill_id,json=skillId,proto3" json:"skill_id,omitempty"`
+	FacingLeft    bool                   `protobuf:"varint,2,opt,name=facing_left,json=facingLeft,proto3" json:"facing_left,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionCast) Reset() {
+	*x = SessionCast{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionCast) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionCast) ProtoMessage() {}
+
+func (x *SessionCast) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionCast.ProtoReflect.Descriptor instead.
+func (*SessionCast) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *SessionCast) GetSkillId() string {
+	if x != nil {
+		return x.SkillId
+	}
+	return ""
+}
+
+func (x *SessionCast) GetFacingLeft() bool {
+	if x != nil {
+		return x.FacingLeft
+	}
+	return false
+}
+
+type SessionInteract struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Target        uint32                 `protobuf:"varint,1,opt,name=target,proto3" json:"target,omitempty"`
+	Kind          uint32                 `protobuf:"varint,2,opt,name=kind,proto3" json:"kind,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionInteract) Reset() {
+	*x = SessionInteract{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[51]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionInteract) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionInteract) ProtoMessage() {}
+
+func (x *SessionInteract) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[51]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionInteract.ProtoReflect.Descriptor instead.
+func (*SessionInteract) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{51}
+}
+
+func (x *SessionInteract) GetTarget() uint32 {
+	if x != nil {
+		return x.Target
+	}
+	return 0
+}
+
+func (x *SessionInteract) GetKind() uint32 {
+	if x != nil {
+		return x.Kind
+	}
+	return 0
+}
+
+type SessionCraft struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Station       uint32                 `protobuf:"varint,1,opt,name=station,proto3" json:"station,omitempty"`
+	RecipeId      string                 `protobuf:"bytes,2,opt,name=recipe_id,json=recipeId,proto3" json:"recipe_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionCraft) Reset() {
+	*x = SessionCraft{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[52]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionCraft) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionCraft) ProtoMessage() {}
+
+func (x *SessionCraft) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[52]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionCraft.ProtoReflect.Descriptor instead.
+func (*SessionCraft) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{52}
+}
+
+func (x *SessionCraft) GetStation() uint32 {
+	if x != nil {
+		return x.Station
+	}
+	return 0
+}
+
+func (x *SessionCraft) GetRecipeId() string {
+	if x != nil {
+		return x.RecipeId
+	}
+	return ""
+}
+
+type SessionItemAction struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Kind   uint32                 `protobuf:"varint,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	ItemId string                 `protobuf:"bytes,2,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"`
+	Slot   int32                  `protobuf:"varint,3,opt,name=slot,proto3" json:"slot,omitempty"`
+	// The equipment slot is a content identifier, not an index: a number would
+	// mean something different the next time the slots are reordered.
+	EquipSlot     string `protobuf:"bytes,4,opt,name=equip_slot,json=equipSlot,proto3" json:"equip_slot,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionItemAction) Reset() {
+	*x = SessionItemAction{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[53]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionItemAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionItemAction) ProtoMessage() {}
+
+func (x *SessionItemAction) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[53]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionItemAction.ProtoReflect.Descriptor instead.
+func (*SessionItemAction) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{53}
+}
+
+func (x *SessionItemAction) GetKind() uint32 {
+	if x != nil {
+		return x.Kind
+	}
+	return 0
+}
+
+func (x *SessionItemAction) GetItemId() string {
+	if x != nil {
+		return x.ItemId
+	}
+	return ""
+}
+
+func (x *SessionItemAction) GetSlot() int32 {
+	if x != nil {
+		return x.Slot
+	}
+	return 0
+}
+
+func (x *SessionItemAction) GetEquipSlot() string {
+	if x != nil {
+		return x.EquipSlot
+	}
+	return ""
+}
+
+type SessionChat struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Channel       uint32                 `protobuf:"varint,1,opt,name=channel,proto3" json:"channel,omitempty"`
+	Body          string                 `protobuf:"bytes,2,opt,name=body,proto3" json:"body,omitempty"`
+	Target        string                 `protobuf:"bytes,3,opt,name=target,proto3" json:"target,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionChat) Reset() {
+	*x = SessionChat{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[54]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionChat) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionChat) ProtoMessage() {}
+
+func (x *SessionChat) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[54]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionChat.ProtoReflect.Descriptor instead.
+func (*SessionChat) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{54}
+}
+
+func (x *SessionChat) GetChannel() uint32 {
+	if x != nil {
+		return x.Channel
+	}
+	return 0
+}
+
+func (x *SessionChat) GetBody() string {
+	if x != nil {
+		return x.Body
+	}
+	return ""
+}
+
+func (x *SessionChat) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
+type SessionParty struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kind          uint32                 `protobuf:"varint,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	Target        string                 `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionParty) Reset() {
+	*x = SessionParty{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[55]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionParty) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionParty) ProtoMessage() {}
+
+func (x *SessionParty) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[55]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionParty.ProtoReflect.Descriptor instead.
+func (*SessionParty) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{55}
+}
+
+func (x *SessionParty) GetKind() uint32 {
+	if x != nil {
+		return x.Kind
+	}
+	return 0
+}
+
+func (x *SessionParty) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
+type SessionGuild struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kind          uint32                 `protobuf:"varint,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	Target        string                 `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionGuild) Reset() {
+	*x = SessionGuild{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[56]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionGuild) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionGuild) ProtoMessage() {}
+
+func (x *SessionGuild) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[56]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionGuild.ProtoReflect.Descriptor instead.
+func (*SessionGuild) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{56}
+}
+
+func (x *SessionGuild) GetKind() uint32 {
+	if x != nil {
+		return x.Kind
+	}
+	return 0
+}
+
+func (x *SessionGuild) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
+type SessionSocial struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kind          uint32                 `protobuf:"varint,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	Target        string                 `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionSocial) Reset() {
+	*x = SessionSocial{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[57]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionSocial) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionSocial) ProtoMessage() {}
+
+func (x *SessionSocial) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[57]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionSocial.ProtoReflect.Descriptor instead.
+func (*SessionSocial) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{57}
+}
+
+func (x *SessionSocial) GetKind() uint32 {
+	if x != nil {
+		return x.Kind
+	}
+	return 0
+}
+
+func (x *SessionSocial) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
+type SessionLoadout struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Slot          int32                  `protobuf:"varint,1,opt,name=slot,proto3" json:"slot,omitempty"`
+	SkillId       string                 `protobuf:"bytes,2,opt,name=skill_id,json=skillId,proto3" json:"skill_id,omitempty"`
+	Supports      []string               `protobuf:"bytes,3,rep,name=supports,proto3" json:"supports,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionLoadout) Reset() {
+	*x = SessionLoadout{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[58]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionLoadout) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionLoadout) ProtoMessage() {}
+
+func (x *SessionLoadout) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[58]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionLoadout.ProtoReflect.Descriptor instead.
+func (*SessionLoadout) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{58}
+}
+
+func (x *SessionLoadout) GetSlot() int32 {
+	if x != nil {
+		return x.Slot
+	}
+	return 0
+}
+
+func (x *SessionLoadout) GetSkillId() string {
+	if x != nil {
+		return x.SkillId
+	}
+	return ""
+}
+
+func (x *SessionLoadout) GetSupports() []string {
+	if x != nil {
+		return x.Supports
+	}
+	return nil
+}
+
+type SessionPassive struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Allocate      int32                  `protobuf:"varint,1,opt,name=allocate,proto3" json:"allocate,omitempty"`
+	Refund        int32                  `protobuf:"varint,2,opt,name=refund,proto3" json:"refund,omitempty"`
+	RespecAll     bool                   `protobuf:"varint,3,opt,name=respec_all,json=respecAll,proto3" json:"respec_all,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionPassive) Reset() {
+	*x = SessionPassive{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[59]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionPassive) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionPassive) ProtoMessage() {}
+
+func (x *SessionPassive) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[59]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionPassive.ProtoReflect.Descriptor instead.
+func (*SessionPassive) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{59}
+}
+
+func (x *SessionPassive) GetAllocate() int32 {
+	if x != nil {
+		return x.Allocate
+	}
+	return 0
+}
+
+func (x *SessionPassive) GetRefund() int32 {
+	if x != nil {
+		return x.Refund
+	}
+	return 0
+}
+
+func (x *SessionPassive) GetRespecAll() bool {
+	if x != nil {
+		return x.RespecAll
+	}
+	return false
+}
+
+type SessionTravel struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WaypointId    string                 `protobuf:"bytes,1,opt,name=waypoint_id,json=waypointId,proto3" json:"waypoint_id,omitempty"`
+	Channel       uint64                 `protobuf:"varint,2,opt,name=channel,proto3" json:"channel,omitempty"`
+	NewChannel    bool                   `protobuf:"varint,3,opt,name=new_channel,json=newChannel,proto3" json:"new_channel,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionTravel) Reset() {
+	*x = SessionTravel{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[60]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionTravel) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionTravel) ProtoMessage() {}
+
+func (x *SessionTravel) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[60]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionTravel.ProtoReflect.Descriptor instead.
+func (*SessionTravel) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{60}
+}
+
+func (x *SessionTravel) GetWaypointId() string {
+	if x != nil {
+		return x.WaypointId
+	}
+	return ""
+}
+
+func (x *SessionTravel) GetChannel() uint64 {
+	if x != nil {
+		return x.Channel
+	}
+	return 0
+}
+
+func (x *SessionTravel) GetNewChannel() bool {
+	if x != nil {
+		return x.NewChannel
+	}
+	return false
+}
+
+type SessionWorldMap struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionWorldMap) Reset() {
+	*x = SessionWorldMap{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[61]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionWorldMap) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionWorldMap) ProtoMessage() {}
+
+func (x *SessionWorldMap) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[61]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionWorldMap.ProtoReflect.Descriptor instead.
+func (*SessionWorldMap) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{61}
+}
+
+type SessionClose struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionClose) Reset() {
+	*x = SessionClose{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[62]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionClose) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionClose) ProtoMessage() {}
+
+func (x *SessionClose) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[62]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionClose.ProtoReflect.Descriptor instead.
+func (*SessionClose) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{62}
+}
+
+type SessionDisconnect struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionDisconnect) Reset() {
+	*x = SessionDisconnect{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionDisconnect) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionDisconnect) ProtoMessage() {}
+
+func (x *SessionDisconnect) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionDisconnect.ProtoReflect.Descriptor instead.
+func (*SessionDisconnect) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{63}
+}
+
+type SessionReply struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Error is a refusal the player is meant to see -- "you are not in a party",
+	// "that costs more gold than you have". The gateway shows it rather than
+	// treating it as a fault, which is why it is a field and not a bus error.
+	Error string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	// Gone reports that this node is not holding the character any more, so the
+	// gateway can close the connection instead of talking to nobody.
+	Gone bool `protobuf:"varint,2,opt,name=gone,proto3" json:"gone,omitempty"`
+	// WorldMap is an encoded game.v1 WorldMap, carried as bytes so cluster.proto
+	// does not import the client-facing schema.
+	WorldMap      []byte `protobuf:"bytes,3,opt,name=world_map,json=worldMap,proto3" json:"world_map,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionReply) Reset() {
+	*x = SessionReply{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[64]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionReply) ProtoMessage() {}
+
+func (x *SessionReply) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[64]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionReply.ProtoReflect.Descriptor instead.
+func (*SessionReply) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{64}
+}
+
+func (x *SessionReply) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *SessionReply) GetGone() bool {
+	if x != nil {
+		return x.Gone
+	}
+	return false
+}
+
+func (x *SessionReply) GetWorldMap() []byte {
+	if x != nil {
+		return x.WorldMap
+	}
+	return nil
+}
+
+// SessionCallback is everything a world node sends to the gateway holding the
+// socket.
+type SessionCallback struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Body:
+	//
+	//	*SessionCallback_Send
+	//	*SessionCallback_Close
+	//	*SessionCallback_OwnershipLost
+	Body          isSessionCallback_Body `protobuf_oneof:"body"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionCallback) Reset() {
+	*x = SessionCallback{}
+	mi := &file_mmo_v1_cluster_proto_msgTypes[65]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionCallback) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionCallback) ProtoMessage() {}
+
+func (x *SessionCallback) ProtoReflect() protoreflect.Message {
+	mi := &file_mmo_v1_cluster_proto_msgTypes[65]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionCallback.ProtoReflect.Descriptor instead.
+func (*SessionCallback) Descriptor() ([]byte, []int) {
+	return file_mmo_v1_cluster_proto_rawDescGZIP(), []int{65}
+}
+
+func (x *SessionCallback) GetBody() isSessionCallback_Body {
+	if x != nil {
+		return x.Body
+	}
+	return nil
+}
+
+func (x *SessionCallback) GetSend() []byte {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCallback_Send); ok {
+			return x.Send
+		}
+	}
+	return nil
+}
+
+func (x *SessionCallback) GetClose() *SinkClose {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCallback_Close); ok {
+			return x.Close
+		}
+	}
+	return nil
+}
+
+func (x *SessionCallback) GetOwnershipLost() string {
+	if x != nil {
+		if x, ok := x.Body.(*SessionCallback_OwnershipLost); ok {
+			return x.OwnershipLost
+		}
+	}
+	return ""
+}
+
+type isSessionCallback_Body interface {
+	isSessionCallback_Body()
+}
+
+type SessionCallback_Send struct {
+	// Send is an encoded game.v1 ServerMessage, on its way to the player.
+	Send []byte `protobuf:"bytes,1,opt,name=send,proto3,oneof"`
+}
+
+type SessionCallback_Close struct {
+	Close *SinkClose `protobuf:"bytes,2,opt,name=close,proto3,oneof"`
+}
+
+type SessionCallback_OwnershipLost struct {
+	// OwnershipLost carries the reason the character's lease went away. The
+	// connection has to be closed rather than left playing a character this
+	// node no longer owns.
+	OwnershipLost string `protobuf:"bytes,3,opt,name=ownership_lost,json=ownershipLost,proto3,oneof"`
+}
+
+func (*SessionCallback_Send) isSessionCallback_Body() {}
+
+func (*SessionCallback_Close) isSessionCallback_Body() {}
+
+func (*SessionCallback_OwnershipLost) isSessionCallback_Body() {}
+
 var File_mmo_v1_cluster_proto protoreflect.FileDescriptor
 
 const file_mmo_v1_cluster_proto_rawDesc = "" +
@@ -3906,7 +5315,102 @@ const file_mmo_v1_cluster_proto_rawDesc = "" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x1d\n" +
 	"\n" +
 	"dungeon_id\x18\x03 \x01(\tR\tdungeonId\x12\x18\n" +
-	"\acleared\x18\x04 \x01(\bR\aclearedB\x8c\x01\n" +
+	"\acleared\x18\x04 \x01(\bR\acleared\"{\n" +
+	"\fEnterRequest\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12)\n" +
+	"\x10callback_subject\x18\x03 \x01(\tR\x0fcallbackSubject\"g\n" +
+	"\n" +
+	"EnterReply\x12\x14\n" +
+	"\x05error\x18\x01 \x01(\tR\x05error\x12\x12\n" +
+	"\x04busy\x18\x02 \x01(\bR\x04busy\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1b\n" +
+	"\tentity_id\x18\x04 \x01(\rR\bentityId\"\xab\x06\n" +
+	"\x0eSessionCommand\x12!\n" +
+	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12,\n" +
+	"\x05input\x18\n" +
+	" \x01(\v2\x14.mmo.v1.SessionInputH\x00R\x05input\x12)\n" +
+	"\x04cast\x18\v \x01(\v2\x13.mmo.v1.SessionCastH\x00R\x04cast\x125\n" +
+	"\binteract\x18\f \x01(\v2\x17.mmo.v1.SessionInteractH\x00R\binteract\x12,\n" +
+	"\x05craft\x18\r \x01(\v2\x14.mmo.v1.SessionCraftH\x00R\x05craft\x12<\n" +
+	"\vitem_action\x18\x0e \x01(\v2\x19.mmo.v1.SessionItemActionH\x00R\n" +
+	"itemAction\x12)\n" +
+	"\x04chat\x18\x0f \x01(\v2\x13.mmo.v1.SessionChatH\x00R\x04chat\x12,\n" +
+	"\x05party\x18\x10 \x01(\v2\x14.mmo.v1.SessionPartyH\x00R\x05party\x12,\n" +
+	"\x05guild\x18\x11 \x01(\v2\x14.mmo.v1.SessionGuildH\x00R\x05guild\x12/\n" +
+	"\x06social\x18\x12 \x01(\v2\x15.mmo.v1.SessionSocialH\x00R\x06social\x122\n" +
+	"\aloadout\x18\x13 \x01(\v2\x16.mmo.v1.SessionLoadoutH\x00R\aloadout\x122\n" +
+	"\apassive\x18\x14 \x01(\v2\x16.mmo.v1.SessionPassiveH\x00R\apassive\x12/\n" +
+	"\x06travel\x18\x15 \x01(\v2\x15.mmo.v1.SessionTravelH\x00R\x06travel\x126\n" +
+	"\tworld_map\x18\x16 \x01(\v2\x17.mmo.v1.SessionWorldMapH\x00R\bworldMap\x12,\n" +
+	"\x05close\x18\x17 \x01(\v2\x14.mmo.v1.SessionCloseH\x00R\x05close\x12;\n" +
+	"\n" +
+	"disconnect\x18\x18 \x01(\v2\x19.mmo.v1.SessionDisconnectH\x00R\n" +
+	"disconnectB\x06\n" +
+	"\x04body\"o\n" +
+	"\fSessionInput\x12\x10\n" +
+	"\x03seq\x18\x01 \x01(\rR\x03seq\x12\x15\n" +
+	"\x06move_x\x18\x02 \x01(\x05R\x05moveX\x12\x12\n" +
+	"\x04jump\x18\x03 \x01(\bR\x04jump\x12\x0e\n" +
+	"\x02up\x18\x04 \x01(\bR\x02up\x12\x12\n" +
+	"\x04down\x18\x05 \x01(\bR\x04down\"I\n" +
+	"\vSessionCast\x12\x19\n" +
+	"\bskill_id\x18\x01 \x01(\tR\askillId\x12\x1f\n" +
+	"\vfacing_left\x18\x02 \x01(\bR\n" +
+	"facingLeft\"=\n" +
+	"\x0fSessionInteract\x12\x16\n" +
+	"\x06target\x18\x01 \x01(\rR\x06target\x12\x12\n" +
+	"\x04kind\x18\x02 \x01(\rR\x04kind\"E\n" +
+	"\fSessionCraft\x12\x18\n" +
+	"\astation\x18\x01 \x01(\rR\astation\x12\x1b\n" +
+	"\trecipe_id\x18\x02 \x01(\tR\brecipeId\"s\n" +
+	"\x11SessionItemAction\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\rR\x04kind\x12\x17\n" +
+	"\aitem_id\x18\x02 \x01(\tR\x06itemId\x12\x12\n" +
+	"\x04slot\x18\x03 \x01(\x05R\x04slot\x12\x1d\n" +
+	"\n" +
+	"equip_slot\x18\x04 \x01(\tR\tequipSlot\"S\n" +
+	"\vSessionChat\x12\x18\n" +
+	"\achannel\x18\x01 \x01(\rR\achannel\x12\x12\n" +
+	"\x04body\x18\x02 \x01(\tR\x04body\x12\x16\n" +
+	"\x06target\x18\x03 \x01(\tR\x06target\":\n" +
+	"\fSessionParty\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\rR\x04kind\x12\x16\n" +
+	"\x06target\x18\x02 \x01(\tR\x06target\":\n" +
+	"\fSessionGuild\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\rR\x04kind\x12\x16\n" +
+	"\x06target\x18\x02 \x01(\tR\x06target\";\n" +
+	"\rSessionSocial\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\rR\x04kind\x12\x16\n" +
+	"\x06target\x18\x02 \x01(\tR\x06target\"[\n" +
+	"\x0eSessionLoadout\x12\x12\n" +
+	"\x04slot\x18\x01 \x01(\x05R\x04slot\x12\x19\n" +
+	"\bskill_id\x18\x02 \x01(\tR\askillId\x12\x1a\n" +
+	"\bsupports\x18\x03 \x03(\tR\bsupports\"c\n" +
+	"\x0eSessionPassive\x12\x1a\n" +
+	"\ballocate\x18\x01 \x01(\x05R\ballocate\x12\x16\n" +
+	"\x06refund\x18\x02 \x01(\x05R\x06refund\x12\x1d\n" +
+	"\n" +
+	"respec_all\x18\x03 \x01(\bR\trespecAll\"k\n" +
+	"\rSessionTravel\x12\x1f\n" +
+	"\vwaypoint_id\x18\x01 \x01(\tR\n" +
+	"waypointId\x12\x18\n" +
+	"\achannel\x18\x02 \x01(\x04R\achannel\x12\x1f\n" +
+	"\vnew_channel\x18\x03 \x01(\bR\n" +
+	"newChannel\"\x11\n" +
+	"\x0fSessionWorldMap\"\x0e\n" +
+	"\fSessionClose\"\x13\n" +
+	"\x11SessionDisconnect\"U\n" +
+	"\fSessionReply\x12\x14\n" +
+	"\x05error\x18\x01 \x01(\tR\x05error\x12\x12\n" +
+	"\x04gone\x18\x02 \x01(\bR\x04gone\x12\x1b\n" +
+	"\tworld_map\x18\x03 \x01(\fR\bworldMap\"\x83\x01\n" +
+	"\x0fSessionCallback\x12\x14\n" +
+	"\x04send\x18\x01 \x01(\fH\x00R\x04send\x12)\n" +
+	"\x05close\x18\x02 \x01(\v2\x11.mmo.v1.SinkCloseH\x00R\x05close\x12'\n" +
+	"\x0eownership_lost\x18\x03 \x01(\tH\x00R\rownershipLostB\x06\n" +
+	"\x04bodyB\x8c\x01\n" +
 	"\n" +
 	"com.mmo.v1B\fClusterProtoP\x01Z7github.com/ctrl-research/mmo/internal/wire/mmo/v1;mmov1\xa2\x02\x03MXX\xaa\x02\x06Mmo.V1\xca\x02\x06Mmo\\V1\xe2\x02\x12Mmo\\V1\\GPBMetadata\xea\x02\aMmo::V1b\x06proto3"
 
@@ -3922,7 +5426,7 @@ func file_mmo_v1_cluster_proto_rawDescGZIP() []byte {
 	return file_mmo_v1_cluster_proto_rawDescData
 }
 
-var file_mmo_v1_cluster_proto_msgTypes = make([]protoimpl.MessageInfo, 51)
+var file_mmo_v1_cluster_proto_msgTypes = make([]protoimpl.MessageInfo, 71)
 var file_mmo_v1_cluster_proto_goTypes = []any{
 	(*BusEnvelope)(nil),          // 0: mmo.v1.BusEnvelope
 	(*TransferRequest)(nil),      // 1: mmo.v1.TransferRequest
@@ -3970,21 +5474,41 @@ var file_mmo_v1_cluster_proto_goTypes = []any{
 	(*CraftEvent)(nil),           // 43: mmo.v1.CraftEvent
 	(*GatherEvent)(nil),          // 44: mmo.v1.GatherEvent
 	(*RunEndEvent)(nil),          // 45: mmo.v1.RunEndEvent
-	nil,                          // 46: mmo.v1.WireDerived.ToolPowerEntry
-	nil,                          // 47: mmo.v1.WireSnapshot.SecondaryEntry
-	nil,                          // 48: mmo.v1.WireJoinSpec.SecondaryEntry
-	nil,                          // 49: mmo.v1.AttachCommand.SecondaryEntry
-	nil,                          // 50: mmo.v1.StationEvent.LevelsEntry
+	(*EnterRequest)(nil),         // 46: mmo.v1.EnterRequest
+	(*EnterReply)(nil),           // 47: mmo.v1.EnterReply
+	(*SessionCommand)(nil),       // 48: mmo.v1.SessionCommand
+	(*SessionInput)(nil),         // 49: mmo.v1.SessionInput
+	(*SessionCast)(nil),          // 50: mmo.v1.SessionCast
+	(*SessionInteract)(nil),      // 51: mmo.v1.SessionInteract
+	(*SessionCraft)(nil),         // 52: mmo.v1.SessionCraft
+	(*SessionItemAction)(nil),    // 53: mmo.v1.SessionItemAction
+	(*SessionChat)(nil),          // 54: mmo.v1.SessionChat
+	(*SessionParty)(nil),         // 55: mmo.v1.SessionParty
+	(*SessionGuild)(nil),         // 56: mmo.v1.SessionGuild
+	(*SessionSocial)(nil),        // 57: mmo.v1.SessionSocial
+	(*SessionLoadout)(nil),       // 58: mmo.v1.SessionLoadout
+	(*SessionPassive)(nil),       // 59: mmo.v1.SessionPassive
+	(*SessionTravel)(nil),        // 60: mmo.v1.SessionTravel
+	(*SessionWorldMap)(nil),      // 61: mmo.v1.SessionWorldMap
+	(*SessionClose)(nil),         // 62: mmo.v1.SessionClose
+	(*SessionDisconnect)(nil),    // 63: mmo.v1.SessionDisconnect
+	(*SessionReply)(nil),         // 64: mmo.v1.SessionReply
+	(*SessionCallback)(nil),      // 65: mmo.v1.SessionCallback
+	nil,                          // 66: mmo.v1.WireDerived.ToolPowerEntry
+	nil,                          // 67: mmo.v1.WireSnapshot.SecondaryEntry
+	nil,                          // 68: mmo.v1.WireJoinSpec.SecondaryEntry
+	nil,                          // 69: mmo.v1.AttachCommand.SecondaryEntry
+	nil,                          // 70: mmo.v1.StationEvent.LevelsEntry
 }
 var file_mmo_v1_cluster_proto_depIdxs = []int32{
 	8,  // 0: mmo.v1.PartyUpdate.members:type_name -> mmo.v1.PartyMemberInfo
 	15, // 1: mmo.v1.WireDerived.block:type_name -> mmo.v1.WireStats
-	46, // 2: mmo.v1.WireDerived.tool_power:type_name -> mmo.v1.WireDerived.ToolPowerEntry
+	66, // 2: mmo.v1.WireDerived.tool_power:type_name -> mmo.v1.WireDerived.ToolPowerEntry
 	12, // 3: mmo.v1.WireSnapshot.progress:type_name -> mmo.v1.WireProgress
-	47, // 4: mmo.v1.WireSnapshot.secondary:type_name -> mmo.v1.WireSnapshot.SecondaryEntry
+	67, // 4: mmo.v1.WireSnapshot.secondary:type_name -> mmo.v1.WireSnapshot.SecondaryEntry
 	12, // 5: mmo.v1.WireJoinSpec.progress:type_name -> mmo.v1.WireProgress
 	13, // 6: mmo.v1.WireJoinSpec.loadout:type_name -> mmo.v1.WireLoadoutSlot
-	48, // 7: mmo.v1.WireJoinSpec.secondary:type_name -> mmo.v1.WireJoinSpec.SecondaryEntry
+	68, // 7: mmo.v1.WireJoinSpec.secondary:type_name -> mmo.v1.WireJoinSpec.SecondaryEntry
 	14, // 8: mmo.v1.WireJoinSpec.spawn:type_name -> mmo.v1.WireVec
 	20, // 9: mmo.v1.RoomCommand.join:type_name -> mmo.v1.JoinCommand
 	21, // 10: mmo.v1.RoomCommand.capture:type_name -> mmo.v1.CaptureCommand
@@ -4004,7 +5528,7 @@ var file_mmo_v1_cluster_proto_depIdxs = []int32{
 	35, // 24: mmo.v1.RoomCommand.set_layer:type_name -> mmo.v1.SetLayerCommand
 	18, // 25: mmo.v1.JoinCommand.spec:type_name -> mmo.v1.WireJoinSpec
 	13, // 26: mmo.v1.AttachCommand.loadout:type_name -> mmo.v1.WireLoadoutSlot
-	49, // 27: mmo.v1.AttachCommand.secondary:type_name -> mmo.v1.AttachCommand.SecondaryEntry
+	69, // 27: mmo.v1.AttachCommand.secondary:type_name -> mmo.v1.AttachCommand.SecondaryEntry
 	13, // 28: mmo.v1.SetLoadoutCommand.slots:type_name -> mmo.v1.WireLoadoutSlot
 	16, // 29: mmo.v1.SetStatsCommand.derived:type_name -> mmo.v1.WireDerived
 	17, // 30: mmo.v1.RoomCommandReply.snapshot:type_name -> mmo.v1.WireSnapshot
@@ -4016,12 +5540,28 @@ var file_mmo_v1_cluster_proto_depIdxs = []int32{
 	43, // 36: mmo.v1.RoomCallback.run_craft:type_name -> mmo.v1.CraftEvent
 	44, // 37: mmo.v1.RoomCallback.grant_gather:type_name -> mmo.v1.GatherEvent
 	45, // 38: mmo.v1.RoomCallback.end_run:type_name -> mmo.v1.RunEndEvent
-	50, // 39: mmo.v1.StationEvent.levels:type_name -> mmo.v1.StationEvent.LevelsEntry
-	40, // [40:40] is the sub-list for method output_type
-	40, // [40:40] is the sub-list for method input_type
-	40, // [40:40] is the sub-list for extension type_name
-	40, // [40:40] is the sub-list for extension extendee
-	0,  // [0:40] is the sub-list for field type_name
+	70, // 39: mmo.v1.StationEvent.levels:type_name -> mmo.v1.StationEvent.LevelsEntry
+	49, // 40: mmo.v1.SessionCommand.input:type_name -> mmo.v1.SessionInput
+	50, // 41: mmo.v1.SessionCommand.cast:type_name -> mmo.v1.SessionCast
+	51, // 42: mmo.v1.SessionCommand.interact:type_name -> mmo.v1.SessionInteract
+	52, // 43: mmo.v1.SessionCommand.craft:type_name -> mmo.v1.SessionCraft
+	53, // 44: mmo.v1.SessionCommand.item_action:type_name -> mmo.v1.SessionItemAction
+	54, // 45: mmo.v1.SessionCommand.chat:type_name -> mmo.v1.SessionChat
+	55, // 46: mmo.v1.SessionCommand.party:type_name -> mmo.v1.SessionParty
+	56, // 47: mmo.v1.SessionCommand.guild:type_name -> mmo.v1.SessionGuild
+	57, // 48: mmo.v1.SessionCommand.social:type_name -> mmo.v1.SessionSocial
+	58, // 49: mmo.v1.SessionCommand.loadout:type_name -> mmo.v1.SessionLoadout
+	59, // 50: mmo.v1.SessionCommand.passive:type_name -> mmo.v1.SessionPassive
+	60, // 51: mmo.v1.SessionCommand.travel:type_name -> mmo.v1.SessionTravel
+	61, // 52: mmo.v1.SessionCommand.world_map:type_name -> mmo.v1.SessionWorldMap
+	62, // 53: mmo.v1.SessionCommand.close:type_name -> mmo.v1.SessionClose
+	63, // 54: mmo.v1.SessionCommand.disconnect:type_name -> mmo.v1.SessionDisconnect
+	38, // 55: mmo.v1.SessionCallback.close:type_name -> mmo.v1.SinkClose
+	56, // [56:56] is the sub-list for method output_type
+	56, // [56:56] is the sub-list for method input_type
+	56, // [56:56] is the sub-list for extension type_name
+	56, // [56:56] is the sub-list for extension extendee
+	0,  // [0:56] is the sub-list for field type_name
 }
 
 func init() { file_mmo_v1_cluster_proto_init() }
@@ -4058,13 +5598,35 @@ func file_mmo_v1_cluster_proto_init() {
 		(*RoomCallback_GrantGather)(nil),
 		(*RoomCallback_EndRun)(nil),
 	}
+	file_mmo_v1_cluster_proto_msgTypes[48].OneofWrappers = []any{
+		(*SessionCommand_Input)(nil),
+		(*SessionCommand_Cast)(nil),
+		(*SessionCommand_Interact)(nil),
+		(*SessionCommand_Craft)(nil),
+		(*SessionCommand_ItemAction)(nil),
+		(*SessionCommand_Chat)(nil),
+		(*SessionCommand_Party)(nil),
+		(*SessionCommand_Guild)(nil),
+		(*SessionCommand_Social)(nil),
+		(*SessionCommand_Loadout)(nil),
+		(*SessionCommand_Passive)(nil),
+		(*SessionCommand_Travel)(nil),
+		(*SessionCommand_WorldMap)(nil),
+		(*SessionCommand_Close)(nil),
+		(*SessionCommand_Disconnect)(nil),
+	}
+	file_mmo_v1_cluster_proto_msgTypes[65].OneofWrappers = []any{
+		(*SessionCallback_Send)(nil),
+		(*SessionCallback_Close)(nil),
+		(*SessionCallback_OwnershipLost)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mmo_v1_cluster_proto_rawDesc), len(file_mmo_v1_cluster_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   51,
+			NumMessages:   71,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -222,11 +222,14 @@ func run() error {
 	var servers []*http.Server
 
 	if roles[RoleGateway] {
-		if node == nil {
-			// Splitting these roles needs a bus-backed room provider, which
-			// arrives in M9. Failing loudly beats starting a gateway that
-			// cannot place anyone.
-			return errors.New("running --roles=gateway without world requires the NATS bus (M9)")
+		// A gateway with no world node of its own hands characters to one over
+		// the bus. It needs a bus that actually leaves the process to do it:
+		// with the in-process bus there is nobody on the other end, and the
+		// failure would be every login timing out rather than anything that
+		// says why.
+		playerWorld, err := openWorld(ctx, node, msgBus, dir, cfg, log)
+		if err != nil {
+			return err
 		}
 		if cfg.devAuth {
 			log.Warn("development authentication is enabled: " +
@@ -275,7 +278,7 @@ func run() error {
 		}
 
 		gw, err := gateway.New(gateway.Config{
-			World:          node,
+			World:          playerWorld,
 			Maps:           game.Maps,
 			ContentHash:    game.Hash,
 			Sessions:       sessions,

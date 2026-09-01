@@ -623,7 +623,8 @@ names already follow and the only one that does not need re-tuning per map.
 - [x] `nats` bus implementation
 - [x] `redis` directory implementation (and presence and parties with it)
 - [x] Cross-process room handles, so a world node can be deployed more than once
-- [ ] Split roles into separate deployments; k8s manifests
+- [x] Split roles into separate deployments (`--roles=gateway` runs with no simulation)
+- [ ] k8s manifests
 - [ ] Headless bot client for load generation
 - [ ] Grafana dashboards checked in
 - [ ] Load test: 1000 bots across 3 world nodes
@@ -915,6 +916,67 @@ narrows it -- a message about a body they no longer have is dropped -- but
 entity ids are per room, so the old room could have handed out the same one.
 The cost of being wrong is one stale frame that the next snapshot corrects.
 Closing it properly means a subject per attachment rather than per character.
+
+### A gateway that runs no simulation
+
+`--roles=gateway` used to refuse to start without a world node in the same
+process, with an error saying so. It now runs on its own: it terminates
+sockets, checks what arrives, and forwards it to whichever world node holds the
+character. It owns no rooms, holds no leases, and runs no tick loop.
+
+**The gateway no longer touches a room at all.** It used to reach through the
+session for a `room.Handle` and call `Input` on it, which is fine in one process
+and impossible across two. The four calls a connected player makes constantly --
+move, cast, interact, craft -- moved onto `PlayerSession`, so the session is the
+whole of the gateway's API surface and `Handle()` returns nil for a remote one
+deliberately. A proxy there would be an invitation to add a fifth.
+
+**Validation stays on the gateway.** That is the trust boundary and where the
+untrusted bytes arrive, so the clamping and the length checks happen before
+anything crosses. What crosses is the already-checked request, which is why the
+wire types mirror the Go request structs rather than the client's messages.
+
+**The same asymmetry as the room protocol**: the four constant calls are
+published and not waited for; everything else is a request that returns either
+nothing or a refusal worth showing the player. A refusal has to arrive as a
+refusal -- the gateway prints these straight to the screen, and somebody who
+tried to equip an item they do not own should not read "context deadline
+exceeded".
+
+**`InRoom` is answered locally.** The gateway asks it about every message a
+client sends, so the first version's round trip put a request and a reply in
+front of every keypress -- the exact cost the fire-and-forget commands exist to
+avoid. It is also faithful answered from this side: a character is placed by the
+time Enter returns and stays placed until the session ends.
+
+**The bug the browser found.** Everything above passed its tests, and the game
+was unplayable. `Enter` is called with the *handshake* context, which is
+cancelled the moment the handshake finishes -- so the subscription carrying
+everything bound for the player's screen was closed before they finished
+loading. The world node published into a subject nobody was listening on. Every
+Go test passed because they all called `Enter` with `context.Background()`.
+
+What it looked like in a browser: a character standing in a fully rendered
+world, `hp 0/0`, and `net 0 snaps`. There is now a test that passes a context
+shaped like the real one and cancels it, which fails without the fix.
+
+| Claim | How it was checked |
+| --- | --- |
+| A gateway with no world node can play | Ten tests against a `RemoteWorld` holding no Node, on its own bus connection |
+| Input crosses two processes | `TestAGatewaysInputMovesTheCharacter`, and a browser: pos 212 → 248, `0.00 px (0 hard)` misprediction |
+| Messages keep arriving after login | `TestAGatewayKeepsReceivingAfterTheHandshakeContextEnds` |
+| A refusal arrives as a refusal | `TestAGatewaySeesARefusal` |
+| A busy character is refused, not hunted for | `TestAGatewayDoesNotShopAroundForABusyCharacter` -- the lease is cluster-wide, so every node would say the same thing |
+| An empty cluster says so | `TestAGatewaySaysWhenThereIsNoWorldNode` -- different from "everything refused" |
+| A gateway must say where to send messages | `TestAWorldNodeRefusesAGatewayWithNoReturnAddress` -- otherwise a player holds their character hostage and sees nothing |
+| The guards hold | 20 mutations across both sides, all caught |
+| It actually works | Two processes, a browser, a character created, entered, and moved: 489 snapshots, HP regenerating, nine other entities |
+
+**Known limit:** a gateway picks a world node at random from the ones the
+directory says are alive. Random rather than least-loaded because the
+directory's load counter counts rooms, not sessions, and "the node hosting the
+fewest rooms" is not an answer to "where should this player go". A real
+answer needs session counts, which belongs with the load test.
 
 ---
 

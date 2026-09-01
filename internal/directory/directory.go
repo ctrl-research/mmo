@@ -158,6 +158,14 @@ type Directory interface {
 	// to do.
 	Leave(ctx context.Context, id InstanceID) error
 
+	// LiveNodes lists the world nodes currently heartbeating.
+	//
+	// On the interface because a gateway deployed on its own has to find a
+	// world node to hand a character to, and the directory is already the
+	// thing that knows which ones are alive -- it is what placement uses to
+	// avoid starting rooms on a node that has gone.
+	LiveNodes(ctx context.Context) ([]NodeID, error)
+
 	// Release removes an instance entirely. The world node calls this after
 	// tearing the room down.
 	Release(ctx context.Context, id InstanceID) error

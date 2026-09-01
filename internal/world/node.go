@@ -70,6 +70,8 @@ type Node struct {
 	transferSub bus.Subscription
 	hostSub     bus.Subscription
 	roomSub     bus.Subscription
+	enterSub    bus.Subscription
+	sessionSub  bus.Subscription
 	chatSubs    []bus.Subscription
 
 	// watched holds the refcounted subscriptions this node has taken out on
@@ -244,6 +246,9 @@ func (n *Node) Start(ctx context.Context) error {
 	if err := n.serveRooms(n.ctx); err != nil {
 		return err
 	}
+	if err := n.serveSessions(n.ctx); err != nil {
+		return err
+	}
 	if err := n.serveChat(n.ctx); err != nil {
 		return err
 	}
@@ -264,6 +269,12 @@ func (n *Node) Stop() {
 	}
 	if n.roomSub != nil {
 		n.roomSub.Close()
+	}
+	if n.enterSub != nil {
+		n.enterSub.Close()
+	}
+	if n.sessionSub != nil {
+		n.sessionSub.Close()
 	}
 	if n.hostSub != nil {
 		n.hostSub.Close()

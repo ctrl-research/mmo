@@ -521,3 +521,166 @@ message RunEndEvent {
   string dungeon_id = 3;
   bool cleared = 4;
 }
+
+// ---------------------------------------------------------------------------
+// Driving a character from another process.
+//
+// The other half of the role split. A gateway terminates the socket and knows
+// nothing about rooms; a world node owns the character -- its lease, its
+// checkpoints, its party and guild, and the room it is standing in.
+//
+// The gateway does the validating and clamping, because that is the trust
+// boundary and it is where the untrusted bytes arrive. What crosses is the
+// already-checked request, which is why these mirror the Go request types
+// rather than the client's messages.
+// ---------------------------------------------------------------------------
+
+// EnterRequest asks a world node to take ownership of a character.
+message EnterRequest {
+  string account_id = 1;
+  string character_id = 2;
+
+  // CallbackSubject is where everything bound for the player's screen should
+  // be published. The socket lives on the gateway and cannot travel, so this
+  // is the address that stands in for it.
+  string callback_subject = 3;
+}
+
+message EnterReply {
+  string error = 1;
+
+  // Busy distinguishes "somebody else is playing this character" from a
+  // failure, because the two need different words in front of a player.
+  bool busy = 2;
+
+  string name = 3;
+  uint32 entity_id = 4;
+}
+
+message SessionCommand {
+  string character_id = 1;
+
+  oneof body {
+    SessionInput input = 10;
+    SessionCast cast = 11;
+    SessionInteract interact = 12;
+    SessionCraft craft = 13;
+    SessionItemAction item_action = 14;
+    SessionChat chat = 15;
+    SessionParty party = 16;
+    SessionGuild guild = 17;
+    SessionSocial social = 18;
+    SessionLoadout loadout = 19;
+    SessionPassive passive = 20;
+    SessionTravel travel = 21;
+    SessionWorldMap world_map = 22;
+    SessionClose close = 23;
+    SessionDisconnect disconnect = 24;
+  }
+}
+
+message SessionInput {
+  uint32 seq = 1;
+  int32 move_x = 2;
+  bool jump = 3;
+  bool up = 4;
+  bool down = 5;
+}
+
+message SessionCast {
+  string skill_id = 1;
+  bool facing_left = 2;
+}
+
+message SessionInteract {
+  uint32 target = 1;
+  uint32 kind = 2;
+}
+
+message SessionCraft {
+  uint32 station = 1;
+  string recipe_id = 2;
+}
+
+message SessionItemAction {
+  uint32 kind = 1;
+  string item_id = 2;
+  int32 slot = 3;
+
+  // The equipment slot is a content identifier, not an index: a number would
+  // mean something different the next time the slots are reordered.
+  string equip_slot = 4;
+}
+
+message SessionChat {
+  uint32 channel = 1;
+  string body = 2;
+  string target = 3;
+}
+
+message SessionParty {
+  uint32 kind = 1;
+  string target = 2;
+}
+
+message SessionGuild {
+  uint32 kind = 1;
+  string target = 2;
+}
+
+message SessionSocial {
+  uint32 kind = 1;
+  string target = 2;
+}
+
+message SessionLoadout {
+  int32 slot = 1;
+  string skill_id = 2;
+  repeated string supports = 3;
+}
+
+message SessionPassive {
+  int32 allocate = 1;
+  int32 refund = 2;
+  bool respec_all = 3;
+}
+
+message SessionTravel {
+  string waypoint_id = 1;
+  uint64 channel = 2;
+  bool new_channel = 3;
+}
+
+message SessionWorldMap {}
+message SessionClose {}
+message SessionDisconnect {}
+
+message SessionReply {
+  // Error is a refusal the player is meant to see -- "you are not in a party",
+  // "that costs more gold than you have". The gateway shows it rather than
+  // treating it as a fault, which is why it is a field and not a bus error.
+  string error = 1;
+
+  // Gone reports that this node is not holding the character any more, so the
+  // gateway can close the connection instead of talking to nobody.
+  bool gone = 2;
+
+  // WorldMap is an encoded game.v1 WorldMap, carried as bytes so cluster.proto
+  // does not import the client-facing schema.
+  bytes world_map = 3;
+}
+
+// SessionCallback is everything a world node sends to the gateway holding the
+// socket.
+message SessionCallback {
+  oneof body {
+    // Send is an encoded game.v1 ServerMessage, on its way to the player.
+    bytes send = 1;
+    SinkClose close = 2;
+
+    // OwnershipLost carries the reason the character's lease went away. The
+    // connection has to be closed rather than left playing a character this
+    // node no longer owns.
+    string ownership_lost = 3;
+  }
+}
