@@ -125,8 +125,15 @@ func (m *Metrics) ObserveTick(mapID string, d time.Duration, entities, players i
 	m.TickDuration.WithLabelValues(mapID).Observe(d.Seconds())
 	m.RoomEntities.WithLabelValues(mapID).Set(float64(entities))
 	m.RoomPlayers.WithLabelValues(mapID).Set(float64(players))
+
+	// Resolved whether or not it overran, which is what creates the series at
+	// zero for a map that is behaving. A counter that only exists once it has
+	// been incremented reads as "no data" on a dashboard and in an alert --
+	// indistinguishable from a metric that was renamed or a server that is not
+	// being scraped, which is the opposite of what it means.
+	overruns := m.TickOverruns.WithLabelValues(mapID)
 	if d > room.TickBudget {
-		m.TickOverruns.WithLabelValues(mapID).Inc()
+		overruns.Inc()
 	}
 }
 

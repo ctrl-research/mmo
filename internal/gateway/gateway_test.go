@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -238,12 +239,28 @@ type client struct {
 	conn  *websocket.Conn
 	t     *testing.T
 	inbox []*mmov1.ServerMessage
+
+	// readErr is the first read failure that was not a timeout, kept so a
+	// caller can say why nothing arrived instead of guessing.
+	readErr error
 }
 
 // drain reads whatever has arrived and appends it to the inbox.
+// drain reads whatever has arrived and appends it to the inbox.
+//
+// A read that failed for any reason other than the timeout is remembered
+// rather than discarded. Swallowing it meant a socket the server had closed
+// looked exactly like a socket that had not said anything yet: recv returned
+// instantly, the caller span until its deadline, and the failure came back as
+// "nothing arrived" when the truth was "the connection was closed, and here is
+// what it said on the way out". Two CI failures were diagnosed as slowness on
+// the strength of that message.
 func (c *client) drain(timeout time.Duration) {
 	msgs, err := c.recv(timeout)
 	if err != nil {
+		if !errors.Is(err, context.DeadlineExceeded) {
+			c.readErr = err
+		}
 		return
 	}
 	c.inbox = append(c.inbox, msgs...)
@@ -251,6 +268,9 @@ func (c *client) drain(timeout time.Duration) {
 
 // findInInbox returns the first message matching a predicate, reading more
 // until the deadline if nothing matches yet.
+//
+// It gives up early if the connection has gone: waiting out a deadline on a
+// closed socket is time spent to arrive at a worse error message.
 func (c *client) findInInbox(within time.Duration, match func(*mmov1.ServerMessage) bool) *mmov1.ServerMessage {
 	deadline := time.Now().Add(within)
 	for {
@@ -259,11 +279,28 @@ func (c *client) findInInbox(within time.Duration, match func(*mmov1.ServerMessa
 				return m
 			}
 		}
-		if time.Now().After(deadline) {
+		if c.readErr != nil || time.Now().After(deadline) {
 			return nil
 		}
 		c.drain(200 * time.Millisecond)
 	}
+}
+
+// why explains an absence, so a caller's failure message can name the cause.
+//
+// A Kick is the interesting case: the server saying why it refused is far more
+// useful than the test reporting that what it wanted never turned up.
+func (c *client) why() string {
+	for _, m := range c.inbox {
+		if k := m.GetKick(); k != nil {
+			return fmt.Sprintf("the server kicked us: code %d, %q",
+				k.GetCode(), k.GetReason())
+		}
+	}
+	if c.readErr != nil {
+		return "the connection failed: " + c.readErr.Error()
+	}
+	return "nothing arrived and the connection is still open"
 }
 
 func (ts *testServer) dial(t *testing.T) *client {
@@ -332,11 +369,18 @@ func (c *client) recv(timeout time.Duration) ([]*mmov1.ServerMessage, error) {
 func (c *client) awaitWelcome() *mmov1.Welcome {
 	c.t.Helper()
 
-	m := c.findInInbox(5*time.Second, func(m *mmov1.ServerMessage) bool {
+	// Fifteen seconds, not five. Entering the world is a lease, a read from
+	// Postgres, a placement through the directory and a room being started --
+	// the same shape of work the server gives its own transfer protocol fifteen
+	// seconds for, and for the same stated reason. Five was under the real
+	// duration on a CI runner sharing itself with the whole suite under the
+	// race detector, which failed as "no Welcome received": indistinguishable
+	// from a login that is genuinely broken.
+	m := c.findInInbox(15*time.Second, func(m *mmov1.ServerMessage) bool {
 		return m.GetWelcome() != nil
 	})
 	if m == nil {
-		c.t.Fatal("no Welcome received")
+		c.t.Fatalf("no Welcome received: %s", c.why())
 	}
 	return m.GetWelcome()
 }
