@@ -159,7 +159,7 @@ func run() error {
 	// in-memory one is correct for a single process rather than a stand-in: with
 	// one node, the node deciding where a room goes is the node that will host
 	// it.
-	dir, err := openDirectory(ctx, cfg, redisClient, log)
+	dir, err := openDirectory(ctx, cfg, redisClient, roles[RoleWorld], log)
 	if err != nil {
 		return err
 	}

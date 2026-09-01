@@ -241,13 +241,21 @@ func openBus(cfg config, log *slog.Logger) (bus.Bus, error) {
 //
 // The Redis directory registers this node and heartbeats until it is closed,
 // which is what makes a node that dies stop receiving new rooms.
-func openDirectory(ctx context.Context, cfg config, client *redis.Client, log *slog.Logger) (directory.Directory, error) {
+func openDirectory(ctx context.Context, cfg config, client *redis.Client, hostsRooms bool, log *slog.Logger) (directory.Directory, error) {
 	node := directory.NodeID(cfg.nodeID)
 
 	if client == nil {
 		log.Info("using the in-process room directory; " +
 			"set --redis-addr before running more than one process")
 		return directory.NewMemory(node), nil
+	}
+
+	// A process that runs no simulation must not register. Registering is an
+	// offer to host rooms, and placement takes the offer -- a gateway that
+	// registered would be sent a map it cannot run.
+	if !hostsRooms {
+		log.Info("using Redis for the room directory", "addr", cfg.redisAddr, "hosting", false)
+		return directory.NewRedisReader(client, "mmo"), nil
 	}
 
 	dir, err := directory.NewRedis(ctx, client, "mmo", node)

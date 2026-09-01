@@ -624,7 +624,7 @@ names already follow and the only one that does not need re-tuning per map.
 - [x] `redis` directory implementation (and presence and parties with it)
 - [x] Cross-process room handles, so a world node can be deployed more than once
 - [x] Split roles into separate deployments (`--roles=gateway` runs with no simulation)
-- [ ] k8s manifests
+- [x] k8s manifests
 - [ ] Headless bot client for load generation
 - [ ] Grafana dashboards checked in
 - [ ] Load test: 1000 bots across 3 world nodes
@@ -977,6 +977,46 @@ directory says are alive. Random rather than least-loaded because the
 directory's load counter counts rooms, not sessions, and "the node hosting the
 fewest rooms" is not an answer to "where should this player go". A real
 answer needs session counts, which belongs with the load test.
+
+### Deploying it
+
+The manifests live in the homelab cluster repo rather than here, alongside the
+Postgres and Dragonfly components the app already composes:
+`apps/base/projects/mmo/release/`. One `--roles=all` HelmRelease became three --
+gateway, world, and the NATS the two halves talk over.
+
+**The world nodes are a StatefulSet, for the names rather than for storage.**
+There are no volumes and nothing on disk survives a restart. A world node
+identifies itself to the directory by hostname, and the directory keeps every
+node it has seen in registration order so placement is stable across restarts.
+Under a Deployment every rollout invents new hostnames: a new node each deploy,
+and a registration list that only grows. `mmo-world-0` comes back as itself.
+
+**Their Service is headless.** Nothing load-balances a world node -- a gateway
+addresses one by name over the bus after the directory says which, and a room is
+reached the same way. A virtual IP in front of them would be a hop no traffic
+takes.
+
+**The gateway is pinned to one replica, and not because it cannot scale.** It
+runs no simulation and holds no character state, which is the entire point of
+splitting it out. It is one because `SESSION_SECRET` is not set yet: without it
+each gateway generates its own signing key at boot, so a ticket issued over HTTP
+by one gateway is rejected by whichever gateway the WebSocket lands on. With one
+replica that is invisible; with two it is a login that fails about half the time.
+
+**Registering is an offer to host rooms, and a gateway must not make it.** This
+was the bug writing the manifests found: `NewRedis` registers the process as a
+placeable node and heartbeats, so a gateway that opened a Redis directory
+appeared in `LiveNodes` -- and placement would eventually choose it to run a map
+it has no simulation for. The player sent there waits out a timeout on a room
+nobody is going to start. A gateway now opens `NewRedisReader`, which never
+registers, and `TestRedisReaderIsNeverPlacedOn` asserts both halves of that: it
+is not listed as live, and a room placed through it still lands on a world node.
+
+Verified by running it: two world nodes and a gateway as three processes against
+one Redis, NATS and Postgres. Only `world-1` and `world-2` appear in the
+directory. A character created and played through the gateway got 180 snapshots,
+took damage from mobs simulated on `world-1`, and the gateway logged no errors.
 
 ---
 
