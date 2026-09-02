@@ -1422,10 +1422,22 @@ told **"they are not online"**, about somebody whose client is already showing
 them the world. It is brief and it is real, and it is the kind of thing that
 gets reported as "party invites are flaky" and never reproduced.
 
-Presence is now announced as soon as the character is placed, before anything
-else is read. `TestSixPlayersFormAPartyOverTheWire` fails without it -- the
-first invitation is refused and never sent -- which is what makes it a test
-rather than a comment.
+Presence is now announced *before* the room is joined rather than after. The
+map comes from the character, so nothing about it needs the room -- and the
+Welcome is sent during the join, so anything later is a gap by construction.
+
+Narrowing it was not enough, which is the part worth keeping. The first fix
+moved the announcement above the three database reads, leaving a window the
+width of a function return; the tests passed locally five times and CI found it
+on the first run. A window measured in instructions is not small, it is just
+usually lucky.
+
+Announcing before placement means announcing before it is certain, so a failed
+placement now takes the announcement back -- otherwise a login that failed
+leaves a character listed as online that nobody is holding.
+
+`TestSixPlayersFormAPartyOverTheWire` fails without the fix: the first
+invitation is refused and never sent.
 
 ---
 

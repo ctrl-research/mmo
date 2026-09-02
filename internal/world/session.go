@@ -515,26 +515,40 @@ func (n *Node) Enter(ctx context.Context, accountID, characterID uuid.UUID, sink
 	// Placement and the join are one step: the directory decides which
 	// instance and which node, and the room is started there if it is not
 	// already running -- which may be a node other than this one.
+	// Held and announced *before* the room is joined, not after.
+	//
+	// The room sends the Welcome during the join below, and from that moment
+	// the player believes they are in the world and their client can act. Any
+	// gap between that and this character existing -- in presence, and in the
+	// node's own table -- is a window in which they are invisible: a friend
+	// inviting them to a party is told "they are not online", about somebody
+	// whose client has already drawn the map.
+	//
+	// The gap used to be three database reads wide. Narrowing it to the width
+	// of a function return was not enough: a loaded CI machine still found it,
+	// which is the useful thing about a window measured in instructions rather
+	// than in milliseconds -- it is not small, it is just usually lucky.
+	//
+	// The map is known from the character, so nothing here needs the room.
+	n.hold(characterID, s)
+	s.announcePresence(ctx, false)
+
 	handle, instance, entityID, err := n.placeAndJoin(ctx,
 		roomKey(n.content.Maps[mapID], s.layerKey()), spec,
 		func() { s.watchRoomCallbacks() })
 	if err != nil {
+		// Announced before it was certain, so an announcement that turned out
+		// to be wrong has to be taken back. Otherwise a failed login leaves a
+		// character listed as online that nobody is holding, and whispers to
+		// them are delivered to a session that is being torn down.
+		n.forget(characterID)
+		if n.presence != nil {
+			n.presence.Forget(ctx, characterID.String())
+		}
 		release()
 		return nil, err
 	}
 	s.handle, s.instance, s.entityID = handle, instance, entityID
-
-	// Held and announced as soon as the character is in a room, before the
-	// loadout and the passives are read back.
-	//
-	// The room sends the Welcome during the join above, so from here the player
-	// believes they are in the world -- and everything below is database reads
-	// that take their own time. Announcing after them left a window in which
-	// somebody who had just logged in was invisible: a friend inviting them to
-	// a party in that moment was told "they are not online", about a character
-	// whose client had already drawn the map.
-	n.hold(characterID, s)
-	s.announcePresence(ctx, false)
 
 	// The stat block, the inventory, and the bar, before anything else
 	// observes the character.
